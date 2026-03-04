@@ -60,7 +60,7 @@ export class MyUserService implements AuthUserService {
 
 ### 2. Register the `AuthModule`
 
-Import and configure the `AuthModule` in your root `AppModule` or feature module. Provide your implementation of the user service and your token secrets:
+Import and configure the `AuthModule` in your root `AppModule` or feature module. Provide your implementation of the user service using standard NestJS Dynamic Module syntax (`useExisting` or `useClass`):
 
 ```typescript
 // src/app.module.ts
@@ -71,11 +71,18 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    UsersModule, // Ensure your provider's module is imported
     AuthModule.register({
       jwtSecret: process.env.JWT_SECRET || 'super-secret',
       jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'super-refresh-secret',
-      userService: MyUserService,
+      
+      // Pass the modules required to instantiate your user service
+      imports: [UsersModule],
+      
+      // Use an existing instance of your user service exported by UsersModule
+      useExisting: MyUserService, 
+      
+      // Alternatively, if you want AuthModule to create a new instance:
+      // userService: MyUserService,
       
       // Optional: defaults to [AuthTransport.BEARER]
       // You can supply COOKIE, BEARER, or BOTH

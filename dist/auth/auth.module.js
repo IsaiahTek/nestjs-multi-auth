@@ -29,10 +29,18 @@ Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: f
 const auth_user_service_interface_1 = require("./interfaces/auth-user-service.interface");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
-        const userServiceProvider = {
-            provide: auth_user_service_interface_1.AUTH_USER_SERVICE,
-            useClass: options.userService,
-        };
+        if (!options.userService && !options.useExisting) {
+            throw new Error('AuthModule requires either `userService` or `useExisting` to be provided.');
+        }
+        const userServiceProvider = options.useExisting
+            ? {
+                provide: auth_user_service_interface_1.AUTH_USER_SERVICE,
+                useExisting: options.useExisting,
+            }
+            : {
+                provide: auth_user_service_interface_1.AUTH_USER_SERVICE,
+                useClass: options.userService,
+            };
         const optionsProvider = {
             provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useValue: options,
@@ -40,6 +48,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
         return {
             module: AuthModule_1,
             imports: [
+                ...(options.imports || []),
                 typeorm_1.TypeOrmModule.forFeature([
                     auth_entity_1.Auth,
                     oauth_provider_entity_1.OAuthProvider,

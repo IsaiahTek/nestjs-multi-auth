@@ -1,4 +1,4 @@
-import { Type } from '@nestjs/common';
+import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
 import { AuthUserService } from './auth-user-service.interface';
 import { AuthTransport } from '../auth-type.enum';
 
@@ -26,9 +26,21 @@ export interface AuthModuleOptions {
     jwtRefreshExpiresIn?: string;
 
     /**
-     * The User Service implementation that the consuming application provides
+     * Optional list of modules to import into the AuthModule context.
+     * Use this if your external UserService requires specific database providers.
      */
-    userService: Type<AuthUserService>;
+    imports?: Array<Type<any> | DynamicModule | Promise<DynamicModule> | ForwardReference>;
+
+    /**
+     * Provide a class to be instantiated by AuthModule. 
+     * (Warning: causes a new instance to be created unless globally provided)
+     */
+    userService?: Type<AuthUserService>;
+
+    /**
+     * Provide an existing instance of a service (e.g. from an imported UserModule)
+     */
+    useExisting?: Type<AuthUserService>;
 
     /**
      * Preferred transport mode for tokens (defaults to ['bearer'])

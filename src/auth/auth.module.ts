@@ -21,10 +21,19 @@ import { AUTH_USER_SERVICE } from './interfaces/auth-user-service.interface';
 @Module({})
 export class AuthModule {
   static register(options: AuthModuleOptions): DynamicModule {
-    const userServiceProvider: Provider = {
-      provide: AUTH_USER_SERVICE,
-      useClass: options.userService,
-    };
+    if (!options.userService && !options.useExisting) {
+      throw new Error('AuthModule requires either `userService` or `useExisting` to be provided.');
+    }
+
+    const userServiceProvider: Provider = options.useExisting
+      ? {
+        provide: AUTH_USER_SERVICE,
+        useExisting: options.useExisting,
+      }
+      : {
+        provide: AUTH_USER_SERVICE,
+        useClass: options.userService!,
+      };
 
     const optionsProvider: Provider = {
       provide: AUTH_MODULE_OPTIONS,
@@ -34,6 +43,7 @@ export class AuthModule {
     return {
       module: AuthModule,
       imports: [
+        ...(options.imports || []),
         TypeOrmModule.forFeature([
           Auth,
           OAuthProvider,
