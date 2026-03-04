@@ -17,7 +17,7 @@ exports.JwtStrategy = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
-const auth_module_1 = require("./auth.module");
+const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const common_2 = require("@nestjs/common");
 let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(options) {
@@ -55,7 +55,7 @@ let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.Passp
 exports.JwtStrategy = JwtStrategy;
 exports.JwtStrategy = JwtStrategy = JwtStrategy_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, common_2.Inject)(auth_module_1.AUTH_MODULE_OPTIONS)),
+    __param(0, (0, common_2.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __metadata("design:paramtypes", [Object])
 ], JwtStrategy);
 //# sourceMappingURL=jwt.strategy.js.map

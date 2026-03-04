@@ -1,7 +1,7 @@
 export * from './auth/auth.module';
 export * from './auth/auth.service';
-export * from './auth/interfaces/auth-module-options.interface';
-export { AuthUserService, AUTH_USER_SERVICE, AUTH_MODULE_OPTIONS } from './auth/interfaces/auth-user-service.interface';
+export { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './auth/interfaces/auth-module-options.interface';
+export { AuthUserService, AUTH_USER_SERVICE } from './auth/interfaces/auth-user-service.interface';
 export * from './auth/current-user.decorator';
 export { CurrentUser } from './auth/current-user-interface';
 export * from './auth/decorator/public.decorator';

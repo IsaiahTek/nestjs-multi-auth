@@ -20,7 +20,7 @@ const signup_dto_1 = require("./dto/signup.dto");
 const refresh_token_dto_1 = require("./dto/refresh-token.dto");
 const swagger_1 = require("@nestjs/swagger");
 const public_decorator_1 = require("./decorator/public.decorator");
-const auth_module_1 = require("./auth.module");
+const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./auth-type.enum");
 let AuthController = class AuthController {
     constructor(authService, options) {
@@ -185,7 +185,7 @@ __decorate([
 ], AuthController.prototype, "logout", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __param(1, (0, common_1.Inject)(auth_module_1.AUTH_MODULE_OPTIONS)),
+    __param(1, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __metadata("design:paramtypes", [auth_service_1.AuthService, Object])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

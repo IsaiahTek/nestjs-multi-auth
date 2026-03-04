@@ -1,6 +1,6 @@
 import { DynamicModule } from '@nestjs/common';
-import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
-export declare const AUTH_MODULE_OPTIONS = "AUTH_MODULE_OPTIONS";
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 export declare class AuthModule {
     static register(options: AuthModuleOptions): DynamicModule;
 }
+export { AUTH_MODULE_OPTIONS };

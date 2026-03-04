@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 var AuthModule_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthModule = exports.AUTH_MODULE_OPTIONS = void 0;
+exports.AUTH_MODULE_OPTIONS = exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_entity_1 = require("./entities/auth.entity");
@@ -24,8 +24,9 @@ const jwt_strategy_1 = require("./jwt.strategy");
 const passport_1 = require("@nestjs/passport");
 const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
+const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
+Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: function () { return auth_module_options_interface_1.AUTH_MODULE_OPTIONS; } });
 const auth_user_service_interface_1 = require("./interfaces/auth-user-service.interface");
-exports.AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const userServiceProvider = {
@@ -33,7 +34,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             useClass: options.userService,
         };
         const optionsProvider = {
-            provide: exports.AUTH_MODULE_OPTIONS,
+            provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useValue: options,
         };
         return {

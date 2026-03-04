@@ -15,10 +15,8 @@ import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
-import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_USER_SERVICE } from './interfaces/auth-user-service.interface';
-
-export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
 
 @Module({})
 export class AuthModule {
@@ -61,3 +59,5 @@ export class AuthModule {
     };
   }
 }
+export { AUTH_MODULE_OPTIONS };
+

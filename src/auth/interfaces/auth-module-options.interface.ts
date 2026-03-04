@@ -2,6 +2,8 @@ import { Type } from '@nestjs/common';
 import { AuthUserService } from './auth-user-service.interface';
 import { AuthTransport } from '../auth-type.enum';
 
+export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
+
 export interface AuthModuleOptions {
     /**
      * Secret key for signing JWTs
