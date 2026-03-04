@@ -1,0 +1,77 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEmail,
+  MinLength,
+  IsOptional,
+  IsEnum,
+  IsPhoneNumber,
+} from 'class-validator';
+import { AuthStrategy } from '../auth-type.enum';
+
+export class SignupDto {
+  @ApiProperty({
+    enum: AuthStrategy,
+    example: AuthStrategy.LOCAL,
+    description: 'Authentication method chosen by the user',
+    type: () => AuthStrategy,
+  })
+  @IsEnum(AuthStrategy)
+  method: AuthStrategy;
+
+  @ApiProperty({ example: '+2347035742844', required: false })
+  @IsPhoneNumber('NG')
+  @IsOptional()
+  phone?: string;
+
+  @ApiProperty({ example: 'john@example.com', required: false })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ example: 'securePassword123', required: false })
+  @IsOptional()
+  @MinLength(6)
+  password?: string;
+
+  @ApiProperty({
+    example: 'worker',
+    required: false,
+    description: 'Role of the user within the system',
+  })
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  // Profile extras
+  @ApiProperty({ example: 'John Bassey', required: false })
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @ApiProperty({ example: 'John Bassey', required: false })
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @ApiProperty({ example: 'Lagos, Nigeria', required: false })
+  @IsOptional()
+  address?: string;
+
+  @ApiProperty({
+    example: 'I have 10 years painting experience',
+    required: false,
+  })
+  @IsOptional()
+  bio?: string;
+
+  // Company fields (if registering a business)
+  @ApiProperty({ example: 'Acme Ltd', required: false })
+  @IsOptional()
+  companyName?: string;
+
+  @ApiProperty({ example: 'RC123456', required: false })
+  @IsOptional()
+  registrationNo?: string;
+}

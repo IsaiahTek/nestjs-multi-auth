@@ -1,0 +1,66 @@
+{
+  "name": "nestjs-multi-auth",
+  "version": "0.0.1",
+  "description": "An authentication service/module for NestJs that supports multiple authentication methods such as email, phone, username, OAuth, SSO, etc",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IsaiahTek/nestjs-multi-auth.git"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "access",
+    "token",
+    "OTP",
+    "passsword",
+    "login",
+    "signup",
+    "logout",
+    "signout",
+    "protect",
+    "protected",
+    "authorize",
+    "authorization",
+    "authenticate",
+    "cookie",
+    "access",
+    "token",
+    "refresh",
+    "token"
+  ],
+  "author": "Engr., Isaiah Pius",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/IsaiahTek/nestjs-multi-auth/issues"
+  },
+  "homepage": "https://github.com/IsaiahTek/nestjs-multi-auth#readme",
+  "peerDependencies": {
+    "@nestjs/common": "^11.1.15",
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/core": "^11.1.15",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/swagger": "^11.2.6",
+    "@nestjs/typeorm": "^11.0.0",
+    "@types/passport-jwt": "^4.0.1",
+    "bcrypt": "^6.0.0",
+    "class-validator": "^0.15.1",
+    "crypto": "^1.0.1",
+    "express": "^5.2.1",
+    "passport-jwt": "^4.0.1",
+    "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.15",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6"
+  }
+}
