@@ -90,15 +90,56 @@ export class UserController {
 }
 ```
 
-### Module Configuration
-
-```typescript
 AuthModule.register({
   jwtSecret: process.env.JWT_SECRET,
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   // No user service required!
 })
 ```
+
+---
+
+## Identity Verification (OTPs)
+
+The library includes a pluggable verification system to confirm Email or Phone identities.
+
+### 1. Implement `AuthNotificationProvider`
+
+Create a service to deliver the verification codes. You can use any service, such as [notifyc-nestjs](https://github.com/IsaiahTek/notifyc-nestjs):
+
+```typescript
+import { AuthNotificationProvider } from 'nestjs-multi-auth';
+import { NotifycService } from 'notifyc-nestjs';
+
+@Injectable()
+export class MyNotificationProvider implements AuthNotificationProvider {
+  constructor(private notifyc: NotifycService) {}
+
+  async sendVerificationCode(to: string, code: string, type: 'email' | 'phone') {
+    await this.notifyc.send({
+      to,
+      subject: 'Your Verification Code',
+      message: `Your code is: ${code}`,
+      transport: type === 'email' ? 'SMTP' : 'SMS',
+    });
+  }
+}
+```
+
+### 2. Configure the Module
+
+```typescript
+AuthModule.register({
+  // ... other options
+  notificationProvider: MyNotificationProvider,
+  verificationRequired: true, // If true, login is blocked until verified
+})
+```
+
+### 3. Verification Endpoints
+
+- `POST /auth/verify`: Accepts `{ uid, code }`. Flips `isVerified: true` on the identity.
+- `POST /auth/resend-verification`: Accepts `{ uid }`. Triggers a new code via the provider.
 
 ---
 
