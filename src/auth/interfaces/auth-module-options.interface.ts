@@ -46,4 +46,10 @@ export interface AuthModuleOptions {
      * Preferred transport mode for tokens (defaults to ['bearer'])
      */
     transport?: AuthTransport[];
+
+    /**
+     * If true, the global JwtAuthGuard will NOT be registered.
+     * Default: false (global guard is enabled by default)
+     */
+    disableGlobalGuard?: boolean;
 }

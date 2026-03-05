@@ -34,4 +34,6 @@ __exportStar(require("./auth/entities/base.entity"), exports);
 __exportStar(require("./auth/dto/login.dto"), exports);
 __exportStar(require("./auth/dto/signup.dto"), exports);
 __exportStar(require("./auth/dto/refresh-token.dto"), exports);
+__exportStar(require("./auth/guards/jwt-auth.guard"), exports);
+__exportStar(require("./auth/guards/optional-auth.guard"), exports);
 //# sourceMappingURL=index.js.map

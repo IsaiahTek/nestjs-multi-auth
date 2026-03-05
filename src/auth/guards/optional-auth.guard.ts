@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // src/auth/optional-auth.guard.ts
 import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -18,7 +15,7 @@ export class OptionalAuthGuard extends AuthGuard('jwt') {
     if (!authHeader) {
       this.logger.debug('No authorization header, skipping JWT check');
       req.user = null; // 👈 set anonymous user
-      return true;
+      return true;  
     }
 
     // fallback to normal AuthGuard behavior

@@ -17,6 +17,8 @@ import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_USER_SERVICE } from './interfaces/auth-user-service.interface';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({})
 export class AuthModule {
@@ -40,6 +42,23 @@ export class AuthModule {
       useValue: options,
     };
 
+    const providers: Provider[] = [
+      optionsProvider,
+      userServiceProvider,
+      JwtStrategy,
+      AuthService,
+      PasswordAuthStrategy,
+      GoogleAuthStrategy,
+      OtpAuthStrategy,
+    ];
+
+    if (!options.disableGlobalGuard) {
+      providers.push({
+        provide: APP_GUARD,
+        useClass: JwtAuthGuard,
+      });
+    }
+
     return {
       module: AuthModule,
       imports: [
@@ -55,17 +74,9 @@ export class AuthModule {
         PassportModule,
         JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
       ],
-      providers: [
-        optionsProvider,
-        userServiceProvider,
-        JwtStrategy,
-        AuthService,
-        PasswordAuthStrategy,
-        GoogleAuthStrategy,
-        OtpAuthStrategy,
-      ],
+      providers,
       controllers: [AuthController],
-      exports: [AuthService, AUTH_USER_SERVICE],
+      exports: [AuthService, AUTH_USER_SERVICE, JwtAuthGuard],
     };
   }
 }

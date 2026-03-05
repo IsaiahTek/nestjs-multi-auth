@@ -16,3 +16,5 @@ export * from './auth/entities/base.entity';
 export * from './auth/dto/login.dto';
 export * from './auth/dto/signup.dto';
 export * from './auth/dto/refresh-token.dto';
+export * from './auth/guards/jwt-auth.guard';
+export * from './auth/guards/optional-auth.guard';

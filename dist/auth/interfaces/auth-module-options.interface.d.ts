@@ -11,4 +11,5 @@ export interface AuthModuleOptions {
     userService?: Type<AuthUserService>;
     useExisting?: Type<AuthUserService>;
     transport?: AuthTransport[];
+    disableGlobalGuard?: boolean;
 }
