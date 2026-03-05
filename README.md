@@ -4,6 +4,8 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 
 ## Features
 
+- **Secure by Default**: Automatically registers a global authentication guard. All routes are protected unless explicitly exempted.
+- **Public & Optional Auth**: Simple decorators to mark routes as public or allow optional authentication (user object attached if valid, but no error if missing).
 - **Decoupled User Architecture**: Bring your own `User` entity and database logic. Implement our simple `AuthUserService` interface and the library handles the rest.
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically via `AuthModule.register()`.
 - **Multiple Auth Transports**: Choose between returning tokens via HTTP-only Cookies, JSON body (Bearer token), or both.
@@ -84,6 +86,9 @@ import { UsersModule } from './users/users.module';
       // Alternatively, if you want AuthModule to create a new instance:
       // userService: MyUserService,
       
+      // Optional: defaults to false. If true, global guard is NOT registered.
+      // disableGlobalGuard: true,
+      
       // Optional: defaults to [AuthTransport.BEARER]
       // You can supply COOKIE, BEARER, or BOTH
       transport: [AuthTransport.COOKIE, AuthTransport.BEARER],
@@ -91,6 +96,48 @@ import { UsersModule } from './users/users.module';
   ],
 })
 export class AppModule {}
+```
+
+---
+
+## Guards and Decorators
+
+This library is **Secure by Default**. Once registered, every endpoint in your application will require a valid JWT unless you specify otherwise.
+
+### 1. `@Public()`
+Use the `@Public()` decorator to bypass authentication for specific controllers or individual routes.
+
+```typescript
+import { Public } from 'nestjs-multi-auth';
+
+@Public()
+@Controller('status')
+export class StatusController {}
+```
+
+### 2. `@OptionalAuth()`
+Use the `@OptionalAuth()` decorator when you want a route to attempt authentication but still allow guest access. If a valid token is provided, `request.user` will be populated; otherwise, it will be `null` and the request will proceed.
+
+```typescript
+import { OptionalAuth, CurrentUser } from 'nestjs-multi-auth';
+
+@OptionalAuth()
+@Get('feed')
+getFeed(@CurrentUser() user: any) {
+  return user ? this.getPersonalizedFeed(user) : this.getGuestFeed();
+}
+```
+
+### 3. Manual Guards
+If you've disabled the global guard via `disableGlobalGuard: true`, you can apply the guards manually:
+
+```typescript
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'nestjs-multi-auth';
+
+@UseGuards(JwtAuthGuard)
+@Controller('profile')
+export class ProfileController {}
 ```
 
 ---
