@@ -18,13 +18,13 @@ export class Auth extends BaseEntity {
    * ------------------------------------------------------------------ */
 
   @ApiProperty({
-    description: 'ID of the user this authentication method belongs to',
+    description: 'Unique identity ID (UID) of this account. Multiple auth methods can share the same UID.',
     type: 'string',
     example: 'uuid-string',
   })
-  @Column()
+  @Column({ nullable: true })
   @Index()
-  userId: string;
+  uid: string;
 
   @Column({ type: 'enum', enum: AuthStrategy })
   strategy: AuthStrategy;

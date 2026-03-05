@@ -16,6 +16,18 @@ export class LoginDto {
   @IsOptional()
   emailOrPhone?: string;
 
+  @ApiProperty({ example: 'john@example.com', required: false })
+  @IsOptional()
+  email?: string;
+
+  @ApiProperty({ example: '+2347035742844', required: false })
+  @IsOptional()
+  phone?: string;
+
+  @ApiProperty({ example: 'john_doe', required: false })
+  @IsOptional()
+  username?: string;
+
   @IsOptional()
   password?: string;
 

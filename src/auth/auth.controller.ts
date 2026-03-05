@@ -85,10 +85,10 @@ export class AuthController {
       }
 
       if (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH)) {
-        return { message: 'Signup successful', user: result.user, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+        return { message: 'Signup successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
       }
 
-      return { message: 'Signup successful', user: result.user };
+      return { message: 'Signup successful', auth: result.auth };
     } catch (e) {
       throw new HttpException(
         (e as Error).message || 'Signup error',
@@ -117,10 +117,10 @@ export class AuthController {
       }
 
       if (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH)) {
-        return { message: 'Login successful', user: result.user, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+        return { message: 'Login successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
       }
 
-      return { message: 'Login successful', user: result.user };
+      return { message: 'Login successful', auth: result.auth };
     } catch (e) {
       throw new HttpException(
         (e as Error).message || 'Login error',

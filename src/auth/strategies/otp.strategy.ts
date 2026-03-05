@@ -7,7 +7,7 @@ import { Auth } from '../entities/auth.entity';
 
 @Injectable()
 export class OtpAuthStrategy {
-  async signup(dto: SignupDto): Promise<Auth> {
+  async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
     // Send OTP to phone, create user after verification
     throw new Error('Not implemented');
   }

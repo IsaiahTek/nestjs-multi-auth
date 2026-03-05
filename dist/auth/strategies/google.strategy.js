@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GoogleAuthStrategy = void 0;
 const common_1 = require("@nestjs/common");
 let GoogleAuthStrategy = class GoogleAuthStrategy {
-    async signup(dto) {
+    async registerCredentials(dto, uid) {
         throw new Error('Not implemented');
     }
     async login(dto) {

@@ -3,7 +3,6 @@ import {
   BadRequestException,
   UnauthorizedException,
   Logger,
-  Inject,
 } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,7 +21,7 @@ import {
 import { AuthStrategy } from '../auth-type.enum'; // Ensure this path is correct
 
 // Services / DTOs
-import { AUTH_USER_SERVICE, AuthUserService } from '../interfaces/auth-user-service.interface';
+
 
 @Injectable()
 export class PasswordAuthStrategy {
@@ -31,15 +30,14 @@ export class PasswordAuthStrategy {
     @InjectRepository(Auth) private authRepo: Repository<Auth>,
     @InjectRepository(AuthIdentifier)
     private identifierRepo: Repository<AuthIdentifier>,
-    @Inject(AUTH_USER_SERVICE) private readonly userService: AuthUserService,
   ) { }
 
   private readonly logger: Logger = new Logger(PasswordAuthStrategy.name);
 
-  async signup(dto: SignupDto): Promise<Auth> {
+  async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
     // 1. Validation
-    if (!dto.email && !dto.phone) {
-      throw new BadRequestException('Email or phone is required');
+    if (!dto.email && !dto.phone && !dto.username) {
+      throw new BadRequestException('Email, phone or username is required');
     }
     if (!dto.password) {
       throw new BadRequestException('Password is required');
@@ -49,41 +47,38 @@ export class PasswordAuthStrategy {
     const identifiersToCheck: string[] = [];
     if (dto.email) identifiersToCheck.push(dto.email.toLowerCase());
     if (dto.phone) identifiersToCheck.push(dto.phone);
+    if (dto.username) identifiersToCheck.push(dto.username.toLowerCase());
 
     return this.dataSource.transaction(async (manager) => {
       const authIdentifierRepo = manager.getRepository(AuthIdentifier);
       const authRepo = manager.getRepository(Auth);
 
-      // 3. 🔒 Check uniqueness (Look in the Identifier table, not Auth table)
+      // 3. 🔒 Check uniqueness
       const existing = await authIdentifierRepo.findOne({
         where: { value: In(identifiersToCheck) },
       });
 
       if (existing) {
         throw new BadRequestException(
-          'Unable to signup with those credentials. Try changing email or phone',
+          'Unable to signup with those credentials. Try changing email, phone or username',
         );
       }
 
-      // 4. Create User (Delegated to generic user service)
-      const user = await this.userService.create({
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email?.toLowerCase(),
-        phone: dto.phone,
-        ...dto, // pass other fields like role, bio for the consuming service
-      });
-
-      // 5. Hash Password
+      // 4. Hash Password
       const hash = await bcrypt.hash(dto.password!, 10);
 
-      // 6. Create the Auth Credential (The "Account")
+      // 5. Create the Auth Identity
+      // If no uid is provided, this is a completely new account.
+      // Generation will happen here or in AuthService if we want more control.
+      // Let's generate it here if missing.
+      const identityUid = uid || crypto.randomUUID();
+
       const newAuth = authRepo.create({
-        userId: user.id, // Store userId instead of linking to entity
-        strategy: AuthStrategy.LOCAL, // Correct Enum
+        uid: identityUid,
+        strategy: dto.method || AuthStrategy.LOCAL,
         secretHash: hash,
         isActive: true,
-        isPrimary: true, // Assuming first signup is primary
+        isPrimary: true,
       });
 
       // 7. Create the Identifiers (The "Lookups")
@@ -94,7 +89,6 @@ export class PasswordAuthStrategy {
           authIdentifierRepo.create({
             type: IdentifierType.EMAIL,
             value: dto.email.toLowerCase(),
-            // auth: newAuth - TypeORM handles this if we push to newAuth.identifiers
           }),
         );
       }
@@ -104,6 +98,15 @@ export class PasswordAuthStrategy {
           authIdentifierRepo.create({
             type: IdentifierType.PHONE,
             value: dto.phone,
+          }),
+        );
+      }
+
+      if (dto.username) {
+        newIdentifiers.push(
+          authIdentifierRepo.create({
+            type: IdentifierType.USERNAME,
+            value: dto.username.toLowerCase(),
           }),
         );
       }
@@ -121,15 +124,17 @@ export class PasswordAuthStrategy {
       throw new BadRequestException('Password is required');
     }
 
-    if (!dto.emailOrPhone) {
-      throw new BadRequestException('Email or phone is required');
+    const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
+
+    if (!identifierValue) {
+      throw new BadRequestException('Email, phone or username is required');
     }
 
     // 1. Look up the Identifier first (e.g., find row where value = "john@gmail.com")
     // We join 'auth' and 'auth.user' so we have everything we need.
     const identifier = await this.identifierRepo.findOne({
-      where: { value: dto.emailOrPhone.toLowerCase() },
-      relations: ['auth', 'auth.user'],
+      where: { value: identifierValue.toLowerCase() },
+      relations: ['auth'],
     });
 
     if (!identifier || !identifier.auth) {

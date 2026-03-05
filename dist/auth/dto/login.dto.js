@@ -31,6 +31,21 @@ __decorate([
     __metadata("design:type", String)
 ], LoginDto.prototype, "emailOrPhone", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'john@example.com', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+2347035742844', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "phone", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'john_doe', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "username", void 0);
+__decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);

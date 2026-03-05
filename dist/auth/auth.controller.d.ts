@@ -12,26 +12,26 @@ export declare class AuthController {
     private setCookies;
     signup(dto: SignupDto, res: Response, req: Request): Promise<{
         message: string;
-        user: any;
+        auth: import("..").Auth;
         tokens: {
             accessToken: string;
             refreshToken: string;
         };
     } | {
         message: string;
-        user: any;
+        auth: import("..").Auth;
         tokens?: undefined;
     }>;
     login(dto: LoginDto, res: Response, req: Request): Promise<{
         message: string;
-        user: any;
+        auth: import("..").Auth;
         tokens: {
             accessToken: string;
             refreshToken: string;
         };
     } | {
         message: string;
-        user: any;
+        auth: import("..").Auth;
         tokens?: undefined;
     }>;
     refresh(req: Request, res: Response, dto: RefreshTokenDto): Promise<{

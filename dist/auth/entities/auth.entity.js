@@ -37,14 +37,14 @@ let Auth = class Auth extends base_entity_1.BaseEntity {
 exports.Auth = Auth;
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: 'ID of the user this authentication method belongs to',
+        description: 'Unique identity ID (UID) of this account. Multiple auth methods can share the same UID.',
         type: 'string',
         example: 'uuid-string',
     }),
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     (0, typeorm_1.Index)(),
     __metadata("design:type", String)
-], Auth.prototype, "userId", void 0);
+], Auth.prototype, "uid", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: auth_type_enum_1.AuthStrategy }),
     __metadata("design:type", String)

@@ -3,6 +3,7 @@
 export enum AuthStrategy {
   LOCAL = 'LOCAL', // Password based
   OAUTH = 'OAUTH', // Social Login
+  OTP = 'OTP',     // One-Time Password
   // MAGIC_LINK = 'MAGIC_LINK', // Future use
 }
 

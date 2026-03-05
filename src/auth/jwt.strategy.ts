@@ -5,17 +5,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
 import { JwtPayload } from './jwt-payload-interface';
-import { CurrentUser } from './current-user-interface';
 import { Request } from 'express';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { User } from 'src/users/entities/user.entity';
-// import { Repository } from 'typeorm';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
 
-  constructor(@Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions) {
+  constructor(
+    @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
+  ) {
     const cookieExtractor = (req: Request): string | null => {
       if (!req || !req.cookies) {
         return null;
@@ -33,23 +31,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
     });
-    this.logger.log(
-      `JWT secret initialized.`,
-    );
   }
 
-  validate(payload: JwtPayload): CurrentUser {
+  async validate(payload: JwtPayload): Promise<any> {
     this.logger.log(`JWT payload: ${JSON.stringify(payload)}`);
-    // const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-    // if (!user) {
-    //   throw new Error('User not found');
-    // }
+
+    // In Identity-Only mode, req.user is the token payload.
+    // The application uses the 'sub' (uid) to link to its own user record.
     return {
-      sub: payload.sub,
-      email: payload.email,
-      phone: payload.phone,
-      role: payload.role,
-      id: payload.sub,
+      uid: payload.sub,
+      sessionId: payload.sessionId,
     };
   }
 }

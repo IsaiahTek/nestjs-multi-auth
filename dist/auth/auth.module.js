@@ -26,31 +26,17 @@ const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: function () { return auth_module_options_interface_1.AUTH_MODULE_OPTIONS; } });
-const auth_user_service_interface_1 = require("./interfaces/auth-user-service.interface");
 const core_1 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const optional_auth_guard_1 = require("./guards/optional-auth.guard");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
-        if (!options.userService && !options.useExisting) {
-            throw new Error('AuthModule requires either `userService` or `useExisting` to be provided.');
-        }
-        const userServiceProvider = options.useExisting
-            ? {
-                provide: auth_user_service_interface_1.AUTH_USER_SERVICE,
-                useExisting: options.useExisting,
-            }
-            : {
-                provide: auth_user_service_interface_1.AUTH_USER_SERVICE,
-                useClass: options.userService,
-            };
         const optionsProvider = {
             provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useValue: options,
         };
         const providers = [
             optionsProvider,
-            userServiceProvider,
             jwt_strategy_1.JwtStrategy,
             auth_service_1.AuthService,
             password_strategy_1.PasswordAuthStrategy,
@@ -68,7 +54,6 @@ let AuthModule = AuthModule_1 = class AuthModule {
         return {
             module: AuthModule_1,
             imports: [
-                ...(options.imports || []),
                 typeorm_1.TypeOrmModule.forFeature([
                     auth_entity_1.Auth,
                     oauth_provider_entity_1.OAuthProvider,
@@ -81,8 +66,8 @@ let AuthModule = AuthModule_1 = class AuthModule {
                 jwt_1.JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
             ],
             providers,
-            controllers: [auth_controller_1.AuthController],
-            exports: [auth_service_1.AuthService, auth_user_service_interface_1.AUTH_USER_SERVICE, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard],
+            controllers: options.disableController ? [] : [auth_controller_1.AuthController],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard],
         };
     }
 };

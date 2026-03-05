@@ -14,13 +14,11 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AUTH_USER_SERVICE = exports.AUTH_MODULE_OPTIONS = void 0;
+exports.AUTH_MODULE_OPTIONS = void 0;
 __exportStar(require("./auth/auth.module"), exports);
 __exportStar(require("./auth/auth.service"), exports);
 var auth_module_options_interface_1 = require("./auth/interfaces/auth-module-options.interface");
 Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: function () { return auth_module_options_interface_1.AUTH_MODULE_OPTIONS; } });
-var auth_user_service_interface_1 = require("./auth/interfaces/auth-user-service.interface");
-Object.defineProperty(exports, "AUTH_USER_SERVICE", { enumerable: true, get: function () { return auth_user_service_interface_1.AUTH_USER_SERVICE; } });
 __exportStar(require("./auth/current-user.decorator"), exports);
 __exportStar(require("./auth/decorator/public.decorator"), exports);
 __exportStar(require("./auth/decorator/optional.decorator"), exports);

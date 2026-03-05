@@ -2,6 +2,7 @@ import { AuthStrategy } from '../auth-type.enum';
 export declare class SignupDto {
     method: AuthStrategy;
     phone?: string;
+    username?: string;
     email?: string;
     password?: string;
     role?: string;

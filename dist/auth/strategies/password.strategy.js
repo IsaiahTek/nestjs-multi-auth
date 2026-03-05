@@ -21,18 +21,16 @@ const bcrypt = require("bcrypt");
 const auth_entity_1 = require("../entities/auth.entity");
 const auth_identify_entity_1 = require("../entities/auth-identify.entity");
 const auth_type_enum_1 = require("../auth-type.enum");
-const auth_user_service_interface_1 = require("../interfaces/auth-user-service.interface");
 let PasswordAuthStrategy = PasswordAuthStrategy_1 = class PasswordAuthStrategy {
-    constructor(dataSource, authRepo, identifierRepo, userService) {
+    constructor(dataSource, authRepo, identifierRepo) {
         this.dataSource = dataSource;
         this.authRepo = authRepo;
         this.identifierRepo = identifierRepo;
-        this.userService = userService;
         this.logger = new common_1.Logger(PasswordAuthStrategy_1.name);
     }
-    async signup(dto) {
-        if (!dto.email && !dto.phone) {
-            throw new common_1.BadRequestException('Email or phone is required');
+    async registerCredentials(dto, uid) {
+        if (!dto.email && !dto.phone && !dto.username) {
+            throw new common_1.BadRequestException('Email, phone or username is required');
         }
         if (!dto.password) {
             throw new common_1.BadRequestException('Password is required');
@@ -42,6 +40,8 @@ let PasswordAuthStrategy = PasswordAuthStrategy_1 = class PasswordAuthStrategy {
             identifiersToCheck.push(dto.email.toLowerCase());
         if (dto.phone)
             identifiersToCheck.push(dto.phone);
+        if (dto.username)
+            identifiersToCheck.push(dto.username.toLowerCase());
         return this.dataSource.transaction(async (manager) => {
             const authIdentifierRepo = manager.getRepository(auth_identify_entity_1.AuthIdentifier);
             const authRepo = manager.getRepository(auth_entity_1.Auth);
@@ -49,19 +49,13 @@ let PasswordAuthStrategy = PasswordAuthStrategy_1 = class PasswordAuthStrategy {
                 where: { value: (0, typeorm_1.In)(identifiersToCheck) },
             });
             if (existing) {
-                throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing email or phone');
+                throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing email, phone or username');
             }
-            const user = await this.userService.create({
-                firstName: dto.firstName,
-                lastName: dto.lastName,
-                email: dto.email?.toLowerCase(),
-                phone: dto.phone,
-                ...dto,
-            });
             const hash = await bcrypt.hash(dto.password, 10);
+            const identityUid = uid || crypto.randomUUID();
             const newAuth = authRepo.create({
-                userId: user.id,
-                strategy: auth_type_enum_1.AuthStrategy.LOCAL,
+                uid: identityUid,
+                strategy: dto.method || auth_type_enum_1.AuthStrategy.LOCAL,
                 secretHash: hash,
                 isActive: true,
                 isPrimary: true,
@@ -79,6 +73,12 @@ let PasswordAuthStrategy = PasswordAuthStrategy_1 = class PasswordAuthStrategy {
                     value: dto.phone,
                 }));
             }
+            if (dto.username) {
+                newIdentifiers.push(authIdentifierRepo.create({
+                    type: auth_identify_entity_1.IdentifierType.USERNAME,
+                    value: dto.username.toLowerCase(),
+                }));
+            }
             newAuth.identifiers = newIdentifiers;
             return await authRepo.save(newAuth);
         });
@@ -87,12 +87,13 @@ let PasswordAuthStrategy = PasswordAuthStrategy_1 = class PasswordAuthStrategy {
         if (!dto.password) {
             throw new common_1.BadRequestException('Password is required');
         }
-        if (!dto.emailOrPhone) {
-            throw new common_1.BadRequestException('Email or phone is required');
+        const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
+        if (!identifierValue) {
+            throw new common_1.BadRequestException('Email, phone or username is required');
         }
         const identifier = await this.identifierRepo.findOne({
-            where: { value: dto.emailOrPhone.toLowerCase() },
-            relations: ['auth', 'auth.user'],
+            where: { value: identifierValue.toLowerCase() },
+            relations: ['auth'],
         });
         if (!identifier || !identifier.auth) {
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -122,9 +123,8 @@ exports.PasswordAuthStrategy = PasswordAuthStrategy = PasswordAuthStrategy_1 = _
     (0, common_1.Injectable)(),
     __param(1, (0, typeorm_2.InjectRepository)(auth_entity_1.Auth)),
     __param(2, (0, typeorm_2.InjectRepository)(auth_identify_entity_1.AuthIdentifier)),
-    __param(3, (0, common_1.Inject)(auth_user_service_interface_1.AUTH_USER_SERVICE)),
     __metadata("design:paramtypes", [typeorm_1.DataSource,
         typeorm_1.Repository,
-        typeorm_1.Repository, Object])
+        typeorm_1.Repository])
 ], PasswordAuthStrategy);
 //# sourceMappingURL=password.strategy.js.map

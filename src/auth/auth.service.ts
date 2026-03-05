@@ -12,45 +12,48 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { PasswordAuthStrategy } from './strategies/password.strategy';
 import { GoogleAuthStrategy } from './strategies/google.strategy';
+import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
-import { Session } from './entities/session.entity'; // Import the new entity
-import { AUTH_USER_SERVICE, AuthUserService } from './interfaces/auth-user-service.interface';
+import { Session } from './entities/session.entity';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { randomUUID } from 'crypto';
 import * as crypto from 'crypto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private passwordStrategy: PasswordAuthStrategy,
     private googleStrategy: GoogleAuthStrategy,
+    private otpStrategy: OtpAuthStrategy,
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
-    @Inject(AUTH_USER_SERVICE) private authUserService: AuthUserService,
+    @InjectRepository(Auth)
+    private authRepo: Repository<Auth>,
+    @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
   ) { }
 
   // --- INTERNAL HELPER: Generate Token Pair ---
-  private async generateTokens(userId: string, sessionId: string) {
-    const payload = { sub: userId, sessionId }; // Embed sessionId in token
-
+  private async generateTokens(uid: string, sessionId: string) {
     const refreshJti = randomUUID();
 
     const [accessToken, refreshToken] = await Promise.all([
-      // Short-lived (e.g., 15m)
       this.jwtService.signAsync(
-        { sub: userId, sessionId }, // Access token doesn't strictly need sessionId, but can have it
+        { sub: uid, sessionId },
         {
-          secret: process.env.JWT_ACCESS_SECRET,
-          expiresIn: '15m',
+          secret: this.options.jwtSecret || process.env.JWT_SECRET,
+          expiresIn: (this.options.jwtExpiresIn || '15m') as any,
         },
       ),
-      // Long-lived (e.g., 7d)
       this.jwtService.signAsync(
-        { ...payload, jti: refreshJti },
+        { sub: uid, sessionId, jti: refreshJti },
         {
-          secret: process.env.JWT_REFRESH_SECRET,
-          expiresIn: '7d',
+          secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET,
+          expiresIn: (this.options.jwtRefreshExpiresIn || '7d') as any,
         },
       ),
     ]);
@@ -64,64 +67,61 @@ export class AuthService {
 
   // --- INTERNAL HELPER: Create/Update Session in DB ---
   private async createSession(
-    userId: string,
+    uid: string,
     userAgent: string = 'Unknown',
     ip: string = 'Unknown',
   ) {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // We create the session first to get the UUID
     const deviceFingerprint = this.fingerprint(userAgent);
 
     const session = this.sessionRepository.create({
-      userId,
+      uid,
       deviceFingerprint,
       ipAddress: ip,
       expiresAt,
       refreshTokenHash: '',
+      userAgent,
     });
 
     await this.sessionRepository.save(session);
 
-    // Generate tokens linked to this session ID
-    const tokens = await this.generateTokens(userId, session.id);
+    const tokens = await this.generateTokens(uid, session.id);
 
-    // Hash the refresh token and update the DB
-    const hash = await bcrypt.hash(tokens.refreshToken, 10);
-    await this.sessionRepository.update(session.id, { refreshTokenHash: hash });
+    session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
+    await this.sessionRepository.save(session);
 
     return tokens;
   }
 
   async signup(dto: SignupDto, userAgent?: string, ip?: string) {
-    let auth: Auth;
     if (!dto.method) throw new BadRequestException('Method is required');
 
+    let auth: Auth;
     switch (dto.method) {
       case AuthStrategy.LOCAL:
-        auth = await this.passwordStrategy.signup(dto);
+        auth = await this.passwordStrategy.registerCredentials(dto);
         break;
       case AuthStrategy.OAUTH:
-        auth = await this.googleStrategy.signup(dto);
+        auth = await this.googleStrategy.registerCredentials(dto);
+        break;
+      case AuthStrategy.OTP:
+        auth = await this.otpStrategy.registerCredentials(dto);
         break;
       default:
         throw new Error('Unsupported signup provider');
     }
 
-    // Auth successful, now create session
-    const tokens = await this.createSession(auth.userId, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    // Fetch the user object completely
-    const user = await this.authUserService.findById(auth.userId);
-
-    return { ...tokens, user };
+    return { ...tokens, auth };
   }
 
   async login(dto: LoginDto, userAgent?: string, ip?: string) {
-    let auth: Auth;
     if (!dto.method) throw new BadRequestException('Method is required');
 
+    let auth: Auth;
     switch (dto.method) {
       case AuthStrategy.LOCAL:
         auth = await this.passwordStrategy.login(dto);
@@ -129,80 +129,17 @@ export class AuthService {
       case AuthStrategy.OAUTH:
         auth = await this.googleStrategy.login(dto);
         break;
+      case AuthStrategy.OTP:
+        auth = await this.otpStrategy.login(dto);
+        break;
       default:
         throw new Error('Unsupported login provider');
     }
 
-    // Auth successful, now create session
-    const tokens = await this.createSession(auth.userId, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    // Fetch the user object completely
-    const user = await this.authUserService.findById(auth.userId);
-
-    return { ...tokens, user };
+    return { ...tokens, auth };
   }
-
-  // async refreshTokens(refreshToken: string) {
-  //   try {
-  //     // 1. Verify Signature
-  //     const payload = await this.jwtService.verifyAsync<{ sessionId: string }>(
-  //       refreshToken,
-  //       {
-  //         secret: process.env.JWT_REFRESH_SECRET,
-  //       },
-  //     );
-
-  //     // 2. Check if Session exists in DB
-  //     const session = await this.sessionRepository.findOne({
-  //       where: { id: payload.sessionId },
-  //       select: ['id', 'refreshTokenHash', 'expiresAt', 'user'],
-  //       relations: ['user'],
-  //     });
-
-  //     if (!session) throw new ForbiddenException('Session not found');
-
-  //     if (session.userAgent !== currentUserAgent) {
-  //       throw new ForbiddenException('Device mismatch');
-  //     }
-
-  //     // 3. Check Expiry
-  //     if (new Date() > session.expiresAt) {
-  //       await this.sessionRepository.delete(session.id);
-  //       throw new ForbiddenException('Session expired');
-  //     }
-
-  //     // 4. Compare Hash (Detect reuse/theft)
-  //     const isMatch = await bcrypt.compare(
-  //       refreshToken,
-  //       session.refreshTokenHash,
-  //     );
-  //     if (!isMatch) {
-  //       // SECURITY ALERT: Token reuse detected!
-  //       // Best practice: Delete the session immediately to block the attacker.
-  //       await this.sessionRepository.delete(session.id);
-  //       throw new ForbiddenException('Invalid refresh token');
-  //     }
-
-  //     // 5. Rotate Tokens (Generate new pair)
-  //     const tokens = await this.generateTokens(session.user.id, session.id);
-
-  //     // 6. Update DB with new hash
-  //     const newHash = await bcrypt.hash(tokens.refreshToken, 10);
-
-  //     const newExpiry = new Date();
-  //     newExpiry.setDate(newExpiry.getDate() + 7);
-
-  //     await this.sessionRepository.update(session.id, {
-  //       refreshTokenHash: newHash,
-  //       expiresAt: newExpiry,
-  //     });
-
-  //     return tokens;
-  //   } catch (e) {
-  //     console.log('Error refreshing tokens', e);
-  //     throw new ForbiddenException('Invalid request');
-  //   }
-  // }
 
   async refreshTokens(
     refreshToken: string,
@@ -210,43 +147,36 @@ export class AuthService {
     currentIp?: string,
   ) {
     try {
-      // 1. Verify signature
       const payload = await this.jwtService.verifyAsync<{ sessionId: string }>(
         refreshToken,
-        { secret: process.env.JWT_REFRESH_SECRET },
+        { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET },
       );
 
-      // 2. Load session
       const session = await this.sessionRepository.findOne({
         where: { id: payload.sessionId },
         select: [
           'id',
+          'uid',
           'refreshTokenHash',
           'expiresAt',
           'deviceFingerprint',
           'ipAddress',
         ],
-        relations: ['user'],
       });
 
       if (!session) throw new ForbiddenException('Session not found');
 
-      // 3. Fingerprint enforcement (HARD)
       const incomingFingerprint = this.fingerprint(currentUserAgent);
-
       if (session.deviceFingerprint !== incomingFingerprint) {
-        // Kill compromised session
         await this.sessionRepository.delete(session.id);
         throw new ForbiddenException('Device mismatch');
       }
 
-      // 4. Expiry check
       if (new Date() > session.expiresAt) {
         await this.sessionRepository.delete(session.id);
         throw new ForbiddenException('Session expired');
       }
 
-      // 5. Refresh token reuse detection
       const isMatch = await bcrypt.compare(
         refreshToken,
         session.refreshTokenHash,
@@ -257,24 +187,22 @@ export class AuthService {
         throw new ForbiddenException('Invalid refresh token');
       }
 
-      // 6. Rotate tokens
-      const tokens = await this.generateTokens(session.userId, session.id);
+      const tokens = await this.generateTokens(session.uid, session.id);
 
       const newHash = await bcrypt.hash(tokens.refreshToken, 10);
 
-      // 7. Sliding expiry
       const newExpiry = new Date();
       newExpiry.setDate(newExpiry.getDate() + 7);
 
       await this.sessionRepository.update(session.id, {
         refreshTokenHash: newHash,
         expiresAt: newExpiry,
-        ipAddress: currentIp ?? session.ipAddress, // optional update
+        ipAddress: currentIp ?? session.ipAddress,
       });
 
       return tokens;
     } catch (e) {
-      console.log('Error refreshing tokens', e);
+      this.logger.error('Error refreshing tokens', e);
       throw new ForbiddenException('Invalid request');
     }
   }
@@ -285,12 +213,11 @@ export class AuthService {
       const payload = this.jwtService.decode<{ sessionId: string }>(
         refreshToken,
       );
-      if (payload && payload.sessionId) {
+      if (payload?.sessionId) {
         await this.sessionRepository.delete(payload.sessionId);
       }
     } catch (e) {
-      console.log('Error logging out', e);
-      // Ignore errors during logout
+      this.logger.error('Error logging out', e);
     }
   }
 }

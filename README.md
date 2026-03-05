@@ -4,13 +4,13 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 
 ## Features
 
-- **Secure by Default**: Automatically registers a global authentication guard. All routes are protected unless explicitly exempted.
-- **Public & Optional Auth**: Simple decorators to mark routes as public or allow optional authentication (user object attached if valid, but no error if missing).
-- **Decoupled User Architecture**: Bring your own `User` entity and database logic. Implement our simple `AuthUserService` interface and the library handles the rest.
-- **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically via `AuthModule.register()`.
-- **Multiple Auth Transports**: Choose between returning tokens via HTTP-only Cookies, JSON body (Bearer token), or both.
-- **Automatic Token Rotation**: Build-in `/refresh` and `/logout` endpoints that automatically respect your chosen transport method.
-- **Session & Device Tracking**: Tracks IP and User Agent for basic session fingerprinting.
+- **Identity-Only (Firebase Style)**: Pure authentication and session management. Agnostic of your application's user profiles and database structure.
+- **Grouped Identities**: Multiple login methods (Google, Password, etc.) are consolidated under a single, opaque `uid`.
+- **Secure by Default**: Automatically registers a global authentication guard.
+- **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically.
+- **Multiple Auth Transports**: Supports HTTP-only Cookies, JSON body (Bearer token), or both.
+- **Token Rotation**: Built-in `/refresh` and `/logout` endpoints with automatic token rotation.
+- **Session Tracking**: Tracks IP and User Agent for basic session security.
 
 ---
 
@@ -32,70 +32,72 @@ npm install @nestjs/passport @nestjs/jwt passport passport-jwt class-validator b
 
 ## Quick Start
 
-### 1. Implement the `AuthUserService`
+### 1. Register the `AuthModule`
 
-The library needs to know how to create and lookup users in your database. Create a service in your app that implements the `AuthUserService` interface exported by the library:
-
-```typescript
-// src/users/my-user.service.ts
-import { Injectable } from '@nestjs/common';
-import { AuthUserService } from 'nestjs-multi-auth';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-
-@Injectable()
-export class MyUserService implements AuthUserService {
-  constructor(@InjectRepository(User) private userRepo: Repository<User>) {}
-
-  async findById(id: string): Promise<any | null> {
-    return this.userRepo.findOne({ where: { id } });
-  }
-
-  async create(data: any): Promise<any> {
-    // Expected data contains { email, password, role } from the AuthController
-    const newUser = this.userRepo.create(data);
-    return this.userRepo.save(newUser);
-  }
-}
-```
-
-### 2. Register the `AuthModule`
-
-Import and configure the `AuthModule` in your root `AppModule` or feature module. Provide your implementation of the user service using standard NestJS Dynamic Module syntax (`useExisting` or `useClass`):
+Import and configure the `AuthModule` in your root `AppModule`. No external service implementation is required!
 
 ```typescript
 // src/app.module.ts
 import { Module } from '@nestjs/common';
 import { AuthModule, AuthTransport } from 'nestjs-multi-auth';
-import { MyUserService } from './users/my-user.service';
-import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     AuthModule.register({
-      jwtSecret: process.env.JWT_SECRET || 'super-secret',
-      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'super-refresh-secret',
-      
-      // Pass the modules required to instantiate your user service
-      imports: [UsersModule],
-      
-      // Use an existing instance of your user service exported by UsersModule
-      useExisting: MyUserService, 
-      
-      // Alternatively, if you want AuthModule to create a new instance:
-      // userService: MyUserService,
-      
-      // Optional: defaults to false. If true, global guard is NOT registered.
-      // disableGlobalGuard: true,
+      jwtSecret: process.env.JWT_SECRET,
+      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
       
       // Optional: defaults to [AuthTransport.BEARER]
-      // You can supply COOKIE, BEARER, or BOTH
       transport: [AuthTransport.COOKIE, AuthTransport.BEARER],
+      
+      // Optional: defaults to false.
+      // disableGlobalGuard: true,
+      
+      // Optional: defaults to false.
+      // disableController: true,
     }),
   ],
 })
 export class AppModule {}
+```
+
+---
+
+## Identity Provider (Firebase Style)
+
+The library is a pure **Identity Provider**. It manages credentials and sessions but knows nothing about your application's user profiles.
+
+1.  **Identity (UID)**: Every person has a unique `uid` managed by the library.
+2.  **Multiple Auth Methods**: One `uid` can be linked to multiple authentication methods (Google, Password, etc.).
+3.  **Application Users**: Your application creates its own `User` table and links it to the library's `uid`.
+
+### Example Integration
+
+```typescript
+@Controller('users')
+export class UserController {
+  @Post('profile')
+  @UseGuards(JwtAuthGuard)
+  async createProfile(@Req() req, @Body() dto) {
+    // req.user contains { uid: string, sessionId: string }
+    const { uid } = req.user;
+    
+    return this.userService.create({
+      authUid: uid,
+      ...dto
+    });
+  }
+}
+```
+
+### Module Configuration
+
+```typescript
+AuthModule.register({
+  jwtSecret: process.env.JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  // No user service required!
+})
 ```
 
 ---
@@ -156,10 +158,10 @@ The library provides extreme flexibility for how your front-end interacts with t
 
 The library automatically mounts the following endpoints under the `/auth` prefix:
 
-- `POST /auth/signup`: Accepts email, password, phone, and role. Creates a user via your `AuthUserService` and returns tokens based on transport.
-- `POST /auth/signin`: Accepts email and password. Returns tokens based on transport.
-- `POST /auth/refresh`: Refreshes your short-lived access token using a valid refresh token.
-- `POST /auth/logout`: Invalidates the session in the database and clears cookies (if applicable).
+- `POST /auth/signup`: Accepts credentials based on strategy (e.g., `email`, `password`). Returns the registered `auth` identity and tokens.
+- `POST /auth/signin`: Verifies credentials and returns the `auth` identity and tokens.
+- `POST /auth/refresh`: Refreshes your access token.
+- `POST /auth/logout`: Invalidates the session.
 
 *(All endpoints are automatically documented if you have `@nestjs/swagger` configured in your root app).*
 
@@ -167,9 +169,9 @@ The library automatically mounts the following endpoints under the `/auth` prefi
 
 ## Entity Requirements
 
-Because this library is decoupled, it exposes its own minimal tracking entities (`Auth`, `Session`, `MfaMethod`). Under the hood, they use a generic `userId: string` column instead of a hard TypeORM `@ManyToOne` relation to your application space.
+Because this library is decoupled, it manages its own tracking entities (`Auth`, `Session`, `MfaMethod`). These entities use an opaque `uid: string` to identify users.
 
-To use the Auth functionality, ensure `TypeOrmModule.forRoot()` is initialized in your consuming app so the library can inject its managed repositories automatically!
+To use the Auth functionality, ensure `TypeOrmModule.forRoot()` is initialized in your consuming app.
 
 ---
 

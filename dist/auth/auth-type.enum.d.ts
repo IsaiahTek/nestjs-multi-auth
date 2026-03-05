@@ -1,6 +1,7 @@
 export declare enum AuthStrategy {
     LOCAL = "LOCAL",
-    OAUTH = "OAUTH"
+    OAUTH = "OAUTH",
+    OTP = "OTP"
 }
 export declare enum OAuthProviderType {
     GOOGLE = "GOOGLE",

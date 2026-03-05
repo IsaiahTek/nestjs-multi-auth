@@ -11,10 +11,10 @@ export class Session {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Link to the User ID, not a specific User entity to keep the library decoupled.
+  // Link to the Identity UID.
   @Column()
   @Index()
-  userId: string;
+  uid: string;
 
   // We store a HASH of the refresh token, not the plain token.
   // If the DB is leaked, attackers cannot generate new access tokens.

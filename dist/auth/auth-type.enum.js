@@ -5,6 +5,7 @@ var AuthStrategy;
 (function (AuthStrategy) {
     AuthStrategy["LOCAL"] = "LOCAL";
     AuthStrategy["OAUTH"] = "OAUTH";
+    AuthStrategy["OTP"] = "OTP";
 })(AuthStrategy || (exports.AuthStrategy = AuthStrategy = {}));
 var OAuthProviderType;
 (function (OAuthProviderType) {

@@ -1,6 +1,6 @@
 export declare class Session {
     id: string;
-    userId: string;
+    uid: string;
     refreshTokenHash: string;
     userAgent: string;
     deviceFingerprint: string;

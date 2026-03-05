@@ -39,16 +39,12 @@ let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.Passp
         });
         this.options = options;
         this.logger = new common_1.Logger(JwtStrategy_1.name);
-        this.logger.log(`JWT secret initialized.`);
     }
-    validate(payload) {
+    async validate(payload) {
         this.logger.log(`JWT payload: ${JSON.stringify(payload)}`);
         return {
-            sub: payload.sub,
-            email: payload.email,
-            phone: payload.phone,
-            role: payload.role,
-            id: payload.sub,
+            uid: payload.sub,
+            sessionId: payload.sessionId,
         };
     }
 };

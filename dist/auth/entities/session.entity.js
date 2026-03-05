@@ -22,7 +22,7 @@ __decorate([
     (0, typeorm_1.Column)(),
     (0, typeorm_1.Index)(),
     __metadata("design:type", String)
-], Session.prototype, "userId", void 0);
+], Session.prototype, "uid", void 0);
 __decorate([
     (0, typeorm_1.Column)({ select: false }),
     __metadata("design:type", String)

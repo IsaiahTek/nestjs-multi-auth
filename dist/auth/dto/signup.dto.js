@@ -33,6 +33,12 @@ __decorate([
     __metadata("design:type", String)
 ], SignupDto.prototype, "phone", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'john_doe', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SignupDto.prototype, "username", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 'john@example.com', required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEmail)(),

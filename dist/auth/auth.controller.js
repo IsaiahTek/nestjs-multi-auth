@@ -62,9 +62,9 @@ let AuthController = class AuthController {
                 this.setCookies(res, req, result.accessToken, result.refreshToken);
             }
             if (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                return { message: 'Signup successful', user: result.user, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+                return { message: 'Signup successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
             }
-            return { message: 'Signup successful', user: result.user };
+            return { message: 'Signup successful', auth: result.auth };
         }
         catch (e) {
             throw new common_1.HttpException(e.message || 'Signup error', common_1.HttpStatus.BAD_REQUEST);
@@ -80,9 +80,9 @@ let AuthController = class AuthController {
                 this.setCookies(res, req, result.accessToken, result.refreshToken);
             }
             if (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                return { message: 'Login successful', user: result.user, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+                return { message: 'Login successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
             }
-            return { message: 'Login successful', user: result.user };
+            return { message: 'Login successful', auth: result.auth };
         }
         catch (e) {
             throw new common_1.HttpException(e.message || 'Login error', common_1.HttpStatus.UNAUTHORIZED);

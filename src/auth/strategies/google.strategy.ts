@@ -7,7 +7,7 @@ import { Auth } from '../entities/auth.entity';
 
 @Injectable()
 export class GoogleAuthStrategy {
-  async signup(dto: SignupDto): Promise<Auth> {
+  async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
     // Verify google token (use google-auth-library)
     // Extract email/name, create user if not exists
     throw new Error('Not implemented');

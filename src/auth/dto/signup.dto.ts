@@ -25,6 +25,11 @@ export class SignupDto {
   @IsOptional()
   phone?: string;
 
+  @ApiProperty({ example: 'john_doe', required: false })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
   @ApiProperty({ example: 'john@example.com', required: false })
   @IsOptional()
   @IsEmail()

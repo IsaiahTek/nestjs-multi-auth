@@ -1,5 +1,4 @@
 import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
-import { AuthUserService } from './auth-user-service.interface';
 import { AuthTransport } from '../auth-type.enum';
 
 export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
@@ -32,15 +31,10 @@ export interface AuthModuleOptions {
     imports?: Array<Type<any> | DynamicModule | Promise<DynamicModule> | ForwardReference>;
 
     /**
-     * Provide a class to be instantiated by AuthModule. 
-     * (Warning: causes a new instance to be created unless globally provided)
+     * If true, the built-in AuthController will NOT be registered.
+     * Use this if you want to implement your own auth endpoints.
      */
-    userService?: Type<AuthUserService>;
-
-    /**
-     * Provide an existing instance of a service (e.g. from an imported UserModule)
-     */
-    useExisting?: Type<AuthUserService>;
+    disableController?: boolean;
 
     /**
      * Preferred transport mode for tokens (defaults to ['bearer'])

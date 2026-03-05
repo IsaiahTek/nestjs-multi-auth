@@ -3,7 +3,7 @@ import { AuthIdentifier } from './auth-identify.entity';
 import { OAuthProvider } from './oauth-provider.entity';
 import { AuthStrategy } from '../auth-type.enum';
 export declare class Auth extends BaseEntity {
-    userId: string;
+    uid: string;
     strategy: AuthStrategy;
     identifiers: AuthIdentifier[];
     secretHash?: string;
