@@ -6,7 +6,7 @@ import { OAuthProvider } from './oauth-provider.entity';
 import { AuthStrategy } from '../auth-type.enum';
 
 @Entity('auth')
-@Index('IDX_user_primary_auth', ['userId'], {
+@Index('IDX_user_primary_auth', ['uid'], {
   unique: true,
   where: `"isPrimary" = true`,
 })

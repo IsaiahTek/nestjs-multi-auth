@@ -118,7 +118,7 @@ __decorate([
 ], Auth.prototype, "oauthProvider", void 0);
 exports.Auth = Auth = __decorate([
     (0, typeorm_1.Entity)('auth'),
-    (0, typeorm_1.Index)('IDX_user_primary_auth', ['userId'], {
+    (0, typeorm_1.Index)('IDX_user_primary_auth', ['uid'], {
         unique: true,
         where: `"isPrimary" = true`,
     }),
