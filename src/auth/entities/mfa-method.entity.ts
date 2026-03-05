@@ -19,7 +19,7 @@ export class MfaMethod {
 
   @Column()
   @Index()
-  userId: string;
+  uid: string;
 
   @Column({ type: 'enum', enum: MfaType })
   type: MfaType;

@@ -38,7 +38,7 @@ __decorate([
     (0, typeorm_1.Column)(),
     (0, typeorm_1.Index)(),
     __metadata("design:type", String)
-], MfaMethod.prototype, "userId", void 0);
+], MfaMethod.prototype, "uid", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: MfaType }),
     __metadata("design:type", String)

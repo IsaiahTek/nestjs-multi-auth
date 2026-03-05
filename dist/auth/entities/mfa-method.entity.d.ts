@@ -5,7 +5,7 @@ export declare enum MfaType {
 }
 export declare class MfaMethod {
     id: string;
-    userId: string;
+    uid: string;
     type: MfaType;
     secret: string;
     isEnabled: boolean;
