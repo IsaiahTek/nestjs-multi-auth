@@ -29,6 +29,7 @@ Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: f
 const auth_user_service_interface_1 = require("./interfaces/auth-user-service.interface");
 const core_1 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const optional_auth_guard_1 = require("./guards/optional-auth.guard");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         if (!options.userService && !options.useExisting) {
@@ -55,6 +56,8 @@ let AuthModule = AuthModule_1 = class AuthModule {
             password_strategy_1.PasswordAuthStrategy,
             google_strategy_1.GoogleAuthStrategy,
             otp_strategy_1.OtpAuthStrategy,
+            jwt_auth_guard_1.JwtAuthGuard,
+            optional_auth_guard_1.OptionalAuthGuard,
         ];
         if (!options.disableGlobalGuard) {
             providers.push({
@@ -79,7 +82,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             ],
             providers,
             controllers: [auth_controller_1.AuthController],
-            exports: [auth_service_1.AuthService, auth_user_service_interface_1.AUTH_USER_SERVICE, jwt_auth_guard_1.JwtAuthGuard],
+            exports: [auth_service_1.AuthService, auth_user_service_interface_1.AUTH_USER_SERVICE, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard],
         };
     }
 };

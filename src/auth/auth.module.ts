@@ -19,6 +19,7 @@ import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module
 import { AUTH_USER_SERVICE } from './interfaces/auth-user-service.interface';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalAuthGuard } from './guards/optional-auth.guard';
 
 @Module({})
 export class AuthModule {
@@ -50,6 +51,8 @@ export class AuthModule {
       PasswordAuthStrategy,
       GoogleAuthStrategy,
       OtpAuthStrategy,
+      JwtAuthGuard,
+      OptionalAuthGuard,
     ];
 
     if (!options.disableGlobalGuard) {
@@ -76,7 +79,7 @@ export class AuthModule {
       ],
       providers,
       controllers: [AuthController],
-      exports: [AuthService, AUTH_USER_SERVICE, JwtAuthGuard],
+      exports: [AuthService, AUTH_USER_SERVICE, JwtAuthGuard, OptionalAuthGuard],
     };
   }
 }
