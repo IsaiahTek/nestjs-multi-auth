@@ -16,6 +16,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
+import { AUTH_NOTIFICATION_PROVIDER } from './interfaces/auth-notification-provider.interface';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
@@ -38,6 +39,13 @@ export class AuthModule {
       JwtAuthGuard,
       OptionalAuthGuard,
     ];
+
+    if (options.notificationProvider) {
+      providers.push({
+        provide: AUTH_NOTIFICATION_PROVIDER,
+        useClass: options.notificationProvider,
+      });
+    }
 
     if (!options.disableGlobalGuard) {
       providers.push({

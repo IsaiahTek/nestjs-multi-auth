@@ -3,6 +3,8 @@ import {
   Injectable,
   ForbiddenException,
   Inject,
+  Optional,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -16,10 +18,11 @@ import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
+import { OtpToken, OtpPurpose } from './entities/otp-token.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
+import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import { randomUUID } from 'crypto';
 import * as crypto from 'crypto';
-import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
@@ -34,7 +37,12 @@ export class AuthService {
     private sessionRepository: Repository<Session>,
     @InjectRepository(Auth)
     private authRepo: Repository<Auth>,
+    @InjectRepository(OtpToken)
+    private otpRepo: Repository<OtpToken>,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
+    @Optional()
+    @Inject(AUTH_NOTIFICATION_PROVIDER)
+    private notificationProvider?: AuthNotificationProvider,
   ) { }
 
   // --- INTERNAL HELPER: Generate Token Pair ---
@@ -113,6 +121,20 @@ export class AuthService {
         throw new Error('Unsupported signup provider');
     }
 
+    // Trigger verification if provider is configured
+    if (this.notificationProvider) {
+      await this.sendVerification(auth);
+    }
+
+    // If verification is strictly required, we don't issue session tokens yet
+    if (this.options.verificationRequired && this.notificationProvider) {
+      return {
+        message: 'Signup successful. Please verify your identity.',
+        auth,
+        verificationRequired: true
+      };
+    }
+
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
     return { ...tokens, auth };
@@ -136,9 +158,119 @@ export class AuthService {
         throw new Error('Unsupported login provider');
     }
 
+    // Check if verification is required and auth is not verified
+    if (this.options.verificationRequired && !auth.isVerified && this.notificationProvider) {
+      await this.sendVerification(auth);
+      return {
+        message: 'Identity verification required.',
+        auth,
+        verificationRequired: true
+      };
+    }
+
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
     return { ...tokens, auth };
+  }
+
+  // --- VERIFICATION LOGIC ---
+
+  private async sendVerification(auth: Auth) {
+    if (!this.notificationProvider) return;
+
+    // 1. Determine primary identifier (email or phone)
+    // For now, let's look for the first identifier that is EMAIL or PHONE
+    // We need to load identifiers if they aren't present
+    let primaryIdentifier = auth.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
+
+    if (!primaryIdentifier) {
+      // Fallback: reload auth with identifiers
+      const fullAuth = await this.authRepo.findOne({
+        where: { id: auth.id },
+        relations: ['identifiers']
+      });
+      primaryIdentifier = fullAuth?.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
+    }
+
+    if (!primaryIdentifier) {
+      this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
+      return;
+    }
+
+    // 2. Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hash = await bcrypt.hash(code, 10);
+
+    // 3. Save OTP Token
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 mins expiry
+
+    const otpToken = this.otpRepo.create({
+      identifier: primaryIdentifier.value,
+      purpose: primaryIdentifier.type === 'EMAIL' ? OtpPurpose.VERIFY_EMAIL : OtpPurpose.VERIFY_PHONE,
+      codeHash: hash,
+      expiresAt,
+      requestUserId: auth.uid,
+    });
+
+    await this.otpRepo.save(otpToken);
+
+    // 4. Send via Provider
+    try {
+      await this.notificationProvider.sendVerificationCode(
+        primaryIdentifier.value,
+        code,
+        primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone'
+      );
+    } catch (e) {
+      this.logger.error(`Failed to send verification code to ${primaryIdentifier.value}`, e);
+      throw new BadRequestException('Failed to send verification code');
+    }
+  }
+
+  async verifyCode(uid: string, code: string) {
+    const auth = await this.authRepo.findOne({ where: { uid } });
+    if (!auth) throw new BadRequestException('Identity not found');
+
+    if (auth.isVerified) return { message: 'Identity already verified' };
+
+    // Find the latest unused OTP for this UID
+    const otp = await this.otpRepo.findOne({
+      where: { requestUserId: uid, isUsed: false },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otp) throw new BadRequestException('No verification code found');
+
+    if (new Date() > otp.expiresAt) {
+      throw new BadRequestException('Verification code expired');
+    }
+
+    const isMatch = await bcrypt.compare(code, otp.codeHash);
+    if (!isMatch) throw new BadRequestException('Invalid verification code');
+
+    // Success!
+    otp.isUsed = true;
+    await this.otpRepo.save(otp);
+
+    auth.isVerified = true;
+    await this.authRepo.save(auth);
+
+    return { message: 'Identity verified successfully' };
+  }
+
+  async resendVerification(uid: string) {
+    const auth = await this.authRepo.findOne({ where: { uid } });
+    if (!auth) throw new BadRequestException('Identity not found');
+
+    if (auth.isVerified) throw new BadRequestException('Identity already verified');
+
+    if (!this.notificationProvider) {
+      throw new BadRequestException('Verification is not configured');
+    }
+
+    await this.sendVerification(auth);
+    return { message: 'Verification code resent' };
   }
 
   async refreshTokens(

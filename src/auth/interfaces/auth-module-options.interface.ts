@@ -1,49 +1,55 @@
 import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
 import { AuthTransport } from '../auth-type.enum';
+import { AuthNotificationProvider } from './auth-notification-provider.interface';
 
 export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
 
 export interface AuthModuleOptions {
     /**
-     * Secret key for signing JWTs
+     * Secret key for signing Access Tokens
      */
     jwtSecret: string;
 
     /**
-     * Expiration time for access tokens (e.g. '15m')
-     */
-    jwtExpiresIn?: string;
-
-    /**
-     * Secret key for refresh tokens
+     * Secret key for signing Refresh Tokens
      */
     jwtRefreshSecret: string;
 
     /**
-     * Expiration time for refresh tokens (e.g. '7d')
+     * Optional: Custom expiration for Access Tokens (e.g., '15m')
+     */
+    jwtExpiresIn?: string;
+
+    /**
+     * Optional: Custom expiration for Refresh Tokens (e.g., '7d')
      */
     jwtRefreshExpiresIn?: string;
 
     /**
-     * Optional list of modules to import into the AuthModule context.
-     * Use this if your external UserService requires specific database providers.
+     * If true, the library will NOT automatically register the global JwtAuthGuard.
+     * You will need to apply @UseGuards(JwtAuthGuard) manually.
      */
-    imports?: Array<Type<any> | DynamicModule | Promise<DynamicModule> | ForwardReference>;
+    disableGlobalGuard?: boolean;
 
     /**
-     * If true, the built-in AuthController will NOT be registered.
-     * Use this if you want to implement your own auth endpoints.
+     * If true, the library will NOT register the default AuthController.
+     * Useful if you want to implement your own auth endpoints using AuthService.
      */
     disableController?: boolean;
 
     /**
-     * Preferred transport mode for tokens (defaults to ['bearer'])
+     * Transport methods to support (COOKIE, BEARER, or BOTH)
      */
-    transport?: AuthTransport[];
+    transport?: AuthTransport | AuthTransport[];
 
     /**
-     * If true, the global JwtAuthGuard will NOT be registered.
-     * Default: false (global guard is enabled by default)
+     * Optional: Pluggable provider for sending notifications (OTPs).
      */
-    disableGlobalGuard?: boolean;
+    notificationProvider?: Type<AuthNotificationProvider>;
+
+    /**
+     * If true, identities MUST be verified before they can log in.
+     * Requires a notificationProvider to be configured.
+     */
+    verificationRequired?: boolean;
 }

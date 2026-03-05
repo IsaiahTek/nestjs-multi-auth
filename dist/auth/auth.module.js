@@ -26,6 +26,7 @@ const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: function () { return auth_module_options_interface_1.AUTH_MODULE_OPTIONS; } });
+const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
 const core_1 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const optional_auth_guard_1 = require("./guards/optional-auth.guard");
@@ -45,6 +46,12 @@ let AuthModule = AuthModule_1 = class AuthModule {
             jwt_auth_guard_1.JwtAuthGuard,
             optional_auth_guard_1.OptionalAuthGuard,
         ];
+        if (options.notificationProvider) {
+            providers.push({
+                provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
+                useClass: options.notificationProvider,
+            });
+        }
         if (!options.disableGlobalGuard) {
             providers.push({
                 provide: core_1.APP_GUARD,

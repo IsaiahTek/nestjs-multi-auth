@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const signup_dto_1 = require("./dto/signup.dto");
+const verify_dto_1 = require("./dto/verify.dto");
 const refresh_token_dto_1 = require("./dto/refresh-token.dto");
 const swagger_1 = require("@nestjs/swagger");
 const public_decorator_1 = require("./decorator/public.decorator");
@@ -27,21 +28,23 @@ let AuthController = class AuthController {
         this.authService = authService;
         this.options = options;
     }
+    getTransports() {
+        const t = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
+        return Array.isArray(t) ? t : [t];
+    }
     getDynamicPath(req) {
         const baseUrl = req.originalUrl.split('?')[0];
         const lastSlashIndex = baseUrl.lastIndexOf('/');
-        const basePath = baseUrl.substring(0, lastSlashIndex);
-        const dynamicRefreshPath = `${basePath}/refresh`;
-        return dynamicRefreshPath;
+        return baseUrl.substring(0, lastSlashIndex) + '/refresh';
     }
     setCookies(res, req, accessToken, refreshToken) {
         const isProduction = process.env.NODE_ENV === 'production';
-        const dynamicRefreshPath = this.getDynamicPath(req);
+        const refreshPath = this.getDynamicPath(req);
         res.cookie('refresh_token', refreshToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'none' : 'lax',
-            path: dynamicRefreshPath,
+            path: refreshPath,
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
         res.cookie('access_token', accessToken, {
@@ -54,86 +57,82 @@ let AuthController = class AuthController {
     }
     async signup(dto, res, req) {
         try {
-            const userAgent = req.headers['user-agent'];
-            const ip = req.ip;
-            const result = await this.authService.signup(dto, userAgent, ip);
-            const transports = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
-            if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                this.setCookies(res, req, result.accessToken, result.refreshToken);
+            const result = await this.authService.signup(dto, req.headers['user-agent'], req.ip);
+            const transports = this.getTransports();
+            if ('accessToken' in result) {
+                if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
+                    this.setCookies(res, req, result.accessToken, result.refreshToken);
+                }
             }
-            if (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                return { message: 'Signup successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+            const response = { message: result.message || 'Signup successful', auth: result.auth };
+            if (result.verificationRequired)
+                response.verificationRequired = true;
+            if ('accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
+                response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
             }
-            return { message: 'Signup successful', auth: result.auth };
+            return response;
         }
         catch (e) {
-            throw new common_1.HttpException(e.message || 'Signup error', common_1.HttpStatus.BAD_REQUEST);
+            throw new common_1.HttpException(e.message, common_1.HttpStatus.BAD_REQUEST);
         }
     }
     async login(dto, res, req) {
         try {
-            const userAgent = req.headers['user-agent'];
-            const ip = req.ip;
-            const result = await this.authService.login(dto, userAgent, ip);
-            const transports = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
-            if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                this.setCookies(res, req, result.accessToken, result.refreshToken);
+            const result = await this.authService.login(dto, req.headers['user-agent'], req.ip);
+            const transports = this.getTransports();
+            if ('accessToken' in result) {
+                if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
+                    this.setCookies(res, req, result.accessToken, result.refreshToken);
+                }
             }
-            if (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                return { message: 'Login successful', auth: result.auth, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } };
+            const response = { message: result.message || 'Login successful', auth: result.auth };
+            if (result.verificationRequired)
+                response.verificationRequired = true;
+            if ('accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
+                response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
             }
-            return { message: 'Login successful', auth: result.auth };
+            return response;
         }
         catch (e) {
-            throw new common_1.HttpException(e.message || 'Login error', common_1.HttpStatus.UNAUTHORIZED);
+            throw new common_1.HttpException(e.message, common_1.HttpStatus.UNAUTHORIZED);
         }
     }
+    async verify(dto) {
+        return this.authService.verifyCode(dto.uid, dto.code);
+    }
+    async resendVerification(dto) {
+        return this.authService.resendVerification(dto.uid);
+    }
     async refresh(req, res, dto) {
+        const transports = this.getTransports();
+        let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+        if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
+        }
+        if (!token)
+            throw new common_1.BadRequestException('Refresh token is required');
         try {
-            let refreshToken = req.cookies?.['refresh_token'];
-            if (!refreshToken && dto.refreshToken) {
-                refreshToken = dto.refreshToken;
-            }
-            if (!refreshToken && req.headers.authorization?.startsWith('Bearer ')) {
-                refreshToken = req.headers.authorization.split(' ')[1];
-            }
-            if (!refreshToken) {
-                throw new common_1.UnauthorizedException('No refresh token');
-            }
-            const userAgent = typeof req.headers['user-agent'] === 'string'
-                ? req.headers['user-agent']
-                : 'unknown';
-            const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-                req.ip ||
-                'unknown';
-            const tokens = await this.authService.refreshTokens(refreshToken, userAgent, ip);
-            const transports = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
+            const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip);
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, tokens.accessToken, tokens.refreshToken);
             }
             if (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
-                return { message: 'Refreshed successfully', tokens };
+                return { message: 'Token refreshed', tokens };
             }
-            return { message: 'Refreshed successfully' };
+            return { message: 'Token refreshed' };
         }
         catch (e) {
-            console.error('Error refreshing tokens', e);
             res.clearCookie('access_token');
-            res.clearCookie('refresh_token', {
-                path: this.getDynamicPath(req),
-            });
-            throw new common_1.HttpException('Invalid refresh session', common_1.HttpStatus.UNAUTHORIZED);
+            res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+            throw new common_1.HttpException('Invalid session', common_1.HttpStatus.UNAUTHORIZED);
         }
     }
     async logout(req, res, dto) {
-        let refreshToken = req.cookies['refresh_token'];
-        if (!refreshToken && dto.refreshToken) {
-            refreshToken = dto.refreshToken;
+        let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+        if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
         }
-        if (!refreshToken && req.headers.authorization?.startsWith('Bearer ')) {
-            refreshToken = req.headers.authorization.split(' ')[1];
-        }
-        await this.authService.logout(refreshToken ?? '');
+        await this.authService.logout(token);
         res.clearCookie('access_token');
         res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
         return { message: 'Logged out successfully' };
@@ -144,7 +143,6 @@ __decorate([
     (0, common_1.Post)('signup'),
     (0, public_decorator_1.Public)(),
     (0, swagger_1.ApiOperation)({ summary: 'User signup' }),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'User created' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __param(2, (0, common_1.Req)()),
@@ -155,6 +153,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('signin'),
     (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'User login' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __param(2, (0, common_1.Req)()),
@@ -163,9 +162,27 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
+    (0, common_1.Post)('verify'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify identity with OTP code' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_dto_1.VerifyDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verify", null);
+__decorate([
+    (0, common_1.Post)('resend-verification'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Resend verification code' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_dto_1.ResendVerificationDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resendVerification", null);
+__decorate([
     (0, common_1.Post)('refresh'),
     (0, public_decorator_1.Public)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Refresh tokens using cookie' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Refresh access token' }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __param(2, (0, common_1.Body)()),

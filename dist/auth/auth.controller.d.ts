@@ -1,6 +1,7 @@
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { VerifyDto, ResendVerificationDto } from './dto/verify.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import type { Response, Request } from 'express';
@@ -8,31 +9,16 @@ export declare class AuthController {
     private authService;
     private options;
     constructor(authService: AuthService, options: AuthModuleOptions);
+    private getTransports;
     private getDynamicPath;
     private setCookies;
-    signup(dto: SignupDto, res: Response, req: Request): Promise<{
+    signup(dto: SignupDto, res: Response, req: Request): Promise<any>;
+    login(dto: LoginDto, res: Response, req: Request): Promise<any>;
+    verify(dto: VerifyDto): Promise<{
         message: string;
-        auth: import("..").Auth;
-        tokens: {
-            accessToken: string;
-            refreshToken: string;
-        };
-    } | {
-        message: string;
-        auth: import("..").Auth;
-        tokens?: undefined;
     }>;
-    login(dto: LoginDto, res: Response, req: Request): Promise<{
+    resendVerification(dto: ResendVerificationDto): Promise<{
         message: string;
-        auth: import("..").Auth;
-        tokens: {
-            accessToken: string;
-            refreshToken: string;
-        };
-    } | {
-        message: string;
-        auth: import("..").Auth;
-        tokens?: undefined;
     }>;
     refresh(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
