@@ -52,4 +52,10 @@ export interface AuthModuleOptions {
      * Requires a notificationProvider to be configured.
      */
     verificationRequired?: boolean;
+
+    /**
+     * Optional: List of modules to import into the AuthModule context.
+     * Use this if your notificationProvider requires specific providers from other modules.
+     */
+    imports?: any[];
 }

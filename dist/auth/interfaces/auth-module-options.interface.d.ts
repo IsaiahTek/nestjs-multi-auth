@@ -12,4 +12,5 @@ export interface AuthModuleOptions {
     transport?: AuthTransport | AuthTransport[];
     notificationProvider?: Type<AuthNotificationProvider>;
     verificationRequired?: boolean;
+    imports?: any[];
 }

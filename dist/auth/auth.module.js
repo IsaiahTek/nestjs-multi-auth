@@ -71,6 +71,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
                 ]),
                 passport_1.PassportModule,
                 jwt_1.JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
+                ...(options.imports || []),
             ],
             providers,
             controllers: options.disableController ? [] : [auth_controller_1.AuthController],

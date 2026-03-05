@@ -67,6 +67,7 @@ export class AuthModule {
         ]),
         PassportModule,
         JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
+        ...(options.imports || []),
       ],
       providers,
       controllers: options.disableController ? [] : [AuthController],

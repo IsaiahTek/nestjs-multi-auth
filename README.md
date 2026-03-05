@@ -135,6 +135,9 @@ AuthModule.register({
   // ... other options
   notificationProvider: MyNotificationProvider,
   verificationRequired: true, // If true, login is blocked until verified
+  
+  // Pass the module that provides NotifycService
+  imports: [NotifycModule], 
 })
 ```
 
