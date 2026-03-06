@@ -12,8 +12,8 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { PasswordAuthStrategy } from './strategies/password.strategy';
-import { GoogleAuthStrategy } from './strategies/google.strategy';
+import { LocalAuthStrategy } from './strategies/local-auth.strategy';
+import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
@@ -30,9 +30,9 @@ export class AuthService {
 
   constructor(
     private jwtService: JwtService,
-    private passwordStrategy: PasswordAuthStrategy,
-    private googleStrategy: GoogleAuthStrategy,
-    private otpStrategy: OtpAuthStrategy,
+    @Optional() private passwordStrategy: LocalAuthStrategy,
+    @Optional() private oauthStrategy: OAuthAuthStrategy,
+    @Optional() private otpStrategy: OtpAuthStrategy,
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
     @InjectRepository(Auth)
@@ -106,15 +106,28 @@ export class AuthService {
   async signup(dto: SignupDto, userAgent?: string, ip?: string) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
+    const enabledStrategies = this.options.enabledStrategies || [
+      AuthStrategy.LOCAL,
+      AuthStrategy.OAUTH,
+      AuthStrategy.OTP,
+    ];
+
+    if (!enabledStrategies.includes(dto.method)) {
+      throw new BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
+    }
+
     let auth: Auth;
     switch (dto.method) {
       case AuthStrategy.LOCAL:
+        if (!this.passwordStrategy) throw new BadRequestException('Local authentication is not configured.');
         auth = await this.passwordStrategy.registerCredentials(dto);
         break;
       case AuthStrategy.OAUTH:
-        auth = await this.googleStrategy.registerCredentials(dto);
+        if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
+        auth = await this.oauthStrategy.registerCredentials(dto);
         break;
       case AuthStrategy.OTP:
+        if (!this.otpStrategy) throw new BadRequestException('OTP authentication is not configured.');
         auth = await this.otpStrategy.registerCredentials(dto);
         break;
       default:
@@ -143,15 +156,28 @@ export class AuthService {
   async login(dto: LoginDto, userAgent?: string, ip?: string) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
+    const enabledStrategies = this.options.enabledStrategies || [
+      AuthStrategy.LOCAL,
+      AuthStrategy.OAUTH,
+      AuthStrategy.OTP,
+    ];
+
+    if (!enabledStrategies.includes(dto.method)) {
+      throw new BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
+    }
+
     let auth: Auth;
     switch (dto.method) {
       case AuthStrategy.LOCAL:
+        if (!this.passwordStrategy) throw new BadRequestException('Local authentication is not configured.');
         auth = await this.passwordStrategy.login(dto);
         break;
       case AuthStrategy.OAUTH:
-        auth = await this.googleStrategy.login(dto);
+        if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
+        auth = await this.oauthStrategy.login(dto);
         break;
       case AuthStrategy.OTP:
+        if (!this.otpStrategy) throw new BadRequestException('OTP authentication is not configured.');
         auth = await this.otpStrategy.login(dto);
         break;
       default:

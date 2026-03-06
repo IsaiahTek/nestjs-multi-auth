@@ -13,7 +13,6 @@ describe('AuthController', () => {
     const mockOptions: AuthModuleOptions = {
         jwtSecret: 'test-secret',
         jwtRefreshSecret: 'test-refresh-secret',
-        userService: class { } as any,
         transport: [AuthTransport.BEARER, AuthTransport.COOKIE],
     };
 

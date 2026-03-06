@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { AuthTransport } from '../auth-type.enum';
+import { AuthTransport, AuthStrategy } from '../auth-type.enum';
 import { AuthNotificationProvider } from './auth-notification-provider.interface';
 export declare const AUTH_MODULE_OPTIONS = "AUTH_MODULE_OPTIONS";
 export interface AuthModuleOptions {
@@ -13,4 +13,7 @@ export interface AuthModuleOptions {
     notificationProvider?: Type<AuthNotificationProvider>;
     verificationRequired?: boolean;
     imports?: any[];
+    googleClientId?: string;
+    enabledStrategies?: AuthStrategy[];
+    phoneRequiresPassword?: boolean;
 }

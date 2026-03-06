@@ -2,8 +2,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { PasswordAuthStrategy } from './strategies/password.strategy';
-import { GoogleAuthStrategy } from './strategies/google.strategy';
+import { LocalAuthStrategy } from './strategies/local-auth.strategy';
+import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
@@ -13,7 +13,7 @@ import { AuthNotificationProvider } from './interfaces/auth-notification-provide
 export declare class AuthService {
     private jwtService;
     private passwordStrategy;
-    private googleStrategy;
+    private oauthStrategy;
     private otpStrategy;
     private sessionRepository;
     private authRepo;
@@ -21,7 +21,7 @@ export declare class AuthService {
     private options;
     private notificationProvider?;
     private readonly logger;
-    constructor(jwtService: JwtService, passwordStrategy: PasswordAuthStrategy, googleStrategy: GoogleAuthStrategy, otpStrategy: OtpAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider);
+    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, otpStrategy: OtpAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider);
     private generateTokens;
     private fingerprint;
     private createSession;

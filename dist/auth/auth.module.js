@@ -14,13 +14,17 @@ const auth_entity_1 = require("./entities/auth.entity");
 const oauth_provider_entity_1 = require("./entities/oauth-provider.entity");
 const otp_token_entity_1 = require("./entities/otp-token.entity");
 const mfa_method_entity_1 = require("./entities/mfa-method.entity");
-const password_strategy_1 = require("./strategies/password.strategy");
+const local_auth_strategy_1 = require("./strategies/local-auth.strategy");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_1 = require("@nestjs/jwt");
-const google_strategy_1 = require("./strategies/google.strategy");
+const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
+const google_strategy_1 = require("./strategies/oauth/google.strategy");
+const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
+const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
 const otp_strategy_1 = require("./strategies/otp.strategy");
 const jwt_strategy_1 = require("./jwt.strategy");
+const auth_type_enum_1 = require("./auth-type.enum");
 const passport_1 = require("@nestjs/passport");
 const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
@@ -40,12 +44,23 @@ let AuthModule = AuthModule_1 = class AuthModule {
             optionsProvider,
             jwt_strategy_1.JwtStrategy,
             auth_service_1.AuthService,
-            password_strategy_1.PasswordAuthStrategy,
-            google_strategy_1.GoogleAuthStrategy,
-            otp_strategy_1.OtpAuthStrategy,
             jwt_auth_guard_1.JwtAuthGuard,
             optional_auth_guard_1.OptionalAuthGuard,
         ];
+        const enabledStrategies = options.enabledStrategies || [
+            auth_type_enum_1.AuthStrategy.LOCAL,
+            auth_type_enum_1.AuthStrategy.OAUTH,
+            auth_type_enum_1.AuthStrategy.OTP,
+        ];
+        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            providers.push(local_auth_strategy_1.LocalAuthStrategy);
+        }
+        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OTP)) {
+            providers.push(otp_strategy_1.OtpAuthStrategy);
+        }
+        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OAUTH)) {
+            providers.push(oauth_strategy_1.OAuthAuthStrategy, google_strategy_1.GoogleAuthStrategy, apple_strategy_1.AppleAuthStrategy, facebook_strategy_1.FacebookAuthStrategy);
+        }
         if (options.notificationProvider) {
             providers.push({
                 provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,

@@ -8,6 +8,8 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 - **Grouped Identities**: Multiple login methods (Google, Password, etc.) are consolidated under a single, opaque `uid`.
 - **Secure by Default**: Automatically registers a global authentication guard.
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically.
+- **Selective Strategies**: Enable only the authentication methods you need (Local, OAuth, OTP).
+- **Flexible Phone Auth**: Choose whether phone-based authentication requires a password or is password-less by default.
 - **Multiple Auth Transports**: Supports HTTP-only Cookies, JSON body (Bearer token), or both.
 - **Token Rotation**: Built-in `/refresh` and `/logout` endpoints with automatic token rotation.
 - **Session Tracking**: Tracks IP and User Agent for basic session security.
@@ -49,6 +51,15 @@ import { AuthModule, AuthTransport } from 'nestjs-multi-auth';
       
       // Optional: defaults to [AuthTransport.BEARER]
       transport: [AuthTransport.COOKIE, AuthTransport.BEARER],
+      
+      // Optional: List of enabled strategies. Defaults to all [LOCAL, OAUTH, OTP]
+      enabledStrategies: [AuthStrategy.LOCAL, AuthStrategy.OAUTH],
+
+      // Optional: If strategy OAUTH is enabled
+      googleClientId: process.env.GOOGLE_CLIENT_ID,
+
+      // Optional: If strategy LOCAL is enabled, defaults to false
+      phoneRequiresPassword: true, 
       
       // Optional: defaults to false.
       // disableGlobalGuard: true,

@@ -8,7 +8,7 @@ import {
   IsEnum,
   IsPhoneNumber,
 } from 'class-validator';
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../auth-type.enum';
 
 export class SignupDto {
   @ApiProperty({
@@ -19,6 +19,17 @@ export class SignupDto {
   })
   @IsEnum(AuthStrategy)
   method: AuthStrategy;
+
+  @ApiProperty({
+    enum: OAuthProviderType,
+    example: OAuthProviderType.GOOGLE,
+    description: 'OAuth provider (required if method is OAUTH)',
+    required: false,
+  })
+  @IsEnum(OAuthProviderType)
+  @IsOptional()
+  provider?: OAuthProviderType;
+
 
   @ApiProperty({ example: '+2347035742844', required: false })
   @IsPhoneNumber('NG')
@@ -78,5 +89,13 @@ export class SignupDto {
 
   @ApiProperty({ example: 'RC123456', required: false })
   @IsOptional()
+  @IsString()
   registrationNo?: string;
+
+  /**
+   * For OAuth / OTP verification
+   */
+  @IsOptional()
+  @IsString()
+  token?: string;
 }

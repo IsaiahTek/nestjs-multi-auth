@@ -5,13 +5,17 @@ import { Auth } from './entities/auth.entity';
 import { OAuthProvider } from './entities/oauth-provider.entity';
 import { OtpToken } from './entities/otp-token.entity';
 import { MfaMethod } from './entities/mfa-method.entity';
-import { PasswordAuthStrategy } from './strategies/password.strategy';
+import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { GoogleAuthStrategy } from './strategies/google.strategy';
+import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
+import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
+import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
+import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { JwtStrategy } from './jwt.strategy';
+import { AuthStrategy } from './auth-type.enum';
 import { PassportModule } from '@nestjs/passport';
 import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
@@ -33,12 +37,32 @@ export class AuthModule {
       optionsProvider,
       JwtStrategy,
       AuthService,
-      PasswordAuthStrategy,
-      GoogleAuthStrategy,
-      OtpAuthStrategy,
       JwtAuthGuard,
       OptionalAuthGuard,
     ];
+
+    const enabledStrategies = options.enabledStrategies || [
+      AuthStrategy.LOCAL,
+      AuthStrategy.OAUTH,
+      AuthStrategy.OTP,
+    ];
+
+    if (enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      providers.push(LocalAuthStrategy);
+    }
+
+    if (enabledStrategies.includes(AuthStrategy.OTP)) {
+      providers.push(OtpAuthStrategy);
+    }
+
+    if (enabledStrategies.includes(AuthStrategy.OAUTH)) {
+      providers.push(
+        OAuthAuthStrategy,
+        GoogleAuthStrategy,
+        AppleAuthStrategy,
+        FacebookAuthStrategy,
+      );
+    }
 
     if (options.notificationProvider) {
       providers.push({

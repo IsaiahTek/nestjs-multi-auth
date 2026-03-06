@@ -1,5 +1,5 @@
 import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
-import { AuthTransport } from '../auth-type.enum';
+import { AuthTransport, AuthStrategy } from '../auth-type.enum';
 import { AuthNotificationProvider } from './auth-notification-provider.interface';
 
 export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
@@ -58,4 +58,21 @@ export interface AuthModuleOptions {
      * Use this if your notificationProvider requires specific providers from other modules.
      */
     imports?: any[];
+
+    /**
+     * Google OAuth Client ID for token verification
+     */
+    googleClientId?: string;
+
+    /**
+     * Optional: List of enabled authentication strategies.
+     * If not provided, all strategies are enabled by default.
+     */
+    enabledStrategies?: AuthStrategy[];
+
+    /**
+     * Optional: If true, phone-based authentication REQUIRES a password.
+     * Defaults to false (password-less phone auth allowed).
+     */
+    phoneRequiresPassword?: boolean;
 }

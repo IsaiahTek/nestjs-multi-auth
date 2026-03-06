@@ -1,6 +1,7 @@
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../auth-type.enum';
 export declare class SignupDto {
     method: AuthStrategy;
+    provider?: OAuthProviderType;
     phone?: string;
     username?: string;
     email?: string;
@@ -12,4 +13,5 @@ export declare class SignupDto {
     bio?: string;
     companyName?: string;
     registrationNo?: string;
+    token?: string;
 }

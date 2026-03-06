@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../auth-type.enum';
 
 export class LoginDto {
   @ApiProperty({
@@ -12,6 +12,17 @@ export class LoginDto {
   })
   @IsEnum(AuthStrategy)
   method: AuthStrategy;
+
+  @ApiProperty({
+    enum: OAuthProviderType,
+    example: OAuthProviderType.GOOGLE,
+    description: 'OAuth provider (required if method is OAUTH)',
+    required: false,
+  })
+  @IsEnum(OAuthProviderType)
+  @IsOptional()
+  provider?: OAuthProviderType;
+
 
   @IsOptional()
   emailOrPhone?: string;

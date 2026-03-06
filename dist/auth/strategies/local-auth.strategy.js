@@ -18,21 +18,27 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
 const typeorm_2 = require("@nestjs/typeorm");
 const bcrypt = require("bcrypt");
+const crypto_1 = require("crypto");
+const auth_module_options_interface_1 = require("../interfaces/auth-module-options.interface");
+const common_2 = require("@nestjs/common");
 const auth_entity_1 = require("../entities/auth.entity");
 const auth_identify_entity_1 = require("../entities/auth-identify.entity");
 const auth_type_enum_1 = require("../auth-type.enum");
 let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
-    constructor(dataSource, authRepo, identifierRepo) {
+    constructor(dataSource, authRepo, identifierRepo, options) {
         this.dataSource = dataSource;
         this.authRepo = authRepo;
         this.identifierRepo = identifierRepo;
+        this.options = options;
         this.logger = new common_1.Logger(LocalAuthStrategy_1.name);
     }
     async registerCredentials(dto, uid) {
         if (!dto.email && !dto.phone && !dto.username) {
             throw new common_1.BadRequestException('Email, phone or username is required');
         }
-        if (!dto.password) {
+        const isPhoneSignUp = !!dto.phone;
+        const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
+        if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
             throw new common_1.BadRequestException('Password is required');
         }
         const identifiersToCheck = [];
@@ -49,10 +55,18 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                 where: { value: (0, typeorm_1.In)(identifiersToCheck) },
             });
             if (existing) {
-                throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing email, phone or username');
+                if (existing.type === auth_identify_entity_1.IdentifierType.PHONE) {
+                    throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing phone number');
+                }
+                if (existing.type === auth_identify_entity_1.IdentifierType.EMAIL) {
+                    throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing email');
+                }
+                if (existing.type === auth_identify_entity_1.IdentifierType.USERNAME) {
+                    throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing username');
+                }
             }
-            const hash = await bcrypt.hash(dto.password, 10);
-            const identityUid = uid || crypto.randomUUID();
+            const hash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+            const identityUid = uid || (0, crypto_1.randomUUID)();
             const newAuth = authRepo.create({
                 uid: identityUid,
                 strategy: dto.method || auth_type_enum_1.AuthStrategy.LOCAL,
@@ -84,7 +98,9 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         });
     }
     async login(dto) {
-        if (!dto.password) {
+        const isPhoneLogin = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
+        const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
+        if (!dto.password && (!isPhoneLogin || phoneRequiresPassword)) {
             throw new common_1.BadRequestException('Password is required');
         }
         const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
@@ -106,12 +122,20 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             where: { id: auth.id },
             select: ['id', 'secretHash'],
         });
-        if (!authWithSecret || !authWithSecret.secretHash) {
+        if (!authWithSecret) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const valid = await bcrypt.compare(dto.password, authWithSecret.secretHash);
-        if (!valid) {
-            throw new common_1.UnauthorizedException('Invalid credentials');
+        if (dto.password && authWithSecret.secretHash) {
+            const valid = await bcrypt.compare(dto.password, authWithSecret.secretHash);
+            if (!valid) {
+                throw new common_1.UnauthorizedException('Invalid credentials');
+            }
+        }
+        else if (dto.password && !authWithSecret.secretHash) {
+            throw new common_1.UnauthorizedException('This account does not have a password set. Please use another method.');
+        }
+        else if (!dto.password && authWithSecret.secretHash) {
+            throw new common_1.UnauthorizedException('Password is required for this account');
         }
         auth.lastUsedAt = new Date();
         await this.authRepo.save(auth);
@@ -123,8 +147,9 @@ exports.LocalAuthStrategy = LocalAuthStrategy = LocalAuthStrategy_1 = __decorate
     (0, common_1.Injectable)(),
     __param(1, (0, typeorm_2.InjectRepository)(auth_entity_1.Auth)),
     __param(2, (0, typeorm_2.InjectRepository)(auth_identify_entity_1.AuthIdentifier)),
+    __param(3, (0, common_2.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __metadata("design:paramtypes", [typeorm_1.DataSource,
         typeorm_1.Repository,
-        typeorm_1.Repository])
+        typeorm_1.Repository, Object])
 ], LocalAuthStrategy);
-//# sourceMappingURL=password.strategy.js.map
+//# sourceMappingURL=local-auth.strategy.js.map

@@ -19,8 +19,8 @@ const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const bcrypt = require("bcrypt");
-const password_strategy_1 = require("./strategies/password.strategy");
-const google_strategy_1 = require("./strategies/google.strategy");
+const local_auth_strategy_1 = require("./strategies/local-auth.strategy");
+const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
 const otp_strategy_1 = require("./strategies/otp.strategy");
 const auth_type_enum_1 = require("./auth-type.enum");
 const auth_entity_1 = require("./entities/auth.entity");
@@ -31,10 +31,10 @@ const auth_notification_provider_interface_1 = require("./interfaces/auth-notifi
 const crypto_1 = require("crypto");
 const crypto = require("crypto");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, passwordStrategy, googleStrategy, otpStrategy, sessionRepository, authRepo, otpRepo, options, notificationProvider) {
+    constructor(jwtService, passwordStrategy, oauthStrategy, otpStrategy, sessionRepository, authRepo, otpRepo, options, notificationProvider) {
         this.jwtService = jwtService;
         this.passwordStrategy = passwordStrategy;
-        this.googleStrategy = googleStrategy;
+        this.oauthStrategy = oauthStrategy;
         this.otpStrategy = otpStrategy;
         this.sessionRepository = sessionRepository;
         this.authRepo = authRepo;
@@ -81,15 +81,29 @@ let AuthService = AuthService_1 = class AuthService {
     async signup(dto, userAgent, ip) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
+        const enabledStrategies = this.options.enabledStrategies || [
+            auth_type_enum_1.AuthStrategy.LOCAL,
+            auth_type_enum_1.AuthStrategy.OAUTH,
+            auth_type_enum_1.AuthStrategy.OTP,
+        ];
+        if (!enabledStrategies.includes(dto.method)) {
+            throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
+        }
         let auth;
         switch (dto.method) {
             case auth_type_enum_1.AuthStrategy.LOCAL:
+                if (!this.passwordStrategy)
+                    throw new common_1.BadRequestException('Local authentication is not configured.');
                 auth = await this.passwordStrategy.registerCredentials(dto);
                 break;
             case auth_type_enum_1.AuthStrategy.OAUTH:
-                auth = await this.googleStrategy.registerCredentials(dto);
+                if (!this.oauthStrategy)
+                    throw new common_1.BadRequestException('OAuth authentication is not configured.');
+                auth = await this.oauthStrategy.registerCredentials(dto);
                 break;
             case auth_type_enum_1.AuthStrategy.OTP:
+                if (!this.otpStrategy)
+                    throw new common_1.BadRequestException('OTP authentication is not configured.');
                 auth = await this.otpStrategy.registerCredentials(dto);
                 break;
             default:
@@ -111,15 +125,29 @@ let AuthService = AuthService_1 = class AuthService {
     async login(dto, userAgent, ip) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
+        const enabledStrategies = this.options.enabledStrategies || [
+            auth_type_enum_1.AuthStrategy.LOCAL,
+            auth_type_enum_1.AuthStrategy.OAUTH,
+            auth_type_enum_1.AuthStrategy.OTP,
+        ];
+        if (!enabledStrategies.includes(dto.method)) {
+            throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
+        }
         let auth;
         switch (dto.method) {
             case auth_type_enum_1.AuthStrategy.LOCAL:
+                if (!this.passwordStrategy)
+                    throw new common_1.BadRequestException('Local authentication is not configured.');
                 auth = await this.passwordStrategy.login(dto);
                 break;
             case auth_type_enum_1.AuthStrategy.OAUTH:
-                auth = await this.googleStrategy.login(dto);
+                if (!this.oauthStrategy)
+                    throw new common_1.BadRequestException('OAuth authentication is not configured.');
+                auth = await this.oauthStrategy.login(dto);
                 break;
             case auth_type_enum_1.AuthStrategy.OTP:
+                if (!this.otpStrategy)
+                    throw new common_1.BadRequestException('OTP authentication is not configured.');
                 auth = await this.otpStrategy.login(dto);
                 break;
             default:
@@ -270,6 +298,9 @@ let AuthService = AuthService_1 = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
+    __param(1, (0, common_1.Optional)()),
+    __param(2, (0, common_1.Optional)()),
+    __param(3, (0, common_1.Optional)()),
     __param(4, (0, typeorm_1.InjectRepository)(session_entity_1.Session)),
     __param(5, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
     __param(6, (0, typeorm_1.InjectRepository)(otp_token_entity_1.OtpToken)),
@@ -277,8 +308,8 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __param(8, (0, common_1.Optional)()),
     __param(8, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
     __metadata("design:paramtypes", [jwt_1.JwtService,
-        password_strategy_1.PasswordAuthStrategy,
-        google_strategy_1.GoogleAuthStrategy,
+        local_auth_strategy_1.LocalAuthStrategy,
+        oauth_strategy_1.OAuthAuthStrategy,
         otp_strategy_1.OtpAuthStrategy,
         typeorm_2.Repository,
         typeorm_2.Repository,

@@ -27,6 +27,17 @@ __decorate([
     __metadata("design:type", String)
 ], SignupDto.prototype, "method", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        enum: auth_type_enum_1.OAuthProviderType,
+        example: auth_type_enum_1.OAuthProviderType.GOOGLE,
+        description: 'OAuth provider (required if method is OAUTH)',
+        required: false,
+    }),
+    (0, class_validator_1.IsEnum)(auth_type_enum_1.OAuthProviderType),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], SignupDto.prototype, "provider", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: '+2347035742844', required: false }),
     (0, class_validator_1.IsPhoneNumber)('NG'),
     (0, class_validator_1.IsOptional)(),
@@ -93,6 +104,12 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'RC123456', required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], SignupDto.prototype, "registrationNo", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SignupDto.prototype, "token", void 0);
 //# sourceMappingURL=signup.dto.js.map

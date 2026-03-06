@@ -9,6 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from '../dto/login.dto';
 import { SignupDto } from '../dto/signup.dto';
+import { randomUUID } from 'crypto';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
+import { Inject } from '@nestjs/common';
 
 // Entities
 import { Auth } from '../entities/auth.entity';
@@ -24,22 +27,26 @@ import { AuthStrategy } from '../auth-type.enum'; // Ensure this path is correct
 
 
 @Injectable()
-export class PasswordAuthStrategy {
+export class LocalAuthStrategy {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Auth) private authRepo: Repository<Auth>,
     @InjectRepository(AuthIdentifier)
     private identifierRepo: Repository<AuthIdentifier>,
+    @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
   ) { }
 
-  private readonly logger: Logger = new Logger(PasswordAuthStrategy.name);
+  private readonly logger: Logger = new Logger(LocalAuthStrategy.name);
 
   async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
     // 1. Validation
     if (!dto.email && !dto.phone && !dto.username) {
       throw new BadRequestException('Email, phone or username is required');
     }
-    if (!dto.password) {
+    const isPhoneSignUp = !!dto.phone;
+    const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
+
+    if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
       throw new BadRequestException('Password is required');
     }
 
@@ -59,19 +66,31 @@ export class PasswordAuthStrategy {
       });
 
       if (existing) {
-        throw new BadRequestException(
-          'Unable to signup with those credentials. Try changing email, phone or username',
-        );
+        if (existing.type === IdentifierType.PHONE) {
+          throw new BadRequestException(
+            'Unable to signup with those credentials. Try changing phone number',
+          );
+        }
+        if (existing.type === IdentifierType.EMAIL) {
+          throw new BadRequestException(
+            'Unable to signup with those credentials. Try changing email',
+          );
+        }
+        if (existing.type === IdentifierType.USERNAME) {
+          throw new BadRequestException(
+            'Unable to signup with those credentials. Try changing username',
+          );
+        }
       }
 
-      // 4. Hash Password
-      const hash = await bcrypt.hash(dto.password!, 10);
+      // 4. Hash Password (if provided)
+      const hash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
 
       // 5. Create the Auth Identity
       // If no uid is provided, this is a completely new account.
       // Generation will happen here or in AuthService if we want more control.
       // Let's generate it here if missing.
-      const identityUid = uid || crypto.randomUUID();
+      const identityUid = uid || randomUUID();
 
       const newAuth = authRepo.create({
         uid: identityUid,
@@ -120,7 +139,10 @@ export class PasswordAuthStrategy {
   }
 
   async login(dto: LoginDto): Promise<Auth> {
-    if (!dto.password) {
+    const isPhoneLogin = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
+    const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
+
+    if (!dto.password && (!isPhoneLogin || phoneRequiresPassword)) {
       throw new BadRequestException('Password is required');
     }
 
@@ -155,16 +177,24 @@ export class PasswordAuthStrategy {
       select: ['id', 'secretHash'], // Explicitly select the hidden column
     });
 
-    if (!authWithSecret || !authWithSecret.secretHash) {
-      // Should technically not happen if strategy is LOCAL, but good for safety
+    if (!authWithSecret) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // 4. Verify password
-    const valid = await bcrypt.compare(dto.password, authWithSecret.secretHash);
-    if (!valid) {
-      throw new UnauthorizedException('Invalid credentials');
+    // 4. Verify password (if password was provided or required)
+    if (dto.password && authWithSecret.secretHash) {
+      const valid = await bcrypt.compare(dto.password, authWithSecret.secretHash);
+      if (!valid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    } else if (dto.password && !authWithSecret.secretHash) {
+      // Identity has no password, but one was provided
+      throw new UnauthorizedException('This account does not have a password set. Please use another method.');
+    } else if (!dto.password && authWithSecret.secretHash) {
+      // Identity has a password, but none was provided
+      throw new UnauthorizedException('Password is required for this account');
     }
+    // If neither has a password, it's a password-less login (allowed for phone if verified elsewhere/contextually)
 
     // 5. Update usage stats
     // We update the original 'auth' object which has the User loaded, to return full context
