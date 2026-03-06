@@ -11,9 +11,6 @@ export enum AuthStrategy {
   FACEBOOK = 'FACEBOOK',
   APPLE = 'APPLE',
 
-  // Other
-  OTP = 'OTP',
-
   /** @deprecated Use granular types instead */
   LOCAL = 'LOCAL',
   /** @deprecated Use granular types instead */

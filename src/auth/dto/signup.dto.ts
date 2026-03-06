@@ -51,47 +51,6 @@ export class SignupDto {
   @MinLength(6)
   password?: string;
 
-  @ApiProperty({
-    example: 'worker',
-    required: false,
-    description: 'Role of the user within the system',
-  })
-  @IsOptional()
-  @IsString()
-  role?: string;
-
-  // Profile extras
-  @ApiProperty({ example: 'John Bassey', required: false })
-  @IsString()
-  @IsOptional()
-  firstName?: string;
-
-  @ApiProperty({ example: 'John Bassey', required: false })
-  @IsString()
-  @IsOptional()
-  lastName?: string;
-
-  @ApiProperty({ example: 'Lagos, Nigeria', required: false })
-  @IsOptional()
-  address?: string;
-
-  @ApiProperty({
-    example: 'I have 10 years painting experience',
-    required: false,
-  })
-  @IsOptional()
-  bio?: string;
-
-  // Company fields (if registering a business)
-  @ApiProperty({ example: 'Acme Ltd', required: false })
-  @IsOptional()
-  companyName?: string;
-
-  @ApiProperty({ example: 'RC123456', required: false })
-  @IsOptional()
-  @IsString()
-  registrationNo?: string;
-
   /**
    * For OAuth / OTP verification
    */

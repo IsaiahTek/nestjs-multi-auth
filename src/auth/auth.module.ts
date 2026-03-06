@@ -13,7 +13,6 @@ import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
-import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { JwtStrategy } from './jwt.strategy';
 import { AuthStrategy } from './auth-type.enum';
 import { PassportModule } from '@nestjs/passport';
@@ -51,14 +50,12 @@ export class AuthModule {
       [AuthStrategy.GOOGLE, AuthStrategy.FACEBOOK, AuthStrategy.APPLE, AuthStrategy.OAUTH].includes(s)
     );
 
-    const isOtpEnabled = enabledStrategies.includes(AuthStrategy.OTP);
+    const isOtpEnabled = enabledStrategies.includes('OTP' as any); // Check for legacy if needed, but the user said it is NOT a strategy
+    // Actually, let's just remove the explicit isOtpEnabled check for providers if the strategy is deleted.
+    // We'll keep the OTP repo and other things, but OtpAuthStrategy is gone.
 
     if (isLocalEnabled) {
       providers.push(LocalAuthStrategy);
-    }
-
-    if (isOtpEnabled) {
-      providers.push(OtpAuthStrategy);
     }
 
     if (isOAuthEnabled) {

@@ -7,7 +7,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Session } from './entities/session.entity';
 import { Auth } from './entities/auth.entity';
 import { OtpToken } from './entities/otp-token.entity';
-import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
 import { AuthStrategy } from './auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
@@ -30,10 +29,6 @@ describe('AuthService', () => {
         registerCredentials: jest.fn(),
     };
 
-    const mockOtpStrategy = {
-        login: jest.fn(),
-        registerCredentials: jest.fn(),
-    };
 
     const mockAuthRepo = {
         findOne: jest.fn(),
@@ -70,7 +65,6 @@ describe('AuthService', () => {
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: LocalAuthStrategy, useValue: mockPasswordStrategy },
                 { provide: OAuthAuthStrategy, useValue: mockOAuthStrategy },
-                { provide: OtpAuthStrategy, useValue: mockOtpStrategy },
                 { provide: getRepositoryToken(Session), useValue: mockSessionRepo },
                 { provide: getRepositoryToken(Auth), useValue: mockAuthRepo },
                 { provide: getRepositoryToken(OtpToken), useValue: mockOtpRepo },
@@ -91,14 +85,11 @@ describe('AuthService', () => {
 
     describe('signup', () => {
         it('should throw BadRequestException if strategy is disabled', async () => {
-            const signupDto = { method: AuthStrategy.OTP };
-            // mockOptions only has jwtSecret, so enabledStrategies defaults to LOCAL, OAUTH, OTP.
-            // Let's create a service with restricted options.
+            const signupDto = { method: AuthStrategy.EMAIL };
             const restrictedService = new AuthService(
                 mockJwtService as any,
                 mockPasswordStrategy as any,
                 mockOAuthStrategy as any,
-                null as any,
                 mockSessionRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
@@ -110,16 +101,15 @@ describe('AuthService', () => {
         });
 
         it('should throw BadRequestException if strategy provider is missing', async () => {
-            const signupDto = { method: AuthStrategy.OTP };
+            const signupDto = { method: AuthStrategy.APPLE };
             const restrictedService = new AuthService(
                 mockJwtService as any,
                 mockPasswordStrategy as any,
-                mockOAuthStrategy as any,
-                null as any, // otpStrategy missing
+                null as any, // oauthStrategy missing
                 mockSessionRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
-                { enabledStrategies: [AuthStrategy.OTP] } as any, // Enabled but not provided
+                { enabledStrategies: [AuthStrategy.APPLE] } as any,
             );
 
             await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(BadRequestException);

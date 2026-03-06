@@ -41,7 +41,7 @@ Import and configure the `AuthModule` in your root `AppModule`. No external serv
 ```typescript
 // src/app.module.ts
 import { Module } from '@nestjs/common';
-import { AuthModule, AuthTransport } from 'nestjs-multi-auth';
+import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
 
 @Module({
   imports: [
@@ -118,11 +118,14 @@ AuthModule.register({
 
 ## Identity Verification (OTPs)
 
-The library includes a pluggable verification system to confirm Email or Phone identities.
+The library includes a pluggable verification system to confirm Email or Phone identities. OTPs are used in two primary scenarios:
+
+1.  **Passwordless Authentication**: When a user signs up or signs in using a local method (`EMAIL`, `PHONE`, `USERNAME`) **without a password**, the system automatically sends an OTP to verify the identity.
+2.  **Mandatory Verification**: If `verificationRequired: true` is set in the configuration, all new registrations and logins by unverified accounts will be challenged with an OTP.
 
 ### 1. Implement `AuthNotificationProvider`
 
-Create a service to deliver the verification codes. You can use any service, such as [notifyc-nestjs](https://github.com/IsaiahTek/notifyc-nestjs):
+Create a service to deliver the verification codes (SMS or Email). You can use any service, such as [notifyc-nestjs](https://github.com/IsaiahTek/notifyc-nestjs):
 
 ```typescript
 import { AuthNotificationProvider } from 'nestjs-multi-auth';
@@ -158,7 +161,7 @@ AuthModule.register({
 
 ### 3. Verification Endpoints
 
-- `POST /auth/verify`: Accepts `{ uid, code }`. Flips `isVerified: true` on the identity.
+- `POST /auth/verify`: Accepts `{ uid, code }`. Upon success, it sets `isVerified: true` and **issues the final Access and Refresh tokens** (completing the login/signup flow).
 - `POST /auth/resend-verification`: Accepts `{ uid }`. Triggers a new code via the provider.
 
 ---

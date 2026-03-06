@@ -116,8 +116,22 @@ export class AuthController {
   @Post('verify')
   @Public()
   @ApiOperation({ summary: 'Verify identity with OTP code' })
-  async verify(@Body() dto: VerifyDto) {
-    return this.authService.verifyCode(dto.uid, dto.code);
+  async verify(@Body() dto: VerifyDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const result = await this.authService.verifyCode(dto.uid, dto.code, req.headers['user-agent'], req.ip);
+    const transports = this.getTransports();
+
+    if (result.tokens) {
+      if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
+        this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+      }
+    }
+
+    const response: any = { message: result.message, auth: result.auth };
+    if (result.tokens && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
+      response.tokens = result.tokens;
+    }
+
+    return response;
   }
 
   @Post('resend-verification')

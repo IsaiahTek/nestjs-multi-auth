@@ -14,7 +14,6 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
-import { OtpAuthStrategy } from './strategies/otp.strategy';
 import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
@@ -32,7 +31,6 @@ export class AuthService {
     private jwtService: JwtService,
     @Optional() private passwordStrategy: LocalAuthStrategy,
     @Optional() private oauthStrategy: OAuthAuthStrategy,
-    @Optional() private otpStrategy: OtpAuthStrategy,
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
     @InjectRepository(Auth)
@@ -128,23 +126,19 @@ export class AuthService {
         if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
         auth = await this.oauthStrategy.registerCredentials(dto);
         break;
-      case AuthStrategy.OTP:
-        if (!this.otpStrategy) throw new BadRequestException('OTP authentication is not configured.');
-        auth = await this.otpStrategy.registerCredentials(dto);
-        break;
       default:
         throw new Error('Unsupported signup provider');
     }
 
-    // Trigger verification if provider is configured
-    if (this.notificationProvider) {
-      await this.sendVerification(auth);
-    }
+    // Force verification if no password was provided for local strategies (passwordless signup)
+    const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
 
-    // If verification is strictly required, we don't issue session tokens yet
-    if (this.options.verificationRequired && this.notificationProvider) {
+    if ((this.options.verificationRequired || isPasswordless) && this.notificationProvider) {
+      if (!auth.isVerified) {
+        await this.sendVerification(auth);
+      }
       return {
-        message: 'Signup successful. Please verify your identity.',
+        message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
         auth,
         verificationRequired: true
       };
@@ -180,19 +174,17 @@ export class AuthService {
         if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
         auth = await this.oauthStrategy.login(dto);
         break;
-      case AuthStrategy.OTP:
-        if (!this.otpStrategy) throw new BadRequestException('OTP authentication is not configured.');
-        auth = await this.otpStrategy.login(dto);
-        break;
       default:
         throw new Error('Unsupported login provider');
     }
 
-    // Check if verification is required and auth is not verified
-    if (this.options.verificationRequired && !auth.isVerified && this.notificationProvider) {
+    // Force verification if no password was provided for local strategies (passwordless login)
+    const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
+
+    if ((this.options.verificationRequired || isPasswordless) && !auth.isVerified && this.notificationProvider) {
       await this.sendVerification(auth);
       return {
-        message: 'Identity verification required.',
+        message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
         auth,
         verificationRequired: true
       };
@@ -258,7 +250,7 @@ export class AuthService {
     }
   }
 
-  async verifyCode(uid: string, code: string) {
+  async verifyCode(uid: string, code: string, userAgent?: string, ip?: string) {
     const auth = await this.authRepo.findOne({ where: { uid } });
     if (!auth) throw new BadRequestException('Identity not found');
 
@@ -286,7 +278,9 @@ export class AuthService {
     auth.isVerified = true;
     await this.authRepo.save(auth);
 
-    return { message: 'Identity verified successfully' };
+    const tokens = await this.createSession(auth.uid, userAgent, ip);
+
+    return { message: 'Identity verified successfully', tokens, auth };
   }
 
   async resendVerification(uid: string) {
