@@ -21,9 +21,12 @@ const bcrypt = require("bcrypt");
 const crypto_1 = require("crypto");
 const auth_module_options_interface_1 = require("../interfaces/auth-module-options.interface");
 const common_2 = require("@nestjs/common");
+// Entities
 const auth_entity_1 = require("../entities/auth.entity");
 const auth_identify_entity_1 = require("../entities/auth-identify.entity");
-const auth_type_enum_1 = require("../auth-type.enum");
+// Enums
+const auth_type_enum_1 = require("../auth-type.enum"); // Ensure this path is correct
+// Services / DTOs
 let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
     constructor(dataSource, authRepo, identifierRepo, options) {
         this.dataSource = dataSource;
@@ -34,6 +37,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
     }
     async registerCredentials(dto, uid) {
         const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
+        // 1. Validation of identifiers against enabled strategies
         if (dto.email && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.EMAIL) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
             throw new common_1.BadRequestException('Email authentication is currently disabled.');
         }
@@ -51,6 +55,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
             throw new common_1.BadRequestException('Password is required');
         }
+        // 2. Prepare the list of identifiers we want to claim
         const identifiersToCheck = [];
         if (dto.email)
             identifiersToCheck.push(dto.email.toLowerCase());
@@ -61,6 +66,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         return this.dataSource.transaction(async (manager) => {
             const authIdentifierRepo = manager.getRepository(auth_identify_entity_1.AuthIdentifier);
             const authRepo = manager.getRepository(auth_entity_1.Auth);
+            // 3. 🔒 Check uniqueness
             const existing = await authIdentifierRepo.findOne({
                 where: { value: (0, typeorm_1.In)(identifiersToCheck) },
             });
@@ -75,7 +81,12 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                     throw new common_1.BadRequestException('Unable to signup with those credentials. Try changing username');
                 }
             }
+            // 4. Hash Password (if provided)
             const hash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+            // 5. Create the Auth Identity
+            // If no uid is provided, this is a completely new account.
+            // Generation will happen here or in AuthService if we want more control.
+            // Let's generate it here if missing.
             const identityUid = uid || (0, crypto_1.randomUUID)();
             const newAuth = authRepo.create({
                 uid: identityUid,
@@ -84,6 +95,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                 isActive: true,
                 isPrimary: true,
             });
+            // 7. Create the Identifiers (The "Lookups")
             const newIdentifiers = [];
             if (dto.email) {
                 newIdentifiers.push(authIdentifierRepo.create({
@@ -103,7 +115,9 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                     value: dto.username.toLowerCase(),
                 }));
             }
+            // Attach identifiers to auth to save them together (Cascade)
             newAuth.identifiers = newIdentifiers;
+            // 8. Save (Cascade will save Auth + Identifiers)
             return await authRepo.save(newAuth);
         });
     }
@@ -118,6 +132,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         if (!identifierValue) {
             throw new common_1.BadRequestException('Email, phone or username is required');
         }
+        // Validate identifier type against enabled strategies
         const isEmail = !!dto.email || (!!dto.emailOrPhone && dto.emailOrPhone.includes('@'));
         const isPhone = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
         const isUsername = !!dto.username || (!isEmail && !isPhone);
@@ -130,6 +145,8 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         if (isUsername && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.USERNAME) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
             throw new common_1.BadRequestException('Username authentication is currently disabled.');
         }
+        // 1. Look up the Identifier first (e.g., find row where value = "john@gmail.com")
+        // We join 'auth' and 'auth.user' so we have everything we need.
         const identifier = await this.identifierRepo.findOne({
             where: { value: identifierValue.toLowerCase() },
             relations: ['auth'],
@@ -138,16 +155,20 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const auth = identifier.auth;
+        // 2. Safety Check: Ensure this identifier is actually linked to a Password account
         if (auth.strategy !== auth_type_enum_1.AuthStrategy.LOCAL) {
             throw new common_1.UnauthorizedException('Please login with your Social Account');
         }
+        // 3. Retrieve the password hash
+        // (Since select: false, it wasn't loaded in the relation above. We must explicitly fetch it)
         const authWithSecret = await this.authRepo.findOne({
             where: { id: auth.id },
-            select: ['id', 'secretHash'],
+            select: ['id', 'secretHash'], // Explicitly select the hidden column
         });
         if (!authWithSecret) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        // 4. Verify password (if password was provided or required)
         if (dto.password && authWithSecret.secretHash) {
             const valid = await bcrypt.compare(dto.password, authWithSecret.secretHash);
             if (!valid) {
@@ -155,11 +176,16 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             }
         }
         else if (dto.password && !authWithSecret.secretHash) {
+            // Identity has no password, but one was provided
             throw new common_1.UnauthorizedException('This account does not have a password set. Please use another method.');
         }
         else if (!dto.password && authWithSecret.secretHash) {
+            // Identity has a password, but none was provided
             throw new common_1.UnauthorizedException('Password is required for this account');
         }
+        // If neither has a password, it's a password-less login (allowed for phone if verified elsewhere/contextually)
+        // 5. Update usage stats
+        // We update the original 'auth' object which has the User loaded, to return full context
         auth.lastUsedAt = new Date();
         await this.authRepo.save(auth);
         return auth;

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var JwtStrategy_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JwtStrategy = void 0;
+// src/auth/jwt.strategy.ts
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
@@ -42,6 +43,8 @@ let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.Passp
     }
     async validate(payload) {
         this.logger.log(`JWT payload: ${JSON.stringify(payload)}`);
+        // In Identity-Only mode, req.user is the token payload.
+        // The application uses the 'sub' (uid) to link to its own user record.
         return {
             uid: payload.sub,
             sessionId: payload.sessionId,

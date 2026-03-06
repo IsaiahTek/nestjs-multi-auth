@@ -47,7 +47,9 @@ __decorate([
     __metadata("design:type", String)
 ], OtpToken.prototype, "requestUserId", void 0);
 exports.OtpToken = OtpToken = __decorate([
-    (0, typeorm_1.Entity)('otp_tokens'),
+    (0, typeorm_1.Entity)('otp_tokens')
+    // Index makes lookup fast: "Find latest unused OTP for john@gmail.com"
+    ,
     (0, typeorm_1.Index)(['identifier', 'purpose', 'isUsed'])
 ], OtpToken);
 //# sourceMappingURL=otp-token.entity.js.map

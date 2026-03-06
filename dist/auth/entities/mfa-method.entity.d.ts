@@ -1,5 +1,5 @@
 export declare enum MfaType {
-    TOTP = "TOTP",
+    TOTP = "TOTP",// Authenticator App
     SMS = "SMS",
     EMAIL = "EMAIL"
 }

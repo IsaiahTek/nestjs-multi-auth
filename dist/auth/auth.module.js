@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var AuthModule_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AUTH_MODULE_OPTIONS = exports.AuthModule = void 0;
+// src/auth/auth.module.ts
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_entity_1 = require("./entities/auth.entity");
@@ -49,7 +50,9 @@ let AuthModule = AuthModule_1 = class AuthModule {
         const enabledStrategies = options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         const isLocalEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(s));
         const isOAuthEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.GOOGLE, auth_type_enum_1.AuthStrategy.FACEBOOK, auth_type_enum_1.AuthStrategy.APPLE, auth_type_enum_1.AuthStrategy.OAUTH].includes(s));
-        const isOtpEnabled = enabledStrategies.includes('OTP');
+        const isOtpEnabled = enabledStrategies.includes('OTP'); // Check for legacy if needed, but the user said it is NOT a strategy
+        // Actually, let's just remove the explicit isOtpEnabled check for providers if the strategy is deleted.
+        // We'll keep the OTP repo and other things, but OtpAuthStrategy is gone.
         if (isLocalEnabled) {
             providers.push(local_auth_strategy_1.LocalAuthStrategy);
         }

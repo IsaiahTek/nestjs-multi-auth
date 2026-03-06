@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var OptionalAuthGuard_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OptionalAuthGuard = void 0;
+// src/auth/optional-auth.guard.ts
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 let OptionalAuthGuard = OptionalAuthGuard_1 = class OptionalAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
@@ -21,9 +22,10 @@ let OptionalAuthGuard = OptionalAuthGuard_1 = class OptionalAuthGuard extends (0
         this.logger.debug(`Authorization header: ${authHeader || 'none'}`);
         if (!authHeader) {
             this.logger.debug('No authorization header, skipping JWT check');
-            req.user = null;
+            req.user = null; // 👈 set anonymous user
             return true;
         }
+        // fallback to normal AuthGuard behavior
         return (await super.canActivate(context));
     }
     handleRequest(err, user, info) {

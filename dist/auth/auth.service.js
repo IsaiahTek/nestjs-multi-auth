@@ -41,6 +41,7 @@ let AuthService = AuthService_1 = class AuthService {
         this.notificationProvider = notificationProvider;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
+    // --- INTERNAL HELPER: Generate Token Pair ---
     async generateTokens(uid, sessionId) {
         const refreshJti = (0, crypto_1.randomUUID)();
         const [accessToken, refreshToken] = await Promise.all([
@@ -76,6 +77,7 @@ let AuthService = AuthService_1 = class AuthService {
     fingerprint(userAgent) {
         return crypto.createHash('sha256').update(userAgent).digest('hex');
     }
+    // --- INTERNAL HELPER: Create/Update Session in DB ---
     async createSession(uid, userAgent = 'Unknown', ip = 'Unknown') {
         const expiresAt = new Date();
         const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
@@ -123,6 +125,7 @@ let AuthService = AuthService_1 = class AuthService {
             default:
                 throw new Error('Unsupported signup provider');
         }
+        // Force verification if no password was provided for local strategies (passwordless signup)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
         if ((this.options.verificationRequired || isPasswordless) && this.notificationProvider) {
             if (!auth.isVerified) {
@@ -165,6 +168,7 @@ let AuthService = AuthService_1 = class AuthService {
             default:
                 throw new Error('Unsupported login provider');
         }
+        // Force verification if no password was provided for local strategies (passwordless login)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
         if ((this.options.verificationRequired || isPasswordless) && !auth.isVerified && this.notificationProvider) {
             await this.sendVerification(auth);
@@ -177,11 +181,16 @@ let AuthService = AuthService_1 = class AuthService {
         const tokens = await this.createSession(auth.uid, userAgent, ip);
         return { ...tokens, auth };
     }
+    // --- VERIFICATION LOGIC ---
     async sendVerification(auth) {
         if (!this.notificationProvider)
             return;
+        // 1. Determine primary identifier (email or phone)
+        // For now, let's look for the first identifier that is EMAIL or PHONE
+        // We need to load identifiers if they aren't present
         let primaryIdentifier = auth.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
         if (!primaryIdentifier) {
+            // Fallback: reload auth with identifiers
             const fullAuth = await this.authRepo.findOne({
                 where: { id: auth.id },
                 relations: ['identifiers']
@@ -192,8 +201,10 @@ let AuthService = AuthService_1 = class AuthService {
             this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
             return;
         }
+        // 2. Generate 6-digit code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const hash = await bcrypt.hash(code, 10);
+        // 3. Save OTP Token
         const expiresAt = new Date();
         const otpExpMins = this.options.otpExpiresIn || 15;
         expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
@@ -205,6 +216,7 @@ let AuthService = AuthService_1 = class AuthService {
             requestUserId: auth.uid,
         });
         await this.otpRepo.save(otpToken);
+        // 4. Send via Provider
         try {
             await this.notificationProvider.sendVerificationCode(primaryIdentifier.value, code, primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone');
         }
@@ -219,6 +231,7 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.BadRequestException('Identity not found');
         if (auth.isVerified)
             return { message: 'Identity already verified' };
+        // Find the latest unused OTP for this UID
         const otp = await this.otpRepo.findOne({
             where: { requestUserId: uid, isUsed: false },
             order: { createdAt: 'DESC' },
@@ -231,6 +244,7 @@ let AuthService = AuthService_1 = class AuthService {
         const isMatch = await bcrypt.compare(code, otp.codeHash);
         if (!isMatch)
             throw new common_1.BadRequestException('Invalid verification code');
+        // Success!
         otp.isUsed = true;
         await this.otpRepo.save(otp);
         auth.isVerified = true;
@@ -247,6 +261,7 @@ let AuthService = AuthService_1 = class AuthService {
         if (!this.notificationProvider) {
             throw new common_1.BadRequestException('Verification is not configured');
         }
+        // Check resend interval
         const latestOtp = await this.otpRepo.findOne({
             where: { requestUserId: uid },
             order: { createdAt: 'DESC' },

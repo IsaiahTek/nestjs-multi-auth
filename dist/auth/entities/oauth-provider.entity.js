@@ -27,6 +27,7 @@ let OAuthProvider = class OAuthProvider extends base_entity_1.BaseEntity {
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
             deletedAt: this.deletedAt,
+            // auth: this.auth.toMap(),
         };
     }
 };

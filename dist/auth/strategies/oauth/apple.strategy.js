@@ -7,12 +7,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppleAuthStrategy = void 0;
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/require-await */
 const common_1 = require("@nestjs/common");
 let AppleAuthStrategy = class AppleAuthStrategy {
     async registerCredentials(dto, uid) {
+        // Verify apple token
         throw new Error('Apple OAuth Not implemented');
     }
     async login(dto) {
+        // Verify apple token, return existing user
         throw new Error('Apple OAuth Not implemented');
     }
 };

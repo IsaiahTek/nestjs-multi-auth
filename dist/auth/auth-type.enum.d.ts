@@ -5,7 +5,9 @@ export declare enum AuthStrategy {
     GOOGLE = "GOOGLE",
     FACEBOOK = "FACEBOOK",
     APPLE = "APPLE",
+    /** @deprecated Use granular types instead */
     LOCAL = "LOCAL",
+    /** @deprecated Use granular types instead */
     OAUTH = "OAUTH"
 }
 export declare enum OAuthProviderType {

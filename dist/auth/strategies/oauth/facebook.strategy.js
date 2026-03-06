@@ -7,12 +7,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FacebookAuthStrategy = void 0;
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/require-await */
 const common_1 = require("@nestjs/common");
 let FacebookAuthStrategy = class FacebookAuthStrategy {
     async registerCredentials(dto, uid) {
+        // Verify facebook token
         throw new Error('Facebook OAuth Not implemented');
     }
     async login(dto) {
+        // Verify facebook token, return existing user
         throw new Error('Facebook OAuth Not implemented');
     }
 };

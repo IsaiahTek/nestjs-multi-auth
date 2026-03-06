@@ -13,6 +13,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GoogleAuthStrategy = void 0;
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
 const typeorm_2 = require("@nestjs/typeorm");
@@ -58,6 +59,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
             const authRepo = manager.getRepository(auth_entity_1.Auth);
             const oauthProviderRepo = manager.getRepository(oauth_provider_entity_1.OAuthProvider);
             const identifierRepo = manager.getRepository(auth_identify_entity_1.AuthIdentifier);
+            // Check if this Google account is already linked
             const existingProvider = await oauthProviderRepo.findOne({
                 where: { provider: auth_type_enum_1.OAuthProviderType.GOOGLE, providerUserId: googleId },
                 relations: ['auth'],
@@ -65,6 +67,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
             if (existingProvider) {
                 throw new common_1.BadRequestException('This Google account is already linked to a user');
             }
+            // Check if email identifier is already taken
             if (email) {
                 const existingIdentifier = await identifierRepo.findOne({
                     where: { value: email, type: auth_identify_entity_1.IdentifierType.EMAIL },

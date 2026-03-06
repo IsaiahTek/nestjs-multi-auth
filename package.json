@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "An authentication service/module for NestJs that supports multiple authentication methods such as email, phone, username, OAuth, SSO, etc",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",

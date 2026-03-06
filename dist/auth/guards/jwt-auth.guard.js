@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JwtAuthGuard = void 0;
+// src/auth/jwt-auth.guard.ts
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const passport_1 = require("@nestjs/passport");
@@ -27,6 +28,7 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
         ]);
         const isOptional = this.reflector.getAllAndOverride(optional_decorator_1.IS_OPTIONAL_KEY, [context.getHandler(), context.getClass()]);
         if (isOptional || isPublic) {
+            // Try JWT, but don’t throw if missing/invalid
             try {
                 return (await super.canActivate(context));
             }
@@ -36,17 +38,22 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
                 return true;
             }
         }
+        // Default = strict JWT required
         return (await super.canActivate(context));
     }
     handleRequest(err, user, info, context) {
+        // Check if this is an optional or public route
         const isPublic = this.reflector.getAllAndOverride(public_decorator_1.IS_PUBLIC_KEY, [
             context.getHandler(),
             context.getClass(),
         ]);
         const isOptional = this.reflector.getAllAndOverride(optional_decorator_1.IS_OPTIONAL_KEY, [context.getHandler(), context.getClass()]);
+        // console.log('Auth user', user);
+        // For optional/public routes, allow null user
         if (isOptional || isPublic) {
             return user || null;
         }
+        // For protected routes, throw error if no valid user
         if (err || !user) {
             throw err || new common_1.UnauthorizedException('Authentication required');
         }

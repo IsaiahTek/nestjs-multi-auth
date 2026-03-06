@@ -24,7 +24,8 @@ __decorate([
     __metadata("design:type", String)
 ], Session.prototype, "uid", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ select: false }),
+    (0, typeorm_1.Column)({ select: false }) // Do not return in standard queries
+    ,
     __metadata("design:type", String)
 ], Session.prototype, "refreshTokenHash", void 0);
 __decorate([

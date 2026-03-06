@@ -25,6 +25,7 @@ let AuthIdentifier = class AuthIdentifier {
             type: this.type,
             value: this.value,
             isVerified: this.isVerified,
+            // auth: this.auth.toMap(),
         };
     }
 };
