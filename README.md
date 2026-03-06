@@ -123,6 +123,12 @@ The library includes a pluggable verification system to confirm Email or Phone i
 1.  **Passwordless Authentication**: When a user signs up or signs in using a local method (`EMAIL`, `PHONE`, `USERNAME`) **without a password**, the system automatically sends an OTP to verify the identity.
 2.  **Mandatory Verification**: If `verificationRequired: true` is set in the configuration, all new registrations and logins by unverified accounts will be challenged with an OTP.
 
+#### Delivery Channels
+When a user authenticates via **USERNAME** or any method without a direct delivery channel:
+- The system automatically searches all identifiers linked to the same `uid`.
+- It prioritizes the first found **EMAIL** or **PHONE** number to send the OTP.
+- **Note**: If a user identity exists only with a username and no email/phone is linked, the system will not be able to deliver the code.
+
 ### 1. Implement `AuthNotificationProvider`
 
 Create a service to deliver the verification codes (SMS or Email). You can use any service, such as [notifyc-nestjs](https://github.com/IsaiahTek/notifyc-nestjs):
