@@ -1,7 +1,13 @@
 export declare enum AuthStrategy {
+    EMAIL = "EMAIL",
+    PHONE = "PHONE",
+    USERNAME = "USERNAME",
+    GOOGLE = "GOOGLE",
+    FACEBOOK = "FACEBOOK",
+    APPLE = "APPLE",
+    OTP = "OTP",
     LOCAL = "LOCAL",
-    OAUTH = "OAUTH",
-    OTP = "OTP"
+    OAUTH = "OAUTH"
 }
 export declare enum OAuthProviderType {
     GOOGLE = "GOOGLE",

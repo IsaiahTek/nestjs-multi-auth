@@ -7,6 +7,9 @@ import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
 import { AppleAuthStrategy } from './apple.strategy';
 import { IOAuthStrategy } from './oauth-strategy.interface';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
+import { Inject } from '@nestjs/common';
+import { AuthStrategy } from '../../auth-type.enum';
 
 @Injectable()
 export class OAuthAuthStrategy implements IOAuthStrategy {
@@ -14,9 +17,22 @@ export class OAuthAuthStrategy implements IOAuthStrategy {
         private googleStrategy: GoogleAuthStrategy,
         private facebookStrategy: FacebookAuthStrategy,
         private appleStrategy: AppleAuthStrategy,
+        @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
     ) { }
 
     private getStrategy(provider?: OAuthProviderType): IOAuthStrategy {
+        const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
+
+        if (provider === OAuthProviderType.GOOGLE && !enabledStrategies.includes(AuthStrategy.GOOGLE) && !enabledStrategies.includes(AuthStrategy.OAUTH)) {
+            throw new BadRequestException('Google authentication is currently disabled.');
+        }
+        if (provider === OAuthProviderType.FACEBOOK && !enabledStrategies.includes(AuthStrategy.FACEBOOK) && !enabledStrategies.includes(AuthStrategy.OAUTH)) {
+            throw new BadRequestException('Facebook authentication is currently disabled.');
+        }
+        if (provider === OAuthProviderType.APPLE && !enabledStrategies.includes(AuthStrategy.APPLE) && !enabledStrategies.includes(AuthStrategy.OAUTH)) {
+            throw new BadRequestException('Apple authentication is currently disabled.');
+        }
+
         switch (provider) {
             case OAuthProviderType.GOOGLE:
                 return this.googleStrategy;

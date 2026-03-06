@@ -106,11 +106,7 @@ export class AuthService {
   async signup(dto: SignupDto, userAgent?: string, ip?: string) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
-    const enabledStrategies = this.options.enabledStrategies || [
-      AuthStrategy.LOCAL,
-      AuthStrategy.OAUTH,
-      AuthStrategy.OTP,
-    ];
+    const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
 
     if (!enabledStrategies.includes(dto.method)) {
       throw new BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
@@ -118,10 +114,16 @@ export class AuthService {
 
     let auth: Auth;
     switch (dto.method) {
+      case AuthStrategy.EMAIL:
+      case AuthStrategy.PHONE:
+      case AuthStrategy.USERNAME:
       case AuthStrategy.LOCAL:
         if (!this.passwordStrategy) throw new BadRequestException('Local authentication is not configured.');
         auth = await this.passwordStrategy.registerCredentials(dto);
         break;
+      case AuthStrategy.GOOGLE:
+      case AuthStrategy.FACEBOOK:
+      case AuthStrategy.APPLE:
       case AuthStrategy.OAUTH:
         if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
         auth = await this.oauthStrategy.registerCredentials(dto);
@@ -156,11 +158,7 @@ export class AuthService {
   async login(dto: LoginDto, userAgent?: string, ip?: string) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
-    const enabledStrategies = this.options.enabledStrategies || [
-      AuthStrategy.LOCAL,
-      AuthStrategy.OAUTH,
-      AuthStrategy.OTP,
-    ];
+    const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
 
     if (!enabledStrategies.includes(dto.method)) {
       throw new BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
@@ -168,10 +166,16 @@ export class AuthService {
 
     let auth: Auth;
     switch (dto.method) {
+      case AuthStrategy.EMAIL:
+      case AuthStrategy.PHONE:
+      case AuthStrategy.USERNAME:
       case AuthStrategy.LOCAL:
         if (!this.passwordStrategy) throw new BadRequestException('Local authentication is not configured.');
         auth = await this.passwordStrategy.login(dto);
         break;
+      case AuthStrategy.GOOGLE:
+      case AuthStrategy.FACEBOOK:
+      case AuthStrategy.APPLE:
       case AuthStrategy.OAUTH:
         if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
         auth = await this.oauthStrategy.login(dto);

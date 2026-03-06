@@ -41,21 +41,27 @@ export class AuthModule {
       OptionalAuthGuard,
     ];
 
-    const enabledStrategies = options.enabledStrategies || [
-      AuthStrategy.LOCAL,
-      AuthStrategy.OAUTH,
-      AuthStrategy.OTP,
-    ];
+    const enabledStrategies = options.enabledStrategies || Object.values(AuthStrategy);
 
-    if (enabledStrategies.includes(AuthStrategy.LOCAL)) {
+    const isLocalEnabled = enabledStrategies.some(s =>
+      [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(s)
+    );
+
+    const isOAuthEnabled = enabledStrategies.some(s =>
+      [AuthStrategy.GOOGLE, AuthStrategy.FACEBOOK, AuthStrategy.APPLE, AuthStrategy.OAUTH].includes(s)
+    );
+
+    const isOtpEnabled = enabledStrategies.includes(AuthStrategy.OTP);
+
+    if (isLocalEnabled) {
       providers.push(LocalAuthStrategy);
     }
 
-    if (enabledStrategies.includes(AuthStrategy.OTP)) {
+    if (isOtpEnabled) {
       providers.push(OtpAuthStrategy);
     }
 
-    if (enabledStrategies.includes(AuthStrategy.OAUTH)) {
+    if (isOAuthEnabled) {
       providers.push(
         OAuthAuthStrategy,
         GoogleAuthStrategy,

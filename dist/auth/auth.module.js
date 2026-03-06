@@ -47,18 +47,17 @@ let AuthModule = AuthModule_1 = class AuthModule {
             jwt_auth_guard_1.JwtAuthGuard,
             optional_auth_guard_1.OptionalAuthGuard,
         ];
-        const enabledStrategies = options.enabledStrategies || [
-            auth_type_enum_1.AuthStrategy.LOCAL,
-            auth_type_enum_1.AuthStrategy.OAUTH,
-            auth_type_enum_1.AuthStrategy.OTP,
-        ];
-        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+        const enabledStrategies = options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
+        const isLocalEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(s));
+        const isOAuthEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.GOOGLE, auth_type_enum_1.AuthStrategy.FACEBOOK, auth_type_enum_1.AuthStrategy.APPLE, auth_type_enum_1.AuthStrategy.OAUTH].includes(s));
+        const isOtpEnabled = enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OTP);
+        if (isLocalEnabled) {
             providers.push(local_auth_strategy_1.LocalAuthStrategy);
         }
-        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OTP)) {
+        if (isOtpEnabled) {
             providers.push(otp_strategy_1.OtpAuthStrategy);
         }
-        if (enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OAUTH)) {
+        if (isOAuthEnabled) {
             providers.push(oauth_strategy_1.OAuthAuthStrategy, google_strategy_1.GoogleAuthStrategy, apple_strategy_1.AppleAuthStrategy, facebook_strategy_1.FacebookAuthStrategy);
         }
         if (options.notificationProvider) {

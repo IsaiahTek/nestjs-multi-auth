@@ -81,21 +81,23 @@ let AuthService = AuthService_1 = class AuthService {
     async signup(dto, userAgent, ip) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
-        const enabledStrategies = this.options.enabledStrategies || [
-            auth_type_enum_1.AuthStrategy.LOCAL,
-            auth_type_enum_1.AuthStrategy.OAUTH,
-            auth_type_enum_1.AuthStrategy.OTP,
-        ];
+        const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         if (!enabledStrategies.includes(dto.method)) {
             throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
         }
         let auth;
         switch (dto.method) {
+            case auth_type_enum_1.AuthStrategy.EMAIL:
+            case auth_type_enum_1.AuthStrategy.PHONE:
+            case auth_type_enum_1.AuthStrategy.USERNAME:
             case auth_type_enum_1.AuthStrategy.LOCAL:
                 if (!this.passwordStrategy)
                     throw new common_1.BadRequestException('Local authentication is not configured.');
                 auth = await this.passwordStrategy.registerCredentials(dto);
                 break;
+            case auth_type_enum_1.AuthStrategy.GOOGLE:
+            case auth_type_enum_1.AuthStrategy.FACEBOOK:
+            case auth_type_enum_1.AuthStrategy.APPLE:
             case auth_type_enum_1.AuthStrategy.OAUTH:
                 if (!this.oauthStrategy)
                     throw new common_1.BadRequestException('OAuth authentication is not configured.');
@@ -125,21 +127,23 @@ let AuthService = AuthService_1 = class AuthService {
     async login(dto, userAgent, ip) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
-        const enabledStrategies = this.options.enabledStrategies || [
-            auth_type_enum_1.AuthStrategy.LOCAL,
-            auth_type_enum_1.AuthStrategy.OAUTH,
-            auth_type_enum_1.AuthStrategy.OTP,
-        ];
+        const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         if (!enabledStrategies.includes(dto.method)) {
             throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
         }
         let auth;
         switch (dto.method) {
+            case auth_type_enum_1.AuthStrategy.EMAIL:
+            case auth_type_enum_1.AuthStrategy.PHONE:
+            case auth_type_enum_1.AuthStrategy.USERNAME:
             case auth_type_enum_1.AuthStrategy.LOCAL:
                 if (!this.passwordStrategy)
                     throw new common_1.BadRequestException('Local authentication is not configured.');
                 auth = await this.passwordStrategy.login(dto);
                 break;
+            case auth_type_enum_1.AuthStrategy.GOOGLE:
+            case auth_type_enum_1.AuthStrategy.FACEBOOK:
+            case auth_type_enum_1.AuthStrategy.APPLE:
             case auth_type_enum_1.AuthStrategy.OAUTH:
                 if (!this.oauthStrategy)
                     throw new common_1.BadRequestException('OAuth authentication is not configured.');

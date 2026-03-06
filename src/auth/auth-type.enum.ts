@@ -1,10 +1,23 @@
 // src/auth/enums/auth-types.enum.ts
 
 export enum AuthStrategy {
-  LOCAL = 'LOCAL', // Password based
-  OAUTH = 'OAUTH', // Social Login
-  OTP = 'OTP',     // One-Time Password
-  // MAGIC_LINK = 'MAGIC_LINK', // Future use
+  // Local / Password-based
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE',
+  USERNAME = 'USERNAME',
+
+  // Social / OAuth
+  GOOGLE = 'GOOGLE',
+  FACEBOOK = 'FACEBOOK',
+  APPLE = 'APPLE',
+
+  // Other
+  OTP = 'OTP',
+
+  /** @deprecated Use granular types instead */
+  LOCAL = 'LOCAL',
+  /** @deprecated Use granular types instead */
+  OAUTH = 'OAUTH',
 }
 
 export enum OAuthProviderType {

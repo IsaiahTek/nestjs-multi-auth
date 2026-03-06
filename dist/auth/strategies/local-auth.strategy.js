@@ -33,6 +33,16 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         this.logger = new common_1.Logger(LocalAuthStrategy_1.name);
     }
     async registerCredentials(dto, uid) {
+        const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
+        if (dto.email && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.EMAIL) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Email authentication is currently disabled.');
+        }
+        if (dto.phone && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.PHONE) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Phone authentication is currently disabled.');
+        }
+        if (dto.username && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.USERNAME) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Username authentication is currently disabled.');
+        }
         if (!dto.email && !dto.phone && !dto.username) {
             throw new common_1.BadRequestException('Email, phone or username is required');
         }
@@ -103,9 +113,22 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         if (!dto.password && (!isPhoneLogin || phoneRequiresPassword)) {
             throw new common_1.BadRequestException('Password is required');
         }
+        const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
         if (!identifierValue) {
             throw new common_1.BadRequestException('Email, phone or username is required');
+        }
+        const isEmail = !!dto.email || (!!dto.emailOrPhone && dto.emailOrPhone.includes('@'));
+        const isPhone = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
+        const isUsername = !!dto.username || (!isEmail && !isPhone);
+        if (isEmail && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.EMAIL) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Email authentication is currently disabled.');
+        }
+        if (isPhone && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.PHONE) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Phone authentication is currently disabled.');
+        }
+        if (isUsername && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.USERNAME) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
+            throw new common_1.BadRequestException('Username authentication is currently disabled.');
         }
         const identifier = await this.identifierRepo.findOne({
             where: { value: identifierValue.toLowerCase() },

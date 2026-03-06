@@ -3,9 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthTransport = exports.OAuthProviderType = exports.AuthStrategy = void 0;
 var AuthStrategy;
 (function (AuthStrategy) {
+    AuthStrategy["EMAIL"] = "EMAIL";
+    AuthStrategy["PHONE"] = "PHONE";
+    AuthStrategy["USERNAME"] = "USERNAME";
+    AuthStrategy["GOOGLE"] = "GOOGLE";
+    AuthStrategy["FACEBOOK"] = "FACEBOOK";
+    AuthStrategy["APPLE"] = "APPLE";
+    AuthStrategy["OTP"] = "OTP";
     AuthStrategy["LOCAL"] = "LOCAL";
     AuthStrategy["OAUTH"] = "OAUTH";
-    AuthStrategy["OTP"] = "OTP";
 })(AuthStrategy || (exports.AuthStrategy = AuthStrategy = {}));
 var OAuthProviderType;
 (function (OAuthProviderType) {

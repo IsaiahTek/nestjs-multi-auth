@@ -39,7 +39,19 @@ export class LocalAuthStrategy {
   private readonly logger: Logger = new Logger(LocalAuthStrategy.name);
 
   async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
-    // 1. Validation
+    const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
+
+    // 1. Validation of identifiers against enabled strategies
+    if (dto.email && !enabledStrategies.includes(AuthStrategy.EMAIL) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Email authentication is currently disabled.');
+    }
+    if (dto.phone && !enabledStrategies.includes(AuthStrategy.PHONE) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Phone authentication is currently disabled.');
+    }
+    if (dto.username && !enabledStrategies.includes(AuthStrategy.USERNAME) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Username authentication is currently disabled.');
+    }
+
     if (!dto.email && !dto.phone && !dto.username) {
       throw new BadRequestException('Email, phone or username is required');
     }
@@ -146,10 +158,26 @@ export class LocalAuthStrategy {
       throw new BadRequestException('Password is required');
     }
 
+    const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
     const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
 
     if (!identifierValue) {
       throw new BadRequestException('Email, phone or username is required');
+    }
+
+    // Validate identifier type against enabled strategies
+    const isEmail = !!dto.email || (!!dto.emailOrPhone && dto.emailOrPhone.includes('@'));
+    const isPhone = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
+    const isUsername = !!dto.username || (!isEmail && !isPhone);
+
+    if (isEmail && !enabledStrategies.includes(AuthStrategy.EMAIL) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Email authentication is currently disabled.');
+    }
+    if (isPhone && !enabledStrategies.includes(AuthStrategy.PHONE) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Phone authentication is currently disabled.');
+    }
+    if (isUsername && !enabledStrategies.includes(AuthStrategy.USERNAME) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
+      throw new BadRequestException('Username authentication is currently disabled.');
     }
 
     // 1. Look up the Identifier first (e.g., find row where value = "john@gmail.com")
