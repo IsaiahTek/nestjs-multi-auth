@@ -66,10 +66,13 @@ import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
       phoneRequiresPassword: true, 
       
       // Optional: defaults to false.
-      // disableGlobalGuard: true,
-      
-      // Optional: defaults to false.
       // disableController: true,
+
+      // Optional: Durations and Intervals
+      otpExpiresIn: 15,                // 15 minutes
+      otpResendInterval: 60,           // 60 seconds
+      accessTokenExpiresIn: '15m',     // Access token
+      refreshTokenExpiresIn: '7d',     // Refresh token & Session
     }),
   ],
 })

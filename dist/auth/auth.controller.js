@@ -97,8 +97,19 @@ let AuthController = class AuthController {
             throw new common_1.HttpException(e.message, common_1.HttpStatus.UNAUTHORIZED);
         }
     }
-    async verify(dto) {
-        return this.authService.verifyCode(dto.uid, dto.code);
+    async verify(dto, res, req) {
+        const result = await this.authService.verifyCode(dto.uid, dto.code, req.headers['user-agent'], req.ip);
+        const transports = this.getTransports();
+        if (result.tokens) {
+            if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
+                this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+            }
+        }
+        const response = { message: result.message, auth: result.auth };
+        if (result.tokens && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
+            response.tokens = result.tokens;
+        }
+        return response;
     }
     async resendVerification(dto) {
         return this.authService.resendVerification(dto.uid);
@@ -166,8 +177,10 @@ __decorate([
     (0, public_decorator_1.Public)(),
     (0, swagger_1.ApiOperation)({ summary: 'Verify identity with OTP code' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [verify_dto_1.VerifyDto]),
+    __metadata("design:paramtypes", [verify_dto_1.VerifyDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "verify", null);
 __decorate([

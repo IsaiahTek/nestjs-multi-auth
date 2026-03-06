@@ -18,12 +18,12 @@ export interface AuthModuleOptions {
     /**
      * Optional: Custom expiration for Access Tokens (e.g., '15m')
      */
-    jwtExpiresIn?: string;
+    accessTokenExpiresIn?: string;
 
     /**
      * Optional: Custom expiration for Refresh Tokens (e.g., '7d')
      */
-    jwtRefreshExpiresIn?: string;
+    refreshTokenExpiresIn?: string;
 
     /**
      * If true, the library will NOT automatically register the global JwtAuthGuard.
@@ -75,4 +75,16 @@ export interface AuthModuleOptions {
      * Defaults to false (password-less phone auth allowed).
      */
     phoneRequiresPassword?: boolean;
+
+    /**
+     * Optional: Duration for OTP expiration in minutes.
+     * Defaults to 15 minutes.
+     */
+    otpExpiresIn?: number;
+
+    /**
+     * Optional: Minimum interval between OTP resends in seconds.
+     * Defaults to 60 seconds.
+     */
+    otpResendInterval?: number;
 }

@@ -116,4 +116,28 @@ describe('AuthService', () => {
             await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(/not configured/);
         });
     });
+
+    describe('resendVerification', () => {
+        it('should throw BadRequestException if called within resend interval', async () => {
+            const authId = 'auth-uid';
+            mockAuthRepo.findOne.mockResolvedValue({ id: 1, uid: authId, isVerified: false });
+            mockOtpRepo.findOne.mockResolvedValue({
+                createdAt: new Date(Date.now() - 30 * 1000), // 30 seconds ago
+            });
+
+            const serviceWithInterval = new AuthService(
+                mockJwtService as any,
+                mockPasswordStrategy as any,
+                mockOAuthStrategy as any,
+                mockSessionRepo as any,
+                mockAuthRepo as any,
+                mockOtpRepo as any,
+                { otpResendInterval: 60 } as any, // 60 second interval
+                { sendVerificationCode: jest.fn() } as any,
+            );
+
+            await expect(serviceWithInterval.resendVerification(authId)).rejects.toThrow(BadRequestException);
+            await expect(serviceWithInterval.resendVerification(authId)).rejects.toThrow(/Please wait/);
+        });
+    });
 });

@@ -22,7 +22,6 @@ const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
 const google_strategy_1 = require("./strategies/oauth/google.strategy");
 const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
 const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
-const otp_strategy_1 = require("./strategies/otp.strategy");
 const jwt_strategy_1 = require("./jwt.strategy");
 const auth_type_enum_1 = require("./auth-type.enum");
 const passport_1 = require("@nestjs/passport");
@@ -50,12 +49,9 @@ let AuthModule = AuthModule_1 = class AuthModule {
         const enabledStrategies = options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         const isLocalEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(s));
         const isOAuthEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.GOOGLE, auth_type_enum_1.AuthStrategy.FACEBOOK, auth_type_enum_1.AuthStrategy.APPLE, auth_type_enum_1.AuthStrategy.OAUTH].includes(s));
-        const isOtpEnabled = enabledStrategies.includes(auth_type_enum_1.AuthStrategy.OTP);
+        const isOtpEnabled = enabledStrategies.includes('OTP');
         if (isLocalEnabled) {
             providers.push(local_auth_strategy_1.LocalAuthStrategy);
-        }
-        if (isOtpEnabled) {
-            providers.push(otp_strategy_1.OtpAuthStrategy);
         }
         if (isOAuthEnabled) {
             providers.push(oauth_strategy_1.OAuthAuthStrategy, google_strategy_1.GoogleAuthStrategy, apple_strategy_1.AppleAuthStrategy, facebook_strategy_1.FacebookAuthStrategy);
@@ -84,7 +80,10 @@ let AuthModule = AuthModule_1 = class AuthModule {
                     session_entity_1.Session,
                 ]),
                 passport_1.PassportModule,
-                jwt_1.JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
+                jwt_1.JwtModule.register({
+                    secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
+                    signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') },
+                }),
                 ...(options.imports || []),
             ],
             providers,

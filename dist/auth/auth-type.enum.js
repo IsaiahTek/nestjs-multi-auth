@@ -9,7 +9,6 @@ var AuthStrategy;
     AuthStrategy["GOOGLE"] = "GOOGLE";
     AuthStrategy["FACEBOOK"] = "FACEBOOK";
     AuthStrategy["APPLE"] = "APPLE";
-    AuthStrategy["OTP"] = "OTP";
     AuthStrategy["LOCAL"] = "LOCAL";
     AuthStrategy["OAUTH"] = "OAUTH";
 })(AuthStrategy || (exports.AuthStrategy = AuthStrategy = {}));

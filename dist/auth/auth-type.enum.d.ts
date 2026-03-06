@@ -5,7 +5,6 @@ export declare enum AuthStrategy {
     GOOGLE = "GOOGLE",
     FACEBOOK = "FACEBOOK",
     APPLE = "APPLE",
-    OTP = "OTP",
     LOCAL = "LOCAL",
     OAUTH = "OAUTH"
 }

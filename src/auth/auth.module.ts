@@ -93,7 +93,10 @@ export class AuthModule {
           Session,
         ]),
         PassportModule,
-        JwtModule.register({ secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme' }),
+        JwtModule.register({
+          secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
+          signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') as any },
+        }),
         ...(options.imports || []),
       ],
       providers,

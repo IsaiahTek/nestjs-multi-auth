@@ -14,9 +14,7 @@ export declare class AuthController {
     private setCookies;
     signup(dto: SignupDto, res: Response, req: Request): Promise<any>;
     login(dto: LoginDto, res: Response, req: Request): Promise<any>;
-    verify(dto: VerifyDto): Promise<{
-        message: string;
-    }>;
+    verify(dto: VerifyDto, res: Response, req: Request): Promise<any>;
     resendVerification(dto: ResendVerificationDto): Promise<{
         message: string;
     }>;

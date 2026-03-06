@@ -5,8 +5,8 @@ export declare const AUTH_MODULE_OPTIONS = "AUTH_MODULE_OPTIONS";
 export interface AuthModuleOptions {
     jwtSecret: string;
     jwtRefreshSecret: string;
-    jwtExpiresIn?: string;
-    jwtRefreshExpiresIn?: string;
+    accessTokenExpiresIn?: string;
+    refreshTokenExpiresIn?: string;
     disableGlobalGuard?: boolean;
     disableController?: boolean;
     transport?: AuthTransport | AuthTransport[];
@@ -16,4 +16,6 @@ export interface AuthModuleOptions {
     googleClientId?: string;
     enabledStrategies?: AuthStrategy[];
     phoneRequiresPassword?: boolean;
+    otpExpiresIn?: number;
+    otpResendInterval?: number;
 }

@@ -62,52 +62,6 @@ __decorate([
     __metadata("design:type", String)
 ], SignupDto.prototype, "password", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({
-        example: 'worker',
-        required: false,
-        description: 'Role of the user within the system',
-    }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "role", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'John Bassey', required: false }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "firstName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'John Bassey', required: false }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "lastName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Lagos, Nigeria', required: false }),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "address", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({
-        example: 'I have 10 years painting experience',
-        required: false,
-    }),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "bio", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Acme Ltd', required: false }),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "companyName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'RC123456', required: false }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], SignupDto.prototype, "registrationNo", void 0);
-__decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)

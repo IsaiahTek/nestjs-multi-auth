@@ -52,19 +52,38 @@ export class AuthService {
         { sub: uid, sessionId },
         {
           secret: this.options.jwtSecret || process.env.JWT_SECRET,
-          expiresIn: (this.options.jwtExpiresIn || '15m') as any,
+          expiresIn: (this.options.accessTokenExpiresIn || '15m') as any,
         },
       ),
       this.jwtService.signAsync(
         { sub: uid, sessionId, jti: refreshJti },
         {
           secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET,
-          expiresIn: (this.options.jwtRefreshExpiresIn || '7d') as any,
+          expiresIn: (this.options.refreshTokenExpiresIn || '7d') as any,
         },
       ),
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  private parseDuration(duration: string | number, defaultSeconds: number): number {
+    if (typeof duration === 'number') return duration;
+    if (!duration) return defaultSeconds;
+
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return defaultSeconds;
+
+    const value = parseInt(match[1]);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's': return value;
+      case 'm': return value * 60;
+      case 'h': return value * 60 * 60;
+      case 'd': return value * 60 * 60 * 24;
+      default: return defaultSeconds;
+    }
   }
 
   private fingerprint(userAgent: string) {
@@ -78,7 +97,8 @@ export class AuthService {
     ip: string = 'Unknown',
   ) {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+    expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
 
     const deviceFingerprint = this.fingerprint(userAgent);
 
@@ -225,7 +245,8 @@ export class AuthService {
 
     // 3. Save OTP Token
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 mins expiry
+    const otpExpMins = this.options.otpExpiresIn || 15;
+    expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
 
     const otpToken = this.otpRepo.create({
       identifier: primaryIdentifier.value,
@@ -293,6 +314,21 @@ export class AuthService {
       throw new BadRequestException('Verification is not configured');
     }
 
+    // Check resend interval
+    const latestOtp = await this.otpRepo.findOne({
+      where: { requestUserId: uid },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (latestOtp) {
+      const intervalSeconds = this.options.otpResendInterval || 60;
+      const diffMs = Date.now() - latestOtp.createdAt.getTime();
+      if (diffMs < intervalSeconds * 1000) {
+        const wait = Math.ceil(intervalSeconds - diffMs / 1000);
+        throw new BadRequestException(`Please wait ${wait} seconds before requesting a new code.`);
+      }
+    }
+
     await this.sendVerification(auth);
     return { message: 'Verification code resent' };
   }
@@ -348,7 +384,8 @@ export class AuthService {
       const newHash = await bcrypt.hash(tokens.refreshToken, 10);
 
       const newExpiry = new Date();
-      newExpiry.setDate(newExpiry.getDate() + 7);
+      const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+      newExpiry.setSeconds(newExpiry.getSeconds() + durationSeconds);
 
       await this.sessionRepository.update(session.id, {
         refreshTokenHash: newHash,
