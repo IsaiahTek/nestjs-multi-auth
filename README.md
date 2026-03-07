@@ -11,6 +11,7 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically.
 - **Granular Strategy Selection**: Enable individual authentication methods (Email, Phone, Username, Google, Facebook, Apple).
 - **Flexible Phone Auth**: Choose whether phone-based authentication requires a password or is password-less by default.
+- **Phone Number Prefix Validation**: Restrict authentication to specific country codes or phone formats (e.g., `['+234', '+44']`).
 - **Multiple Auth Transports**: Supports HTTP-only Cookies, JSON body (Bearer token), or both.
 - **Token Rotation**: Built-in `/refresh` and `/logout` endpoints with automatic token rotation.
 - **Session Tracking**: Tracks IP and User Agent for basic session security.
@@ -83,6 +84,9 @@ import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
       // Optional: If strategy PHONE is enabled, defaults to false
       phoneRequiresPassword: true, 
       
+      // Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
+      allowedPhonePrefixes: ['+234', '+44'],
+
       // Optional: defaults to false.
       // disableController: true,
 

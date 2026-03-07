@@ -45,7 +45,7 @@ export class LocalAuthStrategy {
     const matches = prefixes.some((prefix) => phone.startsWith(prefix));
     if (!matches) {
       throw new BadRequestException(
-        `Phone number must start with one of: ${prefixes.join(', ')}`,
+        `Phone number must start with ${prefixes.length > 1 ? 'one of these prefixes' : 'this prefix'}: ${prefixes.join(', ')}`,
       );
     }
   }

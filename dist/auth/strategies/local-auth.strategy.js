@@ -41,7 +41,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             return;
         const matches = prefixes.some((prefix) => phone.startsWith(prefix));
         if (!matches) {
-            throw new common_1.BadRequestException(`Phone number must start with one of: ${prefixes.join(', ')}`);
+            throw new common_1.BadRequestException(`Phone number must start with ${prefixes.length > 1 ? 'one of these prefixes' : 'this prefix'}: ${prefixes.join(', ')}`);
         }
     }
     async registerCredentials(dto, uid) {
