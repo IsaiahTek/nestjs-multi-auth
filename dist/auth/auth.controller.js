@@ -283,7 +283,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
-    (0, common_1.Post)('account'),
+    (0, common_1.Delete)('account'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete user account and all associated data' }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
@@ -292,7 +292,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "deleteAccount", null);
 __decorate([
-    (0, common_1.Post)('method/:id'),
+    (0, common_1.Delete)('method/:id'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a specific authentication method' }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
