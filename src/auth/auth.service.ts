@@ -18,6 +18,7 @@ import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken, OtpPurpose } from './entities/otp-token.entity';
+import { MfaMethod } from './entities/mfa-method.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import { randomUUID } from 'crypto';
@@ -37,6 +38,8 @@ export class AuthService {
     private authRepo: Repository<Auth>,
     @InjectRepository(OtpToken)
     private otpRepo: Repository<OtpToken>,
+    @InjectRepository(MfaMethod)
+    private mfaRepo: Repository<MfaMethod>,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
     @Optional()
     @Inject(AUTH_NOTIFICATION_PROVIDER)
@@ -158,8 +161,16 @@ export class AuthService {
     // Force verification if no password was provided for local strategies (passwordless signup)
     const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
 
-    if ((this.options.verificationRequired || isPasswordless) && this.notificationProvider) {
-      if (!identifier?.isVerified) {
+    // Check if user has 2FA enabled
+    const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+    const has2FA = !!mfaMethod;
+
+    const triggerVerification = isPasswordless ||
+      (this.options.verificationRequired && !identifier?.isVerified) ||
+      has2FA;
+
+    if (triggerVerification && this.notificationProvider) {
+      if (!identifier?.isVerified || has2FA || isPasswordless) {
         await this.sendVerification(auth, identifier);
       }
       return {
@@ -211,7 +222,15 @@ export class AuthService {
     // Force verification if no password was provided for local strategies (passwordless login)
     const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
 
-    if ((this.options.verificationRequired || isPasswordless) && !identifier?.isVerified && this.notificationProvider) {
+    // Check if user has 2FA enabled
+    const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+    const has2FA = !!mfaMethod;
+
+    const triggerVerification = isPasswordless ||
+      (this.options.verificationRequired && !identifier?.isVerified) ||
+      has2FA;
+
+    if (triggerVerification && this.notificationProvider) {
       await this.sendVerification(auth, identifier);
       return {
         message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',

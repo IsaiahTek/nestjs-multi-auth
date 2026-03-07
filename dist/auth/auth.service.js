@@ -25,18 +25,20 @@ const auth_type_enum_1 = require("./auth-type.enum");
 const auth_entity_1 = require("./entities/auth.entity");
 const session_entity_1 = require("./entities/session.entity");
 const otp_token_entity_1 = require("./entities/otp-token.entity");
+const mfa_method_entity_1 = require("./entities/mfa-method.entity");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
 const crypto_1 = require("crypto");
 const crypto = require("crypto");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, options, notificationProvider) {
+    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider) {
         this.jwtService = jwtService;
         this.passwordStrategy = passwordStrategy;
         this.oauthStrategy = oauthStrategy;
         this.sessionRepository = sessionRepository;
         this.authRepo = authRepo;
         this.otpRepo = otpRepo;
+        this.mfaRepo = mfaRepo;
         this.options = options;
         this.notificationProvider = notificationProvider;
         this.logger = new common_1.Logger(AuthService_1.name);
@@ -132,8 +134,14 @@ let AuthService = AuthService_1 = class AuthService {
         }
         // Force verification if no password was provided for local strategies (passwordless signup)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
-        if ((this.options.verificationRequired || isPasswordless) && this.notificationProvider) {
-            if (!identifier?.isVerified) {
+        // Check if user has 2FA enabled
+        const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+        const has2FA = !!mfaMethod;
+        const triggerVerification = isPasswordless ||
+            (this.options.verificationRequired && !identifier?.isVerified) ||
+            has2FA;
+        if (triggerVerification && this.notificationProvider) {
+            if (!identifier?.isVerified || has2FA || isPasswordless) {
                 await this.sendVerification(auth, identifier);
             }
             return {
@@ -180,7 +188,13 @@ let AuthService = AuthService_1 = class AuthService {
         }
         // Force verification if no password was provided for local strategies (passwordless login)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
-        if ((this.options.verificationRequired || isPasswordless) && !identifier?.isVerified && this.notificationProvider) {
+        // Check if user has 2FA enabled
+        const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+        const has2FA = !!mfaMethod;
+        const triggerVerification = isPasswordless ||
+            (this.options.verificationRequired && !identifier?.isVerified) ||
+            has2FA;
+        if (triggerVerification && this.notificationProvider) {
             await this.sendVerification(auth, identifier);
             return {
                 message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
@@ -372,12 +386,14 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __param(3, (0, typeorm_1.InjectRepository)(session_entity_1.Session)),
     __param(4, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
     __param(5, (0, typeorm_1.InjectRepository)(otp_token_entity_1.OtpToken)),
-    __param(6, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
-    __param(7, (0, common_1.Optional)()),
-    __param(7, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
+    __param(6, (0, typeorm_1.InjectRepository)(mfa_method_entity_1.MfaMethod)),
+    __param(7, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
+    __param(8, (0, common_1.Optional)()),
+    __param(8, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         local_auth_strategy_1.LocalAuthStrategy,
         oauth_strategy_1.OAuthAuthStrategy,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository, Object, Object])

@@ -7,6 +7,7 @@ import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken } from './entities/otp-token.entity';
+import { MfaMethod } from './entities/mfa-method.entity';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 export declare class AuthService {
@@ -16,10 +17,11 @@ export declare class AuthService {
     private sessionRepository;
     private authRepo;
     private otpRepo;
+    private mfaRepo;
     private options;
     private notificationProvider?;
     private readonly logger;
-    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider);
+    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, mfaRepo: Repository<MfaMethod>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider);
     private generateTokens;
     private parseDuration;
     private fingerprint;

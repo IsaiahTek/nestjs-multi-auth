@@ -6,6 +6,7 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 
 - **Identity-Only (Firebase Style)**: Pure authentication and session management. Agnostic of your application's user profiles and database structure.
 - **Grouped Identities**: Multiple login methods (Google, Password, etc.) are consolidated under a single, opaque `uid`.
+- **MFA/2FA Ready**: Built-in support for Multi-Factor Authentication (Email, SMS, TOTP).
 - **Secure by Default**: Automatically registers a global authentication guard.
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences dynamically.
 - **Granular Strategy Selection**: Enable individual authentication methods (Email, Phone, Username, Google, Facebook, Apple).
@@ -119,18 +120,21 @@ AuthModule.register({
 
 ---
 
-## Identity Verification (OTPs)
+## Identity Verification (OTPs) & MFA
 
-The library includes a pluggable verification system to confirm Email or Phone identities. OTPs are used in two primary scenarios:
+The library includes a pluggable verification system to confirm identities via Email or Phone. OTPs are triggered in the following scenarios:
 
-1.  **Passwordless Authentication**: When a user signs up or signs in using a local method (`EMAIL`, `PHONE`, `USERNAME`) **without a password**, the system automatically sends an OTP to verify the identity.
-2.  **Mandatory Verification**: If `verificationRequired: true` is set in the configuration, all new registrations and logins by unverified accounts will be challenged with an OTP.
+1.  **Multi-Factor Authentication (2FA)**: If a user has any enabled MFA methods (TOTP, Email, SMS), verification is **always** required during login and signup.
+2.  **Passwordless Authentication**: When using a local method (`EMAIL`, `PHONE`, `USERNAME`) **without a password**, an OTP is always sent as the primary credential.
+3.  **Mandatory Verification**: If `verificationRequired: true` is configured, verification is enforced for any **unverified** identity.
+    - **OAuth Note**: Verified OAuth providers (e.g., Google with `email_verified: true`) automatically bypass this unless 2FA is enabled.
+    - **Identifier-Level**: Verification is tracked per-identifier. Successful verification marks the specific method and all its identifiers as verified.
 
-#### Delivery Channels
-When a user authenticates via **USERNAME** or any method without a direct delivery channel:
-- The system automatically searches all identifiers linked to the same `uid`.
-- It prioritizes the first found **EMAIL** or **PHONE** number to send the OTP.
-- **Note**: If a user identity exists only with a username and no email/phone is linked, the system will not be able to deliver the code.
+#### Smart Delivery (Cross-Auth)
+If a user authenticates via a non-verifiable method (like a **USERNAME**), the system automatically:
+- Searches all linked identifiers across **all** authentication methods for that user.
+- Prioritizes verified **EMAIL** or **PHONE** numbers for delivery.
+- Marks all identifiers for the current auth method as verified once the OTP is confirmed.
 
 ### 1. Implement `AuthNotificationProvider`
 
