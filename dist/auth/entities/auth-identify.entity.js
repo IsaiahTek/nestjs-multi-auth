@@ -12,13 +12,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthIdentifier = exports.IdentifierType = void 0;
 const typeorm_1 = require("typeorm");
 const auth_entity_1 = require("./auth.entity");
+const base_entity_1 = require("./base.entity");
 var IdentifierType;
 (function (IdentifierType) {
     IdentifierType["EMAIL"] = "EMAIL";
     IdentifierType["PHONE"] = "PHONE";
     IdentifierType["USERNAME"] = "USERNAME";
 })(IdentifierType || (exports.IdentifierType = IdentifierType = {}));
-let AuthIdentifier = class AuthIdentifier {
+let AuthIdentifier = class AuthIdentifier extends base_entity_1.BaseEntity {
     toMap() {
         return {
             id: this.id,
@@ -30,10 +31,6 @@ let AuthIdentifier = class AuthIdentifier {
     }
 };
 exports.AuthIdentifier = AuthIdentifier;
-__decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
-    __metadata("design:type", String)
-], AuthIdentifier.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => auth_entity_1.Auth, (auth) => auth.identifiers, { onDelete: 'CASCADE' }),
     __metadata("design:type", auth_entity_1.Auth)

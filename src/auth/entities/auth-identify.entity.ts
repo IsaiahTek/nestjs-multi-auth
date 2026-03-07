@@ -1,11 +1,11 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   Index,
 } from 'typeorm';
 import { Auth } from './auth.entity';
+import { BaseEntity } from './base.entity';
 
 export enum IdentifierType {
   EMAIL = 'EMAIL',
@@ -14,9 +14,7 @@ export enum IdentifierType {
 }
 
 @Entity('auth_identifiers')
-export class AuthIdentifier {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export class AuthIdentifier extends BaseEntity {
 
   @ManyToOne(() => Auth, (auth) => auth.identifiers, { onDelete: 'CASCADE' })
   auth: Auth;
