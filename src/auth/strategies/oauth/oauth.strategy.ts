@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { Auth } from '../../entities/auth.entity';
+import { AuthIdentifier } from '../../entities/auth-identify.entity';
 import { OAuthProviderType } from '../../auth-type.enum';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
@@ -45,12 +46,12 @@ export class OAuthAuthStrategy implements IOAuthStrategy {
         }
     }
 
-    async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
+    async registerCredentials(dto: SignupDto, uid?: string): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
         const strategy = this.getStrategy(dto.provider);
         return strategy.registerCredentials(dto, uid);
     }
 
-    async login(dto: LoginDto): Promise<Auth> {
+    async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
         const strategy = this.getStrategy(dto.provider);
         return strategy.login(dto);
     }

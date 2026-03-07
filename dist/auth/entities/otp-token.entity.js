@@ -46,6 +46,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], OtpToken.prototype, "requestUserId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], OtpToken.prototype, "requestAuthId", void 0);
 exports.OtpToken = OtpToken = __decorate([
     (0, typeorm_1.Entity)('otp_tokens')
     // Index makes lookup fast: "Find latest unused OTP for john@gmail.com"

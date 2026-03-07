@@ -1,6 +1,7 @@
 import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { Auth } from '../../entities/auth.entity';
+import { AuthIdentifier } from '../../entities/auth-identify.entity';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
 import { AppleAuthStrategy } from './apple.strategy';
@@ -13,6 +14,12 @@ export declare class OAuthAuthStrategy implements IOAuthStrategy {
     private options;
     constructor(googleStrategy: GoogleAuthStrategy, facebookStrategy: FacebookAuthStrategy, appleStrategy: AppleAuthStrategy, options: AuthModuleOptions);
     private getStrategy;
-    registerCredentials(dto: SignupDto, uid?: string): Promise<Auth>;
-    login(dto: LoginDto): Promise<Auth>;
+    registerCredentials(dto: SignupDto, uid?: string): Promise<{
+        auth: Auth;
+        identifier?: AuthIdentifier;
+    }>;
+    login(dto: LoginDto): Promise<{
+        auth: Auth;
+        identifier?: AuthIdentifier;
+    }>;
 }

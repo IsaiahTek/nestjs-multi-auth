@@ -38,7 +38,7 @@ export class LocalAuthStrategy {
 
   private readonly logger: Logger = new Logger(LocalAuthStrategy.name);
 
-  async registerCredentials(dto: SignupDto, uid?: string): Promise<Auth> {
+  async registerCredentials(dto: SignupDto, uid?: string): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
 
     // 1. Validation of identifiers against enabled strategies
@@ -146,11 +146,12 @@ export class LocalAuthStrategy {
       newAuth.identifiers = newIdentifiers;
 
       // 8. Save (Cascade will save Auth + Identifiers)
-      return await authRepo.save(newAuth);
+      const auth = await authRepo.save(newAuth);
+      return { auth, identifier: auth.identifiers?.[0] };
     });
   }
 
-  async login(dto: LoginDto): Promise<Auth> {
+  async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
     const isPhoneLogin = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
     const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
 
@@ -229,6 +230,6 @@ export class LocalAuthStrategy {
     auth.lastUsedAt = new Date();
     await this.authRepo.save(auth);
 
-    return auth;
+    return { auth, identifier };
   }
 }

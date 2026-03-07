@@ -105,6 +105,7 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
         }
         let auth;
+        let identifier;
         switch (dto.method) {
             case auth_type_enum_1.AuthStrategy.EMAIL:
             case auth_type_enum_1.AuthStrategy.PHONE:
@@ -112,7 +113,9 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.LOCAL:
                 if (!this.passwordStrategy)
                     throw new common_1.BadRequestException('Local authentication is not configured.');
-                auth = await this.passwordStrategy.registerCredentials(dto);
+                const localResult = await this.passwordStrategy.registerCredentials(dto);
+                auth = localResult.auth;
+                identifier = localResult.identifier;
                 break;
             case auth_type_enum_1.AuthStrategy.GOOGLE:
             case auth_type_enum_1.AuthStrategy.FACEBOOK:
@@ -120,7 +123,9 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.OAUTH:
                 if (!this.oauthStrategy)
                     throw new common_1.BadRequestException('OAuth authentication is not configured.');
-                auth = await this.oauthStrategy.registerCredentials(dto);
+                const oauthResult = await this.oauthStrategy.registerCredentials(dto);
+                auth = oauthResult.auth;
+                identifier = oauthResult.identifier;
                 break;
             default:
                 throw new Error('Unsupported signup provider');
@@ -128,8 +133,8 @@ let AuthService = AuthService_1 = class AuthService {
         // Force verification if no password was provided for local strategies (passwordless signup)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
         if ((this.options.verificationRequired || isPasswordless) && this.notificationProvider) {
-            if (!auth.isVerified) {
-                await this.sendVerification(auth);
+            if (!identifier?.isVerified) {
+                await this.sendVerification(auth, identifier);
             }
             return {
                 message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
@@ -148,6 +153,7 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.BadRequestException(`Authentication method ${dto.method} is currently disabled.`);
         }
         let auth;
+        let identifier;
         switch (dto.method) {
             case auth_type_enum_1.AuthStrategy.EMAIL:
             case auth_type_enum_1.AuthStrategy.PHONE:
@@ -155,7 +161,9 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.LOCAL:
                 if (!this.passwordStrategy)
                     throw new common_1.BadRequestException('Local authentication is not configured.');
-                auth = await this.passwordStrategy.login(dto);
+                const localResult = await this.passwordStrategy.login(dto);
+                auth = localResult.auth;
+                identifier = localResult.identifier;
                 break;
             case auth_type_enum_1.AuthStrategy.GOOGLE:
             case auth_type_enum_1.AuthStrategy.FACEBOOK:
@@ -163,15 +171,17 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.OAUTH:
                 if (!this.oauthStrategy)
                     throw new common_1.BadRequestException('OAuth authentication is not configured.');
-                auth = await this.oauthStrategy.login(dto);
+                const oauthResult = await this.oauthStrategy.login(dto);
+                auth = oauthResult.auth;
+                identifier = oauthResult.identifier;
                 break;
             default:
                 throw new Error('Unsupported login provider');
         }
         // Force verification if no password was provided for local strategies (passwordless login)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
-        if ((this.options.verificationRequired || isPasswordless) && !auth.isVerified && this.notificationProvider) {
-            await this.sendVerification(auth);
+        if ((this.options.verificationRequired || isPasswordless) && !identifier?.isVerified && this.notificationProvider) {
+            await this.sendVerification(auth, identifier);
             return {
                 message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
                 auth,
@@ -182,15 +192,23 @@ let AuthService = AuthService_1 = class AuthService {
         return { ...tokens, auth };
     }
     // --- VERIFICATION LOGIC ---
-    async sendVerification(auth) {
+    async sendVerification(auth, currentIdentifier) {
         if (!this.notificationProvider)
             return;
-        // 1. Determine primary identifier (email or phone)
-        // For now, let's look for the first identifier that is EMAIL or PHONE
-        // We need to load identifiers if they aren't present
-        let primaryIdentifier = auth.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
+        // 1. Determine primary identifier (email or phone) to send the code to
+        // If we have a verified email/phone on the same UID, use that.
+        // Otherwise use the current identifier if it's verifiable.
+        let primaryIdentifier = currentIdentifier?.type !== 'USERNAME' ? currentIdentifier : null;
         if (!primaryIdentifier) {
-            // Fallback: reload auth with identifiers
+            // Look for any EMAIL or PHONE linked to this UID
+            const allIdentifiers = await this.authRepo.query(`SELECT ai.* FROM auth_identifiers ai 
+         JOIN auth a ON ai."authId" = a.id 
+         WHERE a.uid = $1 AND ai.type IN ('EMAIL', 'PHONE')
+         ORDER BY ai."isVerified" DESC, ai."createdAt" ASC LIMIT 1`, [auth.uid]);
+            primaryIdentifier = allIdentifiers[0];
+        }
+        if (!primaryIdentifier) {
+            // As a last resort, reload auth with identifiers and find first EMAIL/PHONE
             const fullAuth = await this.authRepo.findOne({
                 where: { id: auth.id },
                 relations: ['identifiers']
@@ -214,6 +232,7 @@ let AuthService = AuthService_1 = class AuthService {
             codeHash: hash,
             expiresAt,
             requestUserId: auth.uid,
+            requestAuthId: auth.id,
         });
         await this.otpRepo.save(otpToken);
         // 4. Send via Provider
@@ -249,6 +268,13 @@ let AuthService = AuthService_1 = class AuthService {
         await this.otpRepo.save(otp);
         auth.isVerified = true;
         await this.authRepo.save(auth);
+        // Also mark all identifiers for this Auth as verified
+        await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [auth.id]);
+        // If there's a requestAuthId on the OTP (which there should be), update that one too if different
+        if (otp.requestAuthId && otp.requestAuthId !== auth.id) {
+            await this.authRepo.update(otp.requestAuthId, { isVerified: true });
+            await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
+        }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
         return { message: 'Identity verified successfully', tokens, auth };
     }

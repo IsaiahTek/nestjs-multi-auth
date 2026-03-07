@@ -118,7 +118,8 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             // Attach identifiers to auth to save them together (Cascade)
             newAuth.identifiers = newIdentifiers;
             // 8. Save (Cascade will save Auth + Identifiers)
-            return await authRepo.save(newAuth);
+            const auth = await authRepo.save(newAuth);
+            return { auth, identifier: auth.identifiers?.[0] };
         });
     }
     async login(dto) {
@@ -188,7 +189,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         // We update the original 'auth' object which has the User loaded, to return full context
         auth.lastUsedAt = new Date();
         await this.authRepo.save(auth);
-        return auth;
+        return { auth, identifier };
     }
 };
 exports.LocalAuthStrategy = LocalAuthStrategy;

@@ -12,4 +12,9 @@ export declare class OtpToken extends BaseEntity {
     expiresAt: Date;
     isUsed: boolean;
     requestUserId?: string;
+    /**
+     * The ID of the primary Auth record that triggered this verification.
+     * This is used to mark the specific Auth method as verified upon success.
+     */
+    requestAuthId?: string;
 }

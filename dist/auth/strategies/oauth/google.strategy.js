@@ -98,7 +98,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 providerUserId: googleId,
             });
             newAuth.oauthProvider = oauthProvider;
-            return await authRepo.save(newAuth);
+            return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
         });
     }
     async login(dto) {
@@ -117,7 +117,10 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
         const auth = oauthProvider.auth;
         auth.lastUsedAt = new Date();
         await this.authRepo.save(auth);
-        return auth;
+        // Find the identifier that matches the email from Google
+        const email = payload.email?.toLowerCase();
+        const identifier = auth.identifiers?.find(id => id.value === email);
+        return { auth, identifier };
     }
 };
 exports.GoogleAuthStrategy = GoogleAuthStrategy;
