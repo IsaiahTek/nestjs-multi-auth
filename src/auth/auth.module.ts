@@ -39,6 +39,7 @@ export class AuthModule {
       AuthService,
       JwtAuthGuard,
       OptionalAuthGuard,
+      ThrottlerGuard,
     ];
 
     const enabledStrategies = options.enabledStrategies || Object.values(AuthStrategy);

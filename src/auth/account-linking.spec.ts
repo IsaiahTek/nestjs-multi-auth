@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthTransport } from './auth-type.enum';
 import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
 
 describe('AuthController Account Linking', () => {
@@ -37,7 +38,9 @@ describe('AuthController Account Linking', () => {
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
-        }).compile();
+        })
+            .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
+            .compile();
 
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);

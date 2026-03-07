@@ -23,7 +23,6 @@ export declare class AuthService {
     private readonly logger;
     constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, mfaRepo: Repository<MfaMethod>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider);
     private generateTokens;
-    private parseDuration;
     private fingerprint;
     private createSession;
     signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string): Promise<{
@@ -41,12 +40,22 @@ export declare class AuthService {
         message: string;
         auth: Auth;
         verificationRequired: boolean;
+        tokens: any;
+        mfaRequired?: undefined;
+    } | {
+        message: string;
+        auth: Auth;
+        mfaRequired: boolean;
+        tokens: any;
+        verificationRequired?: undefined;
     } | {
         auth: Auth;
         accessToken: string;
         refreshToken: string;
         message?: undefined;
         verificationRequired?: undefined;
+        tokens?: undefined;
+        mfaRequired?: undefined;
     }>;
     private sendVerification;
     verifyCode(uid: string, code: string, userAgent?: string, ip?: string): Promise<{

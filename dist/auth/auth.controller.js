@@ -25,6 +25,7 @@ const swagger_1 = require("@nestjs/swagger");
 const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./auth-type.enum");
+const duration_util_1 = require("./utils/duration.util");
 let AuthController = class AuthController {
     constructor(authService, options) {
         this.authService = authService;
@@ -47,14 +48,14 @@ let AuthController = class AuthController {
             secure: isProduction,
             sameSite: isProduction ? 'none' : 'lax',
             path: refreshPath,
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60) * 1000,
         });
         res.cookie('access_token', accessToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? 'none' : 'lax',
             path: '/',
-            maxAge: 15 * 60 * 1000,
+            maxAge: (0, duration_util_1.parseDuration)(this.options.accessTokenExpiresIn || '15m', 15 * 60) * 1000,
         });
     }
     async signup(dto, res, req) {

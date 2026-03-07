@@ -22,8 +22,8 @@ import { MfaMethod, MfaType } from './entities/mfa-method.entity';
 import { authenticator } from 'otplib';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
-import { randomUUID } from 'crypto';
 import * as crypto from 'crypto';
+import { parseDuration } from './utils/duration.util';
 
 @Injectable()
 export class AuthService {
@@ -49,7 +49,7 @@ export class AuthService {
 
   // --- INTERNAL HELPER: Generate Token Pair ---
   private async generateTokens(uid: string, sessionId: string) {
-    const refreshJti = randomUUID();
+    const refreshJti = crypto.randomUUID();
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
@@ -71,24 +71,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private parseDuration(duration: string | number, defaultSeconds: number): number {
-    if (typeof duration === 'number') return duration;
-    if (!duration) return defaultSeconds;
-
-    const match = duration.match(/^(\d+)([smhd])$/);
-    if (!match) return defaultSeconds;
-
-    const value = parseInt(match[1]);
-    const unit = match[2];
-
-    switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 60 * 60;
-      case 'd': return value * 60 * 60 * 24;
-      default: return defaultSeconds;
-    }
-  }
 
   private fingerprint(userAgent: string) {
     return crypto.createHash('sha256').update(userAgent).digest('hex');
@@ -101,7 +83,7 @@ export class AuthService {
     ip: string = 'Unknown',
   ) {
     const expiresAt = new Date();
-    const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+    const durationSeconds = parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
     expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
 
     const deviceFingerprint = this.fingerprint(userAgent);
@@ -227,16 +209,29 @@ export class AuthService {
     const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
     const has2FA = !!mfaMethod;
 
+    // Trigger email/phone verification only if required and identifier not verified.
+    // MFA (2FA) is handled separately via dedicated endpoints.
     const triggerVerification = isPasswordless ||
-      (this.options.verificationRequired && !identifier?.isVerified) ||
-      has2FA;
+      (this.options.verificationRequired && !identifier?.isVerified);
+
 
     if (triggerVerification && this.notificationProvider) {
       await this.sendVerification(auth, identifier);
       return {
         message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
         auth,
-        verificationRequired: true
+        verificationRequired: true,
+        tokens: undefined,
+      };
+    }
+
+    // If MFA is enabled, inform client that additional MFA verification is required.
+    if (has2FA) {
+      return {
+        message: 'MFA required',
+        auth,
+        mfaRequired: true,
+        tokens: undefined,
       };
     }
 
@@ -443,7 +438,7 @@ export class AuthService {
       const newHash = await bcrypt.hash(tokens.refreshToken, 10);
 
       const newExpiry = new Date();
-      const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+      const durationSeconds = parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
       newExpiry.setSeconds(newExpiry.getSeconds() + durationSeconds);
 
       await this.sessionRepository.update(session.id, {

@@ -7,6 +7,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Session } from './entities/session.entity';
 import { Auth } from './entities/auth.entity';
 import { OtpToken } from './entities/otp-token.entity';
+import { MfaMethod } from './entities/mfa-method.entity';
 import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
 import { AuthStrategy } from './auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
@@ -17,11 +18,12 @@ describe('AuthService', () => {
     const mockJwtService = {
         signAsync: jest.fn(),
         verifyAsync: jest.fn(),
+        decode: jest.fn(),
     };
 
     const mockPasswordStrategy = {
         login: jest.fn(),
-        signup: jest.fn(),
+        registerCredentials: jest.fn(),
     };
 
     const mockOAuthStrategy = {
@@ -29,13 +31,20 @@ describe('AuthService', () => {
         registerCredentials: jest.fn(),
     };
 
-
     const mockAuthRepo = {
         findOne: jest.fn(),
         save: jest.fn(),
+        query: jest.fn(),
+        update: jest.fn(),
     };
 
     const mockOtpRepo = {
+        findOne: jest.fn(),
+        save: jest.fn(),
+        create: jest.fn(),
+    };
+
+    const mockMfaRepo = {
         findOne: jest.fn(),
         save: jest.fn(),
         create: jest.fn(),
@@ -53,11 +62,6 @@ describe('AuthService', () => {
         delete: jest.fn(),
     };
 
-    const mockAuthUserService = {
-        findById: jest.fn(),
-        create: jest.fn(),
-    };
-
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,6 +72,7 @@ describe('AuthService', () => {
                 { provide: getRepositoryToken(Session), useValue: mockSessionRepo },
                 { provide: getRepositoryToken(Auth), useValue: mockAuthRepo },
                 { provide: getRepositoryToken(OtpToken), useValue: mockOtpRepo },
+                { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
         }).compile();
@@ -93,6 +98,7 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
+                mockMfaRepo as any,
                 { enabledStrategies: [AuthStrategy.LOCAL] } as any,
             );
 
@@ -109,6 +115,7 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
+                mockMfaRepo as any,
                 { enabledStrategies: [AuthStrategy.APPLE] } as any,
             );
 
@@ -132,6 +139,7 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
+                mockMfaRepo as any,
                 { otpResendInterval: 60 } as any, // 60 second interval
                 { sendVerificationCode: jest.fn() } as any,
             );

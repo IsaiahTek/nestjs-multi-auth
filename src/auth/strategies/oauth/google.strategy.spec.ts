@@ -61,7 +61,7 @@ describe('GoogleAuthStrategy', () => {
 
     describe('login', () => {
         it('should throw BadRequestException if token is missing', async () => {
-            await expect(strategy.login({ method: any, token: '' } as any)).rejects.toThrow(BadRequestException);
+            await expect(strategy.login({ method: 'google', token: '' } as any)).rejects.toThrow(BadRequestException);
         });
 
         it('should login successfully if account exists', async () => {
@@ -73,9 +73,9 @@ describe('GoogleAuthStrategy', () => {
             const mockAuth = { id: 'auth-id', lastUsedAt: null };
             oauthProviderRepo.findOne.mockResolvedValue({ auth: mockAuth });
 
-            const result = await strategy.login({ method: any, token: 'valid-token' } as any);
+            const result = await strategy.login({ method: 'google', token: 'valid-token' } as any);
 
-            expect(result).toBe(mockAuth);
+            expect(result.auth).toBe(mockAuth);
             expect(authRepo.save).toHaveBeenCalled();
         });
 
@@ -85,9 +85,7 @@ describe('GoogleAuthStrategy', () => {
             });
             oauthProviderRepo.findOne.mockResolvedValue(null);
 
-            await expect(strategy.login({ method: any, token: 'valid-token' } as any)).rejects.toThrow(BadRequestException);
+            await expect(strategy.login({ method: 'google', token: 'valid-token' } as any)).rejects.toThrow(BadRequestException);
         });
     });
 });
-
-const any = {} as any;

@@ -18,7 +18,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
 const typeorm_2 = require("@nestjs/typeorm");
 const bcrypt = require("bcrypt");
-const crypto_1 = require("crypto");
+const crypto = require("crypto");
 const auth_module_options_interface_1 = require("../interfaces/auth-module-options.interface");
 const common_2 = require("@nestjs/common");
 // Entities
@@ -87,7 +87,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             // If no uid is provided, this is a completely new account.
             // Generation will happen here or in AuthService if we want more control.
             // Let's generate it here if missing.
-            const identityUid = uid || (0, crypto_1.randomUUID)();
+            const identityUid = uid || crypto.randomUUID();
             const newAuth = authRepo.create({
                 uid: identityUid,
                 strategy: dto.method || auth_type_enum_1.AuthStrategy.LOCAL,

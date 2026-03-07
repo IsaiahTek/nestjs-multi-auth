@@ -8,6 +8,11 @@ import { OtpToken } from './entities/otp-token.entity';
 import { MfaMethod } from './entities/mfa-method.entity';
 import { Session } from './entities/session.entity';
 import { DataSource } from 'typeorm';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { LocalAuthStrategy } from './strategies/local-auth.strategy';
+import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
+import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
+import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 
 describe('AuthModule Compilation', () => {
     let module: TestingModule;
@@ -27,6 +32,9 @@ describe('AuthModule Compilation', () => {
                     jwtRefreshSecret: 'test-refresh',
                 }),
             ],
+            providers: [
+                { provide: DataSource, useValue: { transaction: jest.fn() } }
+            ]
         })
             .overrideProvider(getRepositoryToken(Auth)).useValue(mockRepo)
             .overrideProvider(getRepositoryToken(OAuthProvider)).useValue(mockRepo)
@@ -34,7 +42,11 @@ describe('AuthModule Compilation', () => {
             .overrideProvider(getRepositoryToken(OtpToken)).useValue(mockRepo)
             .overrideProvider(getRepositoryToken(MfaMethod)).useValue(mockRepo)
             .overrideProvider(getRepositoryToken(Session)).useValue(mockRepo)
-            .overrideProvider(DataSource).useValue({})
+            .overrideProvider(LocalAuthStrategy).useValue({})
+            .overrideProvider(GoogleAuthStrategy).useValue({})
+            .overrideProvider(AppleAuthStrategy).useValue({})
+            .overrideProvider(FacebookAuthStrategy).useValue({})
+            .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 
         expect(module).toBeDefined();

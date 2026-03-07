@@ -22,6 +22,7 @@ import { Public } from './decorator/public.decorator';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AuthTransport } from './auth-type.enum';
 import type { Response, Request } from 'express';
+import { parseDuration } from './utils/duration.util';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -51,7 +52,7 @@ export class AuthController {
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
       path: refreshPath,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60) * 1000,
     });
 
     res.cookie('access_token', accessToken, {
@@ -59,7 +60,7 @@ export class AuthController {
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      maxAge: parseDuration(this.options.accessTokenExpiresIn || '15m', 15 * 60) * 1000,
     });
   }
 

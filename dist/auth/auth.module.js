@@ -47,6 +47,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             auth_service_1.AuthService,
             jwt_auth_guard_1.JwtAuthGuard,
             optional_auth_guard_1.OptionalAuthGuard,
+            throttler_1.ThrottlerGuard,
         ];
         const enabledStrategies = options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         const isLocalEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(s));

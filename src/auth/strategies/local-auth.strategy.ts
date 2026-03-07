@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from '../dto/login.dto';
 import { SignupDto } from '../dto/signup.dto';
-import { randomUUID } from 'crypto';
+import * as crypto from 'crypto';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
 
@@ -102,7 +102,7 @@ export class LocalAuthStrategy {
       // If no uid is provided, this is a completely new account.
       // Generation will happen here or in AuthService if we want more control.
       // Let's generate it here if missing.
-      const identityUid = uid || randomUUID();
+      const identityUid = uid || crypto.randomUUID();
 
       const newAuth = authRepo.create({
         uid: identityUid,

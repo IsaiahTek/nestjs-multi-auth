@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_MODULE_OPTIONS } from './auth.module';
 import { AuthTransport } from './auth-type.enum';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 
 describe('AuthController', () => {
@@ -30,7 +31,9 @@ describe('AuthController', () => {
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
-        }).compile();
+        })
+            .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
+            .compile();
 
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);

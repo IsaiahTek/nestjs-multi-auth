@@ -29,8 +29,8 @@ const mfa_method_entity_1 = require("./entities/mfa-method.entity");
 const otplib_1 = require("otplib");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
-const crypto_1 = require("crypto");
 const crypto = require("crypto");
+const duration_util_1 = require("./utils/duration.util");
 let AuthService = AuthService_1 = class AuthService {
     constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider) {
         this.jwtService = jwtService;
@@ -46,7 +46,7 @@ let AuthService = AuthService_1 = class AuthService {
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
     async generateTokens(uid, sessionId) {
-        const refreshJti = (0, crypto_1.randomUUID)();
+        const refreshJti = crypto.randomUUID();
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync({ sub: uid, sessionId }, {
                 secret: this.options.jwtSecret || process.env.JWT_SECRET,
@@ -59,31 +59,13 @@ let AuthService = AuthService_1 = class AuthService {
         ]);
         return { accessToken, refreshToken };
     }
-    parseDuration(duration, defaultSeconds) {
-        if (typeof duration === 'number')
-            return duration;
-        if (!duration)
-            return defaultSeconds;
-        const match = duration.match(/^(\d+)([smhd])$/);
-        if (!match)
-            return defaultSeconds;
-        const value = parseInt(match[1]);
-        const unit = match[2];
-        switch (unit) {
-            case 's': return value;
-            case 'm': return value * 60;
-            case 'h': return value * 60 * 60;
-            case 'd': return value * 60 * 60 * 24;
-            default: return defaultSeconds;
-        }
-    }
     fingerprint(userAgent) {
         return crypto.createHash('sha256').update(userAgent).digest('hex');
     }
     // --- INTERNAL HELPER: Create/Update Session in DB ---
     async createSession(uid, userAgent = 'Unknown', ip = 'Unknown') {
         const expiresAt = new Date();
-        const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+        const durationSeconds = (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
         expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
         const deviceFingerprint = this.fingerprint(userAgent);
         const session = this.sessionRepository.create({
@@ -192,15 +174,26 @@ let AuthService = AuthService_1 = class AuthService {
         // Check if user has 2FA enabled
         const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
         const has2FA = !!mfaMethod;
+        // Trigger email/phone verification only if required and identifier not verified.
+        // MFA (2FA) is handled separately via dedicated endpoints.
         const triggerVerification = isPasswordless ||
-            (this.options.verificationRequired && !identifier?.isVerified) ||
-            has2FA;
+            (this.options.verificationRequired && !identifier?.isVerified);
         if (triggerVerification && this.notificationProvider) {
             await this.sendVerification(auth, identifier);
             return {
                 message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
                 auth,
-                verificationRequired: true
+                verificationRequired: true,
+                tokens: undefined,
+            };
+        }
+        // If MFA is enabled, inform client that additional MFA verification is required.
+        if (has2FA) {
+            return {
+                message: 'MFA required',
+                auth,
+                mfaRequired: true,
+                tokens: undefined,
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
@@ -351,7 +344,7 @@ let AuthService = AuthService_1 = class AuthService {
             const tokens = await this.generateTokens(session.uid, session.id);
             const newHash = await bcrypt.hash(tokens.refreshToken, 10);
             const newExpiry = new Date();
-            const durationSeconds = this.parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
+            const durationSeconds = (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
             newExpiry.setSeconds(newExpiry.getSeconds() + durationSeconds);
             await this.sessionRepository.update(session.id, {
                 refreshTokenHash: newHash,
