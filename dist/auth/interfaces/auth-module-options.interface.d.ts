@@ -52,6 +52,22 @@ export interface AuthModuleOptions {
      */
     googleClientId?: string;
     /**
+     * Facebook App ID for token verification
+     */
+    facebookAppId?: string;
+    /**
+     * Facebook App Secret for App Secret Proof security
+     */
+    facebookAppSecret?: string;
+    /**
+     * Apple Client ID (Services ID or App ID)
+     */
+    appleClientId?: string;
+    /**
+     * Apple Team ID (optional)
+     */
+    appleTeamId?: string;
+    /**
      * Optional: List of enabled authentication strategies.
      * If not provided, all strategies are enabled by default.
      */
@@ -71,4 +87,20 @@ export interface AuthModuleOptions {
      * Defaults to 60 seconds.
      */
     otpResendInterval?: number;
+    /**
+     * Optional: Application name shown in TOTP apps (e.g., Google Authenticator)
+     */
+    appName?: string;
+    /**
+     * Optional: Max number of requests within the ttl (default: 10)
+     */
+    throttlerLimit?: number;
+    /**
+     * Optional: Time to live for the throttler in seconds (default: 60)
+     */
+    throttlerTtl?: number;
+    /**
+     * Optional: If true, the built-in rate limiting is disabled.
+     */
+    disableThrottler?: boolean;
 }

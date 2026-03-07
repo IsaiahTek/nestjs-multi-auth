@@ -23,6 +23,7 @@ import { AUTH_NOTIFICATION_PROVIDER } from './interfaces/auth-notification-provi
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({})
 export class AuthModule {
@@ -97,11 +98,19 @@ export class AuthModule {
           secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
           signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') as any },
         }),
+        ThrottlerModule.forRoot({
+          throttlers: [
+            {
+              ttl: (options.throttlerTtl || 60) * 1000,
+              limit: options.throttlerLimit || 10,
+            },
+          ],
+        }),
         ...(options.imports || []),
       ],
       providers,
       controllers: options.disableController ? [] : [AuthController],
-      exports: [AuthService, JwtAuthGuard],
+      exports: [AuthService, JwtAuthGuard, ThrottlerModule],
     };
   }
 }

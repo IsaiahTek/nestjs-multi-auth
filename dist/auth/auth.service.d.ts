@@ -7,7 +7,7 @@ import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
+import { MfaMethod, MfaType } from './entities/mfa-method.entity';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 export declare class AuthService {
@@ -26,7 +26,7 @@ export declare class AuthService {
     private parseDuration;
     private fingerprint;
     private createSession;
-    signup(dto: SignupDto, userAgent?: string, ip?: string): Promise<{
+    signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string): Promise<{
         message: string;
         auth: Auth;
         verificationRequired: boolean;
@@ -69,4 +69,11 @@ export declare class AuthService {
         refreshToken: string;
     }>;
     logout(refreshToken?: string): Promise<void>;
+    enrollMfa(uid: string, type: MfaType): Promise<{
+        secret: string;
+        otpauth: string;
+    }>;
+    activateMfa(uid: string, type: MfaType, code: string): Promise<{
+        message: string;
+    }>;
 }

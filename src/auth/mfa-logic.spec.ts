@@ -50,8 +50,8 @@ describe('AuthService MFA', () => {
     describe('enrollMfa', () => {
         it('should generate a new secret and return otpauth URI', async () => {
             mfaRepo.findOne.mockResolvedValue(null);
-            mfaRepo.create.mockImplementation((dto) => dto);
-            mfaRepo.save.mockImplementation((mfa) => Promise.resolve(mfa));
+            mfaRepo.create.mockImplementation((dto: any) => dto);
+            mfaRepo.save.mockImplementation((mfa: any) => Promise.resolve(mfa));
 
             const result = await service.enrollMfa('user-1', MfaType.TOTP);
 
@@ -75,7 +75,7 @@ describe('AuthService MFA', () => {
 
             const mockMfa = { id: 'mfa-1', secret, isEnabled: false };
             mfaRepo.findOne.mockResolvedValue(mockMfa);
-            mfaRepo.save.mockImplementation((mfa) => Promise.resolve(mfa));
+            mfaRepo.save.mockImplementation((mfa: any) => Promise.resolve(mfa));
 
             const result = await service.activateMfa('user-1', MfaType.TOTP, code);
 

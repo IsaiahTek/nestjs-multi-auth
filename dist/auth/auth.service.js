@@ -26,6 +26,7 @@ const auth_entity_1 = require("./entities/auth.entity");
 const session_entity_1 = require("./entities/session.entity");
 const otp_token_entity_1 = require("./entities/otp-token.entity");
 const mfa_method_entity_1 = require("./entities/mfa-method.entity");
+const otplib_1 = require("otplib");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
 const crypto_1 = require("crypto");
@@ -99,7 +100,7 @@ let AuthService = AuthService_1 = class AuthService {
         await this.sessionRepository.save(session);
         return tokens;
     }
-    async signup(dto, userAgent, ip) {
+    async signup(dto, uid, userAgent, ip) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
         const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
@@ -115,7 +116,7 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.LOCAL:
                 if (!this.passwordStrategy)
                     throw new common_1.BadRequestException('Local authentication is not configured.');
-                const localResult = await this.passwordStrategy.registerCredentials(dto);
+                const localResult = await this.passwordStrategy.registerCredentials(dto, uid);
                 auth = localResult.auth;
                 identifier = localResult.identifier;
                 break;
@@ -125,7 +126,7 @@ let AuthService = AuthService_1 = class AuthService {
             case auth_type_enum_1.AuthStrategy.OAUTH:
                 if (!this.oauthStrategy)
                     throw new common_1.BadRequestException('OAuth authentication is not configured.');
-                const oauthResult = await this.oauthStrategy.registerCredentials(dto);
+                const oauthResult = await this.oauthStrategy.registerCredentials(dto, uid);
                 auth = oauthResult.auth;
                 identifier = oauthResult.identifier;
                 break;
@@ -376,6 +377,58 @@ let AuthService = AuthService_1 = class AuthService {
         catch (e) {
             this.logger.error('Error logging out', e);
         }
+    }
+    // --- MFA (2FA) LOGIC ---
+    async enrollMfa(uid, type) {
+        if (type !== mfa_method_entity_1.MfaType.TOTP) {
+            throw new common_1.BadRequestException('Currently only TOTP MFA is supported');
+        }
+        let mfa = await this.mfaRepo.findOne({ where: { uid, type }, select: ['id', 'secret', 'isEnabled', 'type'] });
+        if (mfa?.isEnabled) {
+            throw new common_1.BadRequestException('MFA is already enabled for this account');
+        }
+        const secret = otplib_1.authenticator.generateSecret();
+        const appName = this.options.appName || 'NestJS Auth';
+        const otpauth = otplib_1.authenticator.keyuri(uid, appName, secret);
+        if (!mfa) {
+            mfa = this.mfaRepo.create({
+                uid,
+                type,
+                secret,
+                isEnabled: false,
+            });
+        }
+        else {
+            mfa.secret = secret;
+        }
+        await this.mfaRepo.save(mfa);
+        return {
+            secret,
+            otpauth,
+        };
+    }
+    async activateMfa(uid, type, code) {
+        const mfa = await this.mfaRepo.findOne({
+            where: { uid, type },
+            select: ['id', 'secret', 'isEnabled']
+        });
+        if (!mfa) {
+            throw new common_1.BadRequestException('No MFA enrollment found');
+        }
+        if (mfa.isEnabled) {
+            throw new common_1.BadRequestException('MFA is already enabled');
+        }
+        const isValid = otplib_1.authenticator.verify({
+            token: code,
+            secret: mfa.secret,
+        });
+        if (!isValid) {
+            throw new common_1.BadRequestException('Invalid MFA code');
+        }
+        mfa.isEnabled = true;
+        mfa.isDefault = true;
+        await this.mfaRepo.save(mfa);
+        return { message: 'MFA activated successfully' };
     }
 };
 exports.AuthService = AuthService;

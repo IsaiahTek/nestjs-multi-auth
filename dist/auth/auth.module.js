@@ -34,6 +34,7 @@ const auth_notification_provider_interface_1 = require("./interfaces/auth-notifi
 const core_1 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const optional_auth_guard_1 = require("./guards/optional-auth.guard");
+const throttler_1 = require("@nestjs/throttler");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
@@ -87,11 +88,19 @@ let AuthModule = AuthModule_1 = class AuthModule {
                     secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
                     signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') },
                 }),
+                throttler_1.ThrottlerModule.forRoot({
+                    throttlers: [
+                        {
+                            ttl: (options.throttlerTtl || 60) * 1000,
+                            limit: options.throttlerLimit || 10,
+                        },
+                    ],
+                }),
                 ...(options.imports || []),
             ],
             providers,
             controllers: options.disableController ? [] : [auth_controller_1.AuthController],
-            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, throttler_1.ThrottlerModule],
         };
     }
 };

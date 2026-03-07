@@ -8,7 +8,9 @@ import {
   Req,
   BadRequestException,
   Inject,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
@@ -22,6 +24,7 @@ import { AuthTransport } from './auth-type.enum';
 import type { Response, Request } from 'express';
 
 @Controller('auth')
+@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -62,6 +65,7 @@ export class AuthController {
 
   @Post('signup')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'User signup' })
   async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     try {
@@ -89,6 +93,7 @@ export class AuthController {
 
   @Post('signin')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'User login' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     try {

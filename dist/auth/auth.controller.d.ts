@@ -2,6 +2,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/verify.dto';
+import { EnrollMfaDto, ActivateMfaDto } from './dto/mfa.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import type { Response, Request } from 'express';
@@ -18,6 +19,7 @@ export declare class AuthController {
     resendVerification(dto: ResendVerificationDto): Promise<{
         message: string;
     }>;
+    link(dto: SignupDto, req: any, res: Response): Promise<any>;
     refresh(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
         tokens: {
@@ -27,6 +29,13 @@ export declare class AuthController {
     } | {
         message: string;
         tokens?: undefined;
+    }>;
+    enrollMfa(req: any, dto: EnrollMfaDto): Promise<{
+        secret: string;
+        otpauth: string;
+    }>;
+    activateMfa(req: any, dto: ActivateMfaDto): Promise<{
+        message: string;
     }>;
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;

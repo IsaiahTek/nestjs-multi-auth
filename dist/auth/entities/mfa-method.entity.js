@@ -48,7 +48,7 @@ __decorate([
     __metadata("design:type", String)
 ], MfaMethod.prototype, "secret", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ default: true }),
+    (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], MfaMethod.prototype, "isEnabled", void 0);
 __decorate([

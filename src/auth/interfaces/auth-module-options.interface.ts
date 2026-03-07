@@ -112,4 +112,19 @@ export interface AuthModuleOptions {
      * Optional: Application name shown in TOTP apps (e.g., Google Authenticator)
      */
     appName?: string;
+
+    /**
+     * Optional: Max number of requests within the ttl (default: 10)
+     */
+    throttlerLimit?: number;
+
+    /**
+     * Optional: Time to live for the throttler in seconds (default: 60)
+     */
+    throttlerTtl?: number;
+
+    /**
+     * Optional: If true, the built-in rate limiting is disabled.
+     */
+    disableThrottler?: boolean;
 }
