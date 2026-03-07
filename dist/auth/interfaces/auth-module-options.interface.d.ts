@@ -103,4 +103,9 @@ export interface AuthModuleOptions {
      * Optional: If true, the built-in rate limiting is disabled.
      */
     disableThrottler?: boolean;
+    /**
+     * Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
+     * If provided, all phone-based signups and signins must match one of these prefixes.
+     */
+    allowedPhonePrefixes?: string[];
 }

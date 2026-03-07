@@ -35,6 +35,15 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         this.options = options;
         this.logger = new common_1.Logger(LocalAuthStrategy_1.name);
     }
+    validatePhoneFormat(phone) {
+        const prefixes = this.options.allowedPhonePrefixes;
+        if (!prefixes || prefixes.length === 0)
+            return;
+        const matches = prefixes.some((prefix) => phone.startsWith(prefix));
+        if (!matches) {
+            throw new common_1.BadRequestException(`Phone number must start with one of: ${prefixes.join(', ')}`);
+        }
+    }
     async registerCredentials(dto, uid) {
         const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
         // 1. Validation of identifiers against enabled strategies
@@ -51,6 +60,9 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             throw new common_1.BadRequestException('Email, phone or username is required');
         }
         const isPhoneSignUp = !!dto.phone;
+        if (isPhoneSignUp) {
+            this.validatePhoneFormat(dto.phone);
+        }
         const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
         if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
             throw new common_1.BadRequestException('Password is required');
@@ -142,6 +154,9 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         }
         if (isPhone && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.PHONE) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
             throw new common_1.BadRequestException('Phone authentication is currently disabled.');
+        }
+        if (isPhone) {
+            this.validatePhoneFormat(identifierValue);
         }
         if (isUsername && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.USERNAME) && !enabledStrategies.includes(auth_type_enum_1.AuthStrategy.LOCAL)) {
             throw new common_1.BadRequestException('Username authentication is currently disabled.');

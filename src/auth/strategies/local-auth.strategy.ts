@@ -38,6 +38,18 @@ export class LocalAuthStrategy {
 
   private readonly logger: Logger = new Logger(LocalAuthStrategy.name);
 
+  private validatePhoneFormat(phone: string) {
+    const prefixes = this.options.allowedPhonePrefixes;
+    if (!prefixes || prefixes.length === 0) return;
+
+    const matches = prefixes.some((prefix) => phone.startsWith(prefix));
+    if (!matches) {
+      throw new BadRequestException(
+        `Phone number must start with one of: ${prefixes.join(', ')}`,
+      );
+    }
+  }
+
   async registerCredentials(dto: SignupDto, uid?: string): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
 
@@ -56,6 +68,9 @@ export class LocalAuthStrategy {
       throw new BadRequestException('Email, phone or username is required');
     }
     const isPhoneSignUp = !!dto.phone;
+    if (isPhoneSignUp) {
+      this.validatePhoneFormat(dto.phone);
+    }
     const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
 
     if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
@@ -176,6 +191,9 @@ export class LocalAuthStrategy {
     }
     if (isPhone && !enabledStrategies.includes(AuthStrategy.PHONE) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
       throw new BadRequestException('Phone authentication is currently disabled.');
+    }
+    if (isPhone) {
+      this.validatePhoneFormat(identifierValue);
     }
     if (isUsername && !enabledStrategies.includes(AuthStrategy.USERNAME) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
       throw new BadRequestException('Username authentication is currently disabled.');
