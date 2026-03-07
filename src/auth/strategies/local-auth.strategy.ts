@@ -194,8 +194,15 @@ export class LocalAuthStrategy {
 
     const auth = identifier.auth;
 
-    // 2. Safety Check: Ensure this identifier is actually linked to a Password account
-    if (auth.strategy !== AuthStrategy.LOCAL) {
+    // 2. Safety Check: Ensure this identifier is actually linked to a Password/Local account
+    const localStrategies = [
+      AuthStrategy.EMAIL,
+      AuthStrategy.PHONE,
+      AuthStrategy.USERNAME,
+      AuthStrategy.LOCAL,
+    ];
+
+    if (!localStrategies.includes(auth.strategy)) {
       throw new UnauthorizedException('Please login with your Social Account');
     }
 

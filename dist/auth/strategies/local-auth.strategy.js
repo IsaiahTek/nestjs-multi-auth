@@ -156,8 +156,14 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const auth = identifier.auth;
-        // 2. Safety Check: Ensure this identifier is actually linked to a Password account
-        if (auth.strategy !== auth_type_enum_1.AuthStrategy.LOCAL) {
+        // 2. Safety Check: Ensure this identifier is actually linked to a Password/Local account
+        const localStrategies = [
+            auth_type_enum_1.AuthStrategy.EMAIL,
+            auth_type_enum_1.AuthStrategy.PHONE,
+            auth_type_enum_1.AuthStrategy.USERNAME,
+            auth_type_enum_1.AuthStrategy.LOCAL,
+        ];
+        if (!localStrategies.includes(auth.strategy)) {
             throw new common_1.UnauthorizedException('Please login with your Social Account');
         }
         // 3. Retrieve the password hash
