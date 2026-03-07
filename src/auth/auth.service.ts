@@ -18,7 +18,8 @@ import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken, OtpPurpose } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
+import { MfaMethod, MfaType } from './entities/mfa-method.entity';
+import { authenticator } from 'otplib';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import { randomUUID } from 'crypto';
@@ -470,5 +471,71 @@ export class AuthService {
     } catch (e) {
       this.logger.error('Error logging out', e);
     }
+  }
+
+  // --- MFA (2FA) LOGIC ---
+
+  async enrollMfa(uid: string, type: MfaType) {
+    if (type !== MfaType.TOTP) {
+      throw new BadRequestException('Currently only TOTP MFA is supported');
+    }
+
+    let mfa = await this.mfaRepo.findOne({ where: { uid, type }, select: ['id', 'secret', 'isEnabled', 'type'] });
+
+    if (mfa?.isEnabled) {
+      throw new BadRequestException('MFA is already enabled for this account');
+    }
+
+    const secret = authenticator.generateSecret();
+    const appName = this.options.appName || 'NestJS Auth';
+    const otpauth = authenticator.keyuri(uid, appName, secret);
+
+    if (!mfa) {
+      mfa = this.mfaRepo.create({
+        uid,
+        type,
+        secret,
+        isEnabled: false,
+      });
+    } else {
+      mfa.secret = secret;
+    }
+
+    await this.mfaRepo.save(mfa);
+
+    return {
+      secret,
+      otpauth,
+    };
+  }
+
+  async activateMfa(uid: string, type: MfaType, code: string) {
+    const mfa = await this.mfaRepo.findOne({
+      where: { uid, type },
+      select: ['id', 'secret', 'isEnabled']
+    });
+
+    if (!mfa) {
+      throw new BadRequestException('No MFA enrollment found');
+    }
+
+    if (mfa.isEnabled) {
+      throw new BadRequestException('MFA is already enabled');
+    }
+
+    const isValid = authenticator.verify({
+      token: code,
+      secret: mfa.secret,
+    });
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid MFA code');
+    }
+
+    mfa.isEnabled = true;
+    mfa.isDefault = true;
+    await this.mfaRepo.save(mfa);
+
+    return { message: 'MFA activated successfully' };
   }
 }

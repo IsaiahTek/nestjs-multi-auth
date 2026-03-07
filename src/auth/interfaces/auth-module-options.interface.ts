@@ -107,4 +107,9 @@ export interface AuthModuleOptions {
      * Defaults to 60 seconds.
      */
     otpResendInterval?: number;
+
+    /**
+     * Optional: Application name shown in TOTP apps (e.g., Google Authenticator)
+     */
+    appName?: string;
 }

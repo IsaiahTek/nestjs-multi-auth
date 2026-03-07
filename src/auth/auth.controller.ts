@@ -13,6 +13,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/verify.dto';
+import { EnrollMfaDto, ActivateMfaDto } from './dto/mfa.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorator/public.decorator';
@@ -197,6 +198,18 @@ export class AuthController {
       res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
       throw new HttpException('Invalid session', HttpStatus.UNAUTHORIZED);
     }
+  }
+
+  @Post('mfa/enroll')
+  @ApiOperation({ summary: 'Enroll in MFA (e.g., TOTP)' })
+  async enrollMfa(@Req() req: any, @Body() dto: EnrollMfaDto) {
+    return this.authService.enrollMfa(req.user.uid, dto.type);
+  }
+
+  @Post('mfa/activate')
+  @ApiOperation({ summary: 'Activate MFA after enrollment' })
+  async activateMfa(@Req() req: any, @Body() dto: ActivateMfaDto) {
+    return this.authService.activateMfa(req.user.uid, dto.type, dto.code);
   }
 
   @Post('logout')

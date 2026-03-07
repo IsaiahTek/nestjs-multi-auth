@@ -29,7 +29,7 @@ export class MfaMethod {
   @Column({ select: false })
   secret: string;
 
-  @Column({ default: true })
+  @Column({ default: false })
   isEnabled: boolean;
 
   @Column({ default: false })
