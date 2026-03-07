@@ -64,7 +64,7 @@ export class AuthController {
   @ApiOperation({ summary: 'User signup' })
   async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     try {
-      const result = await this.authService.signup(dto, req.headers['user-agent'], req.ip);
+      const result = await this.authService.signup(dto, undefined, req.headers['user-agent'] as string, req.ip);
       const transports = this.getTransports();
 
       if ('accessToken' in result) {
@@ -139,6 +139,32 @@ export class AuthController {
   @ApiOperation({ summary: 'Resend verification code' })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto.uid);
+  }
+
+  @Post('link')
+  @ApiOperation({ summary: 'Link new auth method to current account' })
+  async link(@Body() dto: SignupDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+    try {
+      const result = await this.authService.signup(dto, req.user.uid, req.headers['user-agent'] as string, req.ip);
+      const transports = this.getTransports();
+
+      if ('accessToken' in result) {
+        if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
+          this.setCookies(res, req, result.accessToken, result.refreshToken);
+        }
+      }
+
+      const response: any = { message: result.message || 'Method linked successfully', auth: result.auth };
+      if (result.verificationRequired) response.verificationRequired = true;
+
+      if ('accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
+        response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
+      }
+
+      return response;
+    } catch (e) {
+      throw new HttpException((e as Error).message, HttpStatus.BAD_REQUEST);
+    }
   }
 
   @Post('refresh')

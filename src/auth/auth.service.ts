@@ -124,7 +124,7 @@ export class AuthService {
     return tokens;
   }
 
-  async signup(dto: SignupDto, userAgent?: string, ip?: string) {
+  async signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
@@ -141,7 +141,7 @@ export class AuthService {
       case AuthStrategy.USERNAME:
       case AuthStrategy.LOCAL:
         if (!this.passwordStrategy) throw new BadRequestException('Local authentication is not configured.');
-        const localResult = await this.passwordStrategy.registerCredentials(dto);
+        const localResult = await this.passwordStrategy.registerCredentials(dto, uid);
         auth = localResult.auth;
         identifier = localResult.identifier;
         break;
@@ -150,7 +150,7 @@ export class AuthService {
       case AuthStrategy.APPLE:
       case AuthStrategy.OAUTH:
         if (!this.oauthStrategy) throw new BadRequestException('OAuth authentication is not configured.');
-        const oauthResult = await this.oauthStrategy.registerCredentials(dto);
+        const oauthResult = await this.oauthStrategy.registerCredentials(dto, uid);
         auth = oauthResult.auth;
         identifier = oauthResult.identifier;
         break;
