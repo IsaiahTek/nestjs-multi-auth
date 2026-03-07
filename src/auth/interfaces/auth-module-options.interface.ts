@@ -65,6 +65,26 @@ export interface AuthModuleOptions {
     googleClientId?: string;
 
     /**
+     * Facebook App ID for token verification
+     */
+    facebookAppId?: string;
+
+    /**
+     * Facebook App Secret for App Secret Proof security
+     */
+    facebookAppSecret?: string;
+
+    /**
+     * Apple Client ID (Services ID or App ID)
+     */
+    appleClientId?: string;
+
+    /**
+     * Apple Team ID (optional)
+     */
+    appleTeamId?: string;
+
+    /**
      * Optional: List of enabled authentication strategies.
      * If not provided, all strategies are enabled by default.
      */
