@@ -85,4 +85,6 @@ export declare class AuthService {
     activateMfa(uid: string, type: MfaType, code: string): Promise<{
         message: string;
     }>;
+    deleteAccount(uid: string): Promise<void>;
+    deleteAuthMethod(uid: string, authId: string): Promise<void>;
 }

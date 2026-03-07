@@ -178,6 +178,15 @@ let AuthController = class AuthController {
         res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
         return { message: 'Logged out successfully' };
     }
+    async deleteAccount(req, res) {
+        await this.authService.deleteAccount(req.user.uid);
+        res.clearCookie('access_token');
+        res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+        return { message: 'Account deleted successfully' };
+    }
+    async deleteAuthMethod(req, authId) {
+        return this.authService.deleteAuthMethod(req.user.uid, authId);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -273,6 +282,24 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object, refresh_token_dto_1.RefreshTokenDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Post)('account'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete user account and all associated data' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "deleteAccount", null);
+__decorate([
+    (0, common_1.Post)('method/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a specific authentication method' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "deleteAuthMethod", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     (0, common_1.UseGuards)(throttler_1.ThrottlerGuard),

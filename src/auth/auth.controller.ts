@@ -9,6 +9,7 @@ import {
   BadRequestException,
   Inject,
   UseGuards,
+  Param,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -231,5 +232,20 @@ export class AuthController {
     res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
 
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('account')
+  @ApiOperation({ summary: 'Delete user account and all associated data' })
+  async deleteAccount(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    await this.authService.deleteAccount(req.user.uid);
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+    return { message: 'Account deleted successfully' };
+  }
+
+  @Post('method/:id')
+  @ApiOperation({ summary: 'Delete a specific authentication method' })
+  async deleteAuthMethod(@Req() req: any, @Param('id') authId: string) {
+    return this.authService.deleteAuthMethod(req.user.uid, authId);
   }
 }

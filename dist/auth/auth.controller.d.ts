@@ -40,4 +40,8 @@ export declare class AuthController {
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
     }>;
+    deleteAccount(req: any, res: Response): Promise<{
+        message: string;
+    }>;
+    deleteAuthMethod(req: any, authId: string): Promise<void>;
 }
