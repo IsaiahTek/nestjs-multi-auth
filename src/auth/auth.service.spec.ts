@@ -11,6 +11,7 @@ import { MfaMethod } from './entities/mfa-method.entity';
 import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
 import { AuthStrategy } from './auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -146,6 +147,29 @@ describe('AuthService', () => {
 
             await expect(serviceWithInterval.resendVerification(authId)).rejects.toThrow(BadRequestException);
             await expect(serviceWithInterval.resendVerification(authId)).rejects.toThrow(/Please wait/);
+        });
+
+        it('should allow verification if a pending OTP exists even if identity is already verified', async () => {
+            const uid = 'auth-uid';
+            const code = '123456';
+            const hash = await bcrypt.hash(code, 10);
+
+            mockAuthRepo.findOne.mockResolvedValue({ uid, isVerified: true });
+            mockOtpRepo.findOne.mockResolvedValue({
+                codeHash: hash,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 mins from now
+                isUsed: false,
+                requestUserId: uid,
+            });
+            mockSessionRepo.create.mockReturnValue({});
+            mockSessionRepo.save.mockImplementation(async (session) => {
+                session.id = 'session-id';
+                return session;
+            });
+            mockJwtService.signAsync.mockResolvedValue('token');
+
+            const result = await service.verifyCode(uid, code);
+            expect(result.message).toBe('Identity verified successfully');
         });
     });
 });

@@ -314,15 +314,16 @@ export class AuthService {
     const auth = await this.authRepo.findOne({ where: { uid } });
     if (!auth) throw new BadRequestException('Identity not found');
 
-    if (auth.isVerified) return { message: 'Identity already verified' };
-
     // Find the latest unused OTP for this UID
     const otp = await this.otpRepo.findOne({
       where: { requestUserId: uid, isUsed: false },
       order: { createdAt: 'DESC' },
     });
 
-    if (!otp) throw new BadRequestException('No verification code found');
+    if (!otp) {
+      if (auth.isVerified) return { message: 'Identity already verified' };
+      throw new BadRequestException('No verification code found');
+    }
 
     if (new Date() > otp.expiresAt) {
       throw new BadRequestException('Verification code expired');
@@ -361,8 +362,6 @@ export class AuthService {
   async resendVerification(uid: string) {
     const auth = await this.authRepo.findOne({ where: { uid } });
     if (!auth) throw new BadRequestException('Identity not found');
-
-    if (auth.isVerified) throw new BadRequestException('Identity already verified');
 
     if (!this.notificationProvider) {
       throw new BadRequestException('Verification is not configured');
