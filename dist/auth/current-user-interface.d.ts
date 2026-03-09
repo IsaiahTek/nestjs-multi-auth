@@ -1,4 +1,4 @@
 export interface AuthCredential {
-    sub: string;
-    id: string;
+    uid: string;
+    sessionId: string;
 }
