@@ -2,7 +2,7 @@ export * from './auth/auth.module';
 export * from './auth/auth.service';
 export { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './auth/interfaces/auth-module-options.interface';
 export * from './auth/current-user.decorator';
-export type { AuthCredentials } from './auth/current-user-interface';
+export type { AuthCredential } from './auth/current-user-interface';
 export * from './auth/decorator/public.decorator';
 export * from './auth/decorator/optional.decorator';
 export * from './auth/auth-type.enum';

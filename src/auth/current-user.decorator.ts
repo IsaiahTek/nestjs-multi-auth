@@ -1,9 +1,9 @@
 import { createParamDecorator, ExecutionContext, Logger } from '@nestjs/common';
-import { AuthCredentials } from './current-user-interface';
+import { AuthCredential } from './current-user-interface';
 
 // src/auth/current-user.decorator.ts
 export const CurrentAuth = createParamDecorator(
-  (data: keyof AuthCredentials | undefined, ctx: ExecutionContext) => {
+  (data: keyof AuthCredential | undefined, ctx: ExecutionContext) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const request = ctx.switchToHttp().getRequest();
 

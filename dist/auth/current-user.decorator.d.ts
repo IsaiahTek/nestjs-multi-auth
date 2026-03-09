@@ -1,2 +1,2 @@
-import { AuthCredentials } from './current-user-interface';
-export declare const CurrentAuth: (...dataOrPipes: (keyof AuthCredentials | import("@nestjs/common").PipeTransform<any, any> | import("@nestjs/common").Type<import("@nestjs/common").PipeTransform<any, any>>)[]) => ParameterDecorator;
+import { AuthCredential } from './current-user-interface';
+export declare const CurrentAuth: (...dataOrPipes: (keyof AuthCredential | import("@nestjs/common").PipeTransform<any, any> | import("@nestjs/common").Type<import("@nestjs/common").PipeTransform<any, any>>)[]) => ParameterDecorator;

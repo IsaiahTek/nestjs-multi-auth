@@ -1,7 +1,4 @@
-export interface AuthCredentials {
+export interface AuthCredential {
     sub: string;
-    email?: string;
-    phone?: string;
-    role?: string;
     id: string;
 }
