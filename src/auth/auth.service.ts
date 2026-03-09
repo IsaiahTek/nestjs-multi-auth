@@ -534,7 +534,7 @@ export class AuthService {
   }
 
   async viewAll() {
-    const auths = await this.authRepo.find();
+    const auths = await this.authRepo.find({ relations: ['authIdentifier', 'oauthProvider'] });
     return auths;
   }
 
