@@ -1,7 +1,7 @@
-export interface CurrentUser {
+export interface AuthCredentials {
     sub: string;
     email?: string;
     phone?: string;
-    role: string;
+    role?: string;
     id: string;
 }
