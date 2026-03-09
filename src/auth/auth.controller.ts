@@ -11,6 +11,7 @@ import {
   UseGuards,
   Param,
   Delete,
+  Get,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -25,6 +26,7 @@ import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module
 import { AuthTransport } from './auth-type.enum';
 import type { Response, Request } from 'express';
 import { parseDuration } from './utils/duration.util';
+import { OptionalAuth } from './decorator/optional.decorator';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -233,6 +235,18 @@ export class AuthController {
     res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
 
     return { message: 'Logged out successfully' };
+  }
+
+  @OptionalAuth()
+  @Get('')
+  async all() {
+    return this.authService.viewAll();
+  }
+
+  @Get('view-all')
+  @ApiOperation({ summary: 'View all authentication methods' })
+  async viewAll(@Req() req: any) {
+    return this.authService.viewAllMyAuthMethods(req.user.uid);
   }
 
   @Delete('account')

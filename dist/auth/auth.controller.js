@@ -26,6 +26,7 @@ const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./auth-type.enum");
 const duration_util_1 = require("./utils/duration.util");
+const optional_decorator_1 = require("./decorator/optional.decorator");
 let AuthController = class AuthController {
     constructor(authService, options) {
         this.authService = authService;
@@ -178,6 +179,12 @@ let AuthController = class AuthController {
         res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
         return { message: 'Logged out successfully' };
     }
+    async all() {
+        return this.authService.viewAll();
+    }
+    async viewAll(req) {
+        return this.authService.viewAllMyAuthMethods(req.user.uid);
+    }
     async deleteAccount(req, res) {
         await this.authService.deleteAccount(req.user.uid);
         res.clearCookie('access_token');
@@ -282,6 +289,21 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object, refresh_token_dto_1.RefreshTokenDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, optional_decorator_1.OptionalAuth)(),
+    (0, common_1.Get)(''),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "all", null);
+__decorate([
+    (0, common_1.Get)('view-all'),
+    (0, swagger_1.ApiOperation)({ summary: 'View all authentication methods' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "viewAll", null);
 __decorate([
     (0, common_1.Delete)('account'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete user account and all associated data' }),

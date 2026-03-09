@@ -422,6 +422,14 @@ let AuthService = AuthService_1 = class AuthService {
         await this.mfaRepo.save(mfa);
         return { message: 'MFA activated successfully' };
     }
+    async viewAll() {
+        const auths = await this.authRepo.find();
+        return auths;
+    }
+    async viewAllMyAuthMethods(uid) {
+        const auths = await this.authRepo.find({ where: { uid } });
+        return auths;
+    }
     async deleteAccount(uid) {
         // 1. Delete all sessions for this UID
         await this.sessionRepository.delete({ uid });

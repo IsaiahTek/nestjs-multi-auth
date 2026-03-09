@@ -533,6 +533,16 @@ export class AuthService {
     return { message: 'MFA activated successfully' };
   }
 
+  async viewAll() {
+    const auths = await this.authRepo.find();
+    return auths;
+  }
+
+  async viewAllMyAuthMethods(uid: string) {
+    const auths = await this.authRepo.find({ where: { uid } });
+    return auths;
+  }
+
   async deleteAccount(uid: string) {
     // 1. Delete all sessions for this UID
     await this.sessionRepository.delete({ uid });
