@@ -129,12 +129,12 @@ let AuthService = AuthService_1 = class AuthService {
             }
             return {
                 message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
-                auth,
+                auth: auth.toMap(),
                 verificationRequired: true
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
-        return { ...tokens, auth };
+        return { ...tokens, auth: auth.toMap() };
     }
     async login(dto, userAgent, ip) {
         if (!dto.method)
@@ -182,7 +182,7 @@ let AuthService = AuthService_1 = class AuthService {
             await this.sendVerification(auth, identifier);
             return {
                 message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
-                auth,
+                auth: auth.toMap(),
                 verificationRequired: true,
                 tokens: undefined,
             };
@@ -191,16 +191,13 @@ let AuthService = AuthService_1 = class AuthService {
         if (has2FA) {
             return {
                 message: 'MFA required',
-                auth,
+                auth: auth.toMap(),
                 mfaRequired: true,
                 tokens: undefined,
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
-        console.log("TOKENS: ", tokens);
-        const result = { ...tokens, auth };
-        console.log("RESULT: ", result);
-        return result;
+        return { ...tokens, auth: auth.toMap() };
     }
     // --- VERIFICATION LOGIC ---
     async sendVerification(auth, currentIdentifier) {
@@ -288,7 +285,6 @@ let AuthService = AuthService_1 = class AuthService {
             await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
-        console.log("TOKENS: ", tokens);
         return { message: 'Identity verified successfully', tokens, auth };
     }
     async resendVerification(uid) {

@@ -92,9 +92,7 @@ let AuthController = class AuthController {
             const response = { message: result.message || 'Login successful', auth: result.auth };
             if (result.verificationRequired)
                 response.verificationRequired = true;
-            const shouldIncludeTokens = 'accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH));
-            console.log("RESPONSE IN CONTROLLER: ", response, "RESULT: ", result, "SHOULD INCLUDE TOKENS: ", shouldIncludeTokens, "TRANSPORTS: ", transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH), " Access Token In Result", 'accessToken' in result, "Refresh Token In Result", 'refreshToken' in result);
-            if (shouldIncludeTokens) {
+            if ('accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
                 response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
             }
             return response;

@@ -158,14 +158,14 @@ export class AuthService {
       }
       return {
         message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
-        auth,
+        auth: auth.toMap(),
         verificationRequired: true
       };
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    return { ...tokens, auth };
+    return { ...tokens, auth: auth.toMap() };
   }
 
   async login(dto: LoginDto, userAgent?: string, ip?: string) {
@@ -219,7 +219,7 @@ export class AuthService {
       await this.sendVerification(auth, identifier);
       return {
         message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
-        auth,
+        auth: auth.toMap(),
         verificationRequired: true,
         tokens: undefined,
       };
@@ -229,18 +229,15 @@ export class AuthService {
     if (has2FA) {
       return {
         message: 'MFA required',
-        auth,
+        auth: auth.toMap(),
         mfaRequired: true,
         tokens: undefined,
       };
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
-    console.log("TOKENS: ", tokens);
 
-    const result = { ...tokens, auth };
-    console.log("RESULT: ", result);
-    return result;
+    return { ...tokens, auth: auth.toMap() };
   }
 
   // --- VERIFICATION LOGIC ---
@@ -359,7 +356,6 @@ export class AuthService {
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    console.log("TOKENS: ", tokens);
     return { message: 'Identity verified successfully', tokens, auth };
   }
 

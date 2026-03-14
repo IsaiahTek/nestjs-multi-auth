@@ -111,15 +111,12 @@ export class AuthController {
         }
       }
 
-      const response: any = { message: (result as any).message || 'Login successful', auth: result.auth };
-      if ((result as any).verificationRequired) response.verificationRequired = true;
+      const response: any = { message: result.message || 'Login successful', auth: result.auth };
+      if (result.verificationRequired) response.verificationRequired = true;
 
-      const shouldIncludeTokens = 'accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH));
-      console.log("RESPONSE IN CONTROLLER: ", response, "RESULT: ", result, "SHOULD INCLUDE TOKENS: ", shouldIncludeTokens, "TRANSPORTS: ", transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH), " Access Token In Result", 'accessToken' in result, "Refresh Token In Result", 'refreshToken' in result)
-      if (shouldIncludeTokens) {
+      if ('accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
         response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
       }
-
 
       return response;
     } catch (e) {
