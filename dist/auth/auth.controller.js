@@ -95,6 +95,7 @@ let AuthController = class AuthController {
             if ('accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
                 response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
             }
+            console.log("RESPONSE IN CONTROLLER: ", response);
             return response;
         }
         catch (e) {

@@ -118,6 +118,8 @@ export class AuthController {
         response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
       }
 
+      console.log("RESPONSE IN CONTROLLER: ", response)
+
       return response;
     } catch (e) {
       throw new HttpException((e as Error).message, HttpStatus.UNAUTHORIZED);
