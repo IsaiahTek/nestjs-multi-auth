@@ -4,7 +4,6 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
-import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken } from './entities/otp-token.entity';
@@ -28,66 +27,10 @@ export declare class AuthService {
     private createSession;
     signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string): Promise<{
         message: string;
-        auth: {
-            id: string;
-            strategy: AuthStrategy;
-            isActive: boolean;
-            isVerified: boolean;
-            isPrimary: boolean;
-            meta: Record<string, any>;
-            lastUsedAt: Date;
-            identifiers: {
-                id: string;
-                type: import("./entities/auth-identify.entity").IdentifierType;
-                value: string;
-                isVerified: boolean;
-            }[];
-            oauthProvider: {
-                id: string;
-                provider: import("./auth-type.enum").OAuthProviderType;
-                providerUserId: string;
-                accessToken: string;
-                refreshToken: string;
-                expiresAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date;
-            };
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
-        };
+        auth: Auth;
         verificationRequired: boolean;
     } | {
-        auth: {
-            id: string;
-            strategy: AuthStrategy;
-            isActive: boolean;
-            isVerified: boolean;
-            isPrimary: boolean;
-            meta: Record<string, any>;
-            lastUsedAt: Date;
-            identifiers: {
-                id: string;
-                type: import("./entities/auth-identify.entity").IdentifierType;
-                value: string;
-                isVerified: boolean;
-            }[];
-            oauthProvider: {
-                id: string;
-                provider: import("./auth-type.enum").OAuthProviderType;
-                providerUserId: string;
-                accessToken: string;
-                refreshToken: string;
-                expiresAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date;
-            };
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
-        };
+        auth: Auth;
         accessToken: string;
         refreshToken: string;
         message?: undefined;
@@ -95,102 +38,18 @@ export declare class AuthService {
     }>;
     login(dto: LoginDto, userAgent?: string, ip?: string): Promise<{
         message: string;
-        auth: {
-            id: string;
-            strategy: AuthStrategy;
-            isActive: boolean;
-            isVerified: boolean;
-            isPrimary: boolean;
-            meta: Record<string, any>;
-            lastUsedAt: Date;
-            identifiers: {
-                id: string;
-                type: import("./entities/auth-identify.entity").IdentifierType;
-                value: string;
-                isVerified: boolean;
-            }[];
-            oauthProvider: {
-                id: string;
-                provider: import("./auth-type.enum").OAuthProviderType;
-                providerUserId: string;
-                accessToken: string;
-                refreshToken: string;
-                expiresAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date;
-            };
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
-        };
+        auth: Auth;
         verificationRequired: boolean;
         tokens: any;
         mfaRequired?: undefined;
     } | {
         message: string;
-        auth: {
-            id: string;
-            strategy: AuthStrategy;
-            isActive: boolean;
-            isVerified: boolean;
-            isPrimary: boolean;
-            meta: Record<string, any>;
-            lastUsedAt: Date;
-            identifiers: {
-                id: string;
-                type: import("./entities/auth-identify.entity").IdentifierType;
-                value: string;
-                isVerified: boolean;
-            }[];
-            oauthProvider: {
-                id: string;
-                provider: import("./auth-type.enum").OAuthProviderType;
-                providerUserId: string;
-                accessToken: string;
-                refreshToken: string;
-                expiresAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date;
-            };
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
-        };
+        auth: Auth;
         mfaRequired: boolean;
         tokens: any;
         verificationRequired?: undefined;
     } | {
-        auth: {
-            id: string;
-            strategy: AuthStrategy;
-            isActive: boolean;
-            isVerified: boolean;
-            isPrimary: boolean;
-            meta: Record<string, any>;
-            lastUsedAt: Date;
-            identifiers: {
-                id: string;
-                type: import("./entities/auth-identify.entity").IdentifierType;
-                value: string;
-                isVerified: boolean;
-            }[];
-            oauthProvider: {
-                id: string;
-                provider: import("./auth-type.enum").OAuthProviderType;
-                providerUserId: string;
-                accessToken: string;
-                refreshToken: string;
-                expiresAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                deletedAt: Date;
-            };
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date;
-        };
+        auth: Auth;
         accessToken: string;
         refreshToken: string;
         message?: undefined;
