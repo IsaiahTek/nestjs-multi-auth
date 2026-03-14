@@ -122,7 +122,7 @@ export class Auth extends BaseEntity {
       meta: this.meta,
       lastUsedAt: this.lastUsedAt,
       // user: this.user.toMap(),
-      identifiers: this.identifiers.map((id) => id.toMap()),
+      identifiers: this.identifiers?.map((id) => id?.toMap()),
       oauthProvider: this.oauthProvider?.toMap(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
