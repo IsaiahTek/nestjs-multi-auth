@@ -123,18 +123,19 @@ let AuthService = AuthService_1 = class AuthService {
         const triggerVerification = isPasswordless ||
             (this.options.verificationRequired && !identifier?.isVerified) ||
             has2FA;
+        const { secretHash, ...filteredAuth } = auth;
         if (triggerVerification && this.notificationProvider) {
             if (!identifier?.isVerified || has2FA || isPasswordless) {
                 await this.sendVerification(auth, identifier);
             }
             return {
                 message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
-                auth,
+                auth: filteredAuth,
                 verificationRequired: true
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
-        return { ...tokens, auth };
+        return { ...tokens, auth: filteredAuth };
     }
     async login(dto, userAgent, ip) {
         if (!dto.method)
@@ -187,17 +188,18 @@ let AuthService = AuthService_1 = class AuthService {
                 tokens: undefined,
             };
         }
+        const { secretHash, ...filteredAuth } = auth;
         // If MFA is enabled, inform client that additional MFA verification is required.
         if (has2FA) {
             return {
                 message: 'MFA required',
-                auth,
+                auth: filteredAuth,
                 mfaRequired: true,
                 tokens: undefined,
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
-        return { ...tokens, auth };
+        return { ...tokens, auth: filteredAuth };
     }
     // --- VERIFICATION LOGIC ---
     async sendVerification(auth, currentIdentifier) {

@@ -4,6 +4,7 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
+import { AuthStrategy } from './auth-type.enum';
 import { Auth } from './entities/auth.entity';
 import { Session } from './entities/session.entity';
 import { OtpToken } from './entities/otp-token.entity';
@@ -27,10 +28,38 @@ export declare class AuthService {
     private createSession;
     signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string): Promise<{
         message: string;
-        auth: Auth;
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            oauthProvider?: import("..").OAuthProvider;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
+        };
         verificationRequired: boolean;
     } | {
-        auth: Auth;
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            oauthProvider?: import("..").OAuthProvider;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
+        };
         accessToken: string;
         refreshToken: string;
         message?: undefined;
@@ -44,12 +73,40 @@ export declare class AuthService {
         mfaRequired?: undefined;
     } | {
         message: string;
-        auth: Auth;
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            oauthProvider?: import("..").OAuthProvider;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
+        };
         mfaRequired: boolean;
         tokens: any;
         verificationRequired?: undefined;
     } | {
-        auth: Auth;
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            oauthProvider?: import("..").OAuthProvider;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date;
+        };
         accessToken: string;
         refreshToken: string;
         message?: undefined;

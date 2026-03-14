@@ -152,20 +152,22 @@ export class AuthService {
       (this.options.verificationRequired && !identifier?.isVerified) ||
       has2FA;
 
+    const { secretHash, ...filteredAuth } = auth;
+
     if (triggerVerification && this.notificationProvider) {
       if (!identifier?.isVerified || has2FA || isPasswordless) {
         await this.sendVerification(auth, identifier);
       }
       return {
         message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
-        auth,
+        auth: filteredAuth,
         verificationRequired: true
       };
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    return { ...tokens, auth };
+    return { ...tokens, auth: filteredAuth };
   }
 
   async login(dto: LoginDto, userAgent?: string, ip?: string) {
@@ -225,11 +227,13 @@ export class AuthService {
       };
     }
 
+    const { secretHash, ...filteredAuth } = auth;
+
     // If MFA is enabled, inform client that additional MFA verification is required.
     if (has2FA) {
       return {
         message: 'MFA required',
-        auth,
+        auth: filteredAuth,
         mfaRequired: true,
         tokens: undefined,
       };
@@ -237,7 +241,7 @@ export class AuthService {
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
-    return { ...tokens, auth };
+    return { ...tokens, auth: filteredAuth };
   }
 
   // --- VERIFICATION LOGIC ---
