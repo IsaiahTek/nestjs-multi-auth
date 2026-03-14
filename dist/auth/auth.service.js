@@ -197,6 +197,7 @@ let AuthService = AuthService_1 = class AuthService {
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        console.log("TOKENS: ", tokens);
         return { ...tokens, auth };
     }
     // --- VERIFICATION LOGIC ---
@@ -285,6 +286,7 @@ let AuthService = AuthService_1 = class AuthService {
             await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        console.log("TOKENS: ", tokens);
         return { message: 'Identity verified successfully', tokens, auth };
     }
     async resendVerification(uid) {

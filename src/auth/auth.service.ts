@@ -236,6 +236,7 @@ export class AuthService {
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
+    console.log("TOKENS: ", tokens);
 
     return { ...tokens, auth };
   }
@@ -356,6 +357,7 @@ export class AuthService {
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
+    console.log("TOKENS: ", tokens);
     return { message: 'Identity verified successfully', tokens, auth };
   }
 
