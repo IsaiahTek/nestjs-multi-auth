@@ -114,8 +114,9 @@ export class AuthController {
       const response: any = { message: (result as any).message || 'Login successful', auth: result.auth };
       if ((result as any).verificationRequired) response.verificationRequired = true;
 
-      console.log("RESPONSE IN CONTROLLER: ", response)
-      if ('accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
+      const shouldIncludeTokens = 'accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH));
+      console.log("RESPONSE IN CONTROLLER: ", response, "RESULT: ", result, "SHOULD INCLUDE TOKENS: ", shouldIncludeTokens)
+      if (shouldIncludeTokens) {
         response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
       }
 
