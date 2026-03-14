@@ -238,7 +238,9 @@ export class AuthService {
     const tokens = await this.createSession(auth.uid, userAgent, ip);
     console.log("TOKENS: ", tokens);
 
-    return { ...tokens, auth };
+    const result = { ...tokens, auth };
+    console.log("RESULT: ", result);
+    return result;
   }
 
   // --- VERIFICATION LOGIC ---

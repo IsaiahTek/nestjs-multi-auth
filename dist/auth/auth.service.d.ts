@@ -37,6 +37,10 @@ export declare class AuthService {
         verificationRequired?: undefined;
     }>;
     login(dto: LoginDto, userAgent?: string, ip?: string): Promise<{
+        auth: Auth;
+        accessToken: string;
+        refreshToken: string;
+    } | {
         message: string;
         auth: Auth;
         verificationRequired: boolean;
@@ -48,14 +52,6 @@ export declare class AuthService {
         mfaRequired: boolean;
         tokens: any;
         verificationRequired?: undefined;
-    } | {
-        auth: Auth;
-        accessToken: string;
-        refreshToken: string;
-        message?: undefined;
-        verificationRequired?: undefined;
-        tokens?: undefined;
-        mfaRequired?: undefined;
     }>;
     private sendVerification;
     verifyCode(uid: string, code: string, userAgent?: string, ip?: string): Promise<{
