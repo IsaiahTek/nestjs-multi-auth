@@ -115,7 +115,7 @@ export class AuthController {
       if ((result as any).verificationRequired) response.verificationRequired = true;
 
       const shouldIncludeTokens = 'accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH));
-      console.log("RESPONSE IN CONTROLLER: ", response, "RESULT: ", result, "SHOULD INCLUDE TOKENS: ", shouldIncludeTokens)
+      console.log("RESPONSE IN CONTROLLER: ", response, "RESULT: ", result, "SHOULD INCLUDE TOKENS: ", shouldIncludeTokens, "TRANSPORTS: ", transports, " Access Token In Result", 'accessToken' in result, "Refresh Token In Result", 'refreshToken' in result)
       if (shouldIncludeTokens) {
         response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
       }
