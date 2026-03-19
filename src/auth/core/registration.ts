@@ -18,32 +18,46 @@ export const createStrategyProviders = (options: AuthModuleOptions): Provider[] 
         });
     }
 
-    if (enabled.includes(AuthStrategy.GOOGLE)) {
-        providers.push({
-            provide: GoogleAuthStrategy,
-            useClass: GoogleAuthStrategy,
-        });
-    }
+    // if (enabled.includes(AuthStrategy.GOOGLE)) {
+    //     providers.push({
+    //         provide: GoogleAuthStrategy,
+    //         useClass: GoogleAuthStrategy,
+    //     });
+    // }
 
-    if (enabled.includes(AuthStrategy.FACEBOOK)) {
-        providers.push({
-            provide: FacebookAuthStrategy,
-            useClass: FacebookAuthStrategy,
-        });
-    }
+    // if (enabled.includes(AuthStrategy.FACEBOOK)) {
+    //     providers.push({
+    //         provide: FacebookAuthStrategy,
+    //         useClass: FacebookAuthStrategy,
+    //     });
+    // }
 
-    if (enabled.includes(AuthStrategy.APPLE)) {
-        providers.push({
-            provide: AppleAuthStrategy,
-            useClass: AppleAuthStrategy,
-        });
-    }
+    // if (enabled.includes(AuthStrategy.APPLE)) {
+    //     providers.push({
+    //         provide: AppleAuthStrategy,
+    //         useClass: AppleAuthStrategy,
+    //     });
+    // }
 
     if (enabled.includes(AuthStrategy.APPLE) || enabled.includes(AuthStrategy.FACEBOOK) || enabled.includes(AuthStrategy.GOOGLE)) {
-        providers.push({
-            provide: OAuthAuthStrategy,
-            useClass: OAuthAuthStrategy,
-        });
+        providers.push(...[
+            {
+                provide: GoogleAuthStrategy,
+                useClass: GoogleAuthStrategy,
+            },
+            {
+                provide: FacebookAuthStrategy,
+                useClass: FacebookAuthStrategy,
+            },
+            {
+                provide: AppleAuthStrategy,
+                useClass: AppleAuthStrategy,
+            },
+            {
+                provide: OAuthAuthStrategy,
+                useClass: OAuthAuthStrategy,
+            }
+        ]);
     }
 
     return providers;

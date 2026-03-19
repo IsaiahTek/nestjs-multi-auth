@@ -16,29 +16,43 @@ const createStrategyProviders = (options) => {
             useClass: local_auth_strategy_1.LocalAuthStrategy,
         });
     }
-    if (enabled.includes(auth_type_enum_1.AuthStrategy.GOOGLE)) {
-        providers.push({
-            provide: google_strategy_1.GoogleAuthStrategy,
-            useClass: google_strategy_1.GoogleAuthStrategy,
-        });
-    }
-    if (enabled.includes(auth_type_enum_1.AuthStrategy.FACEBOOK)) {
-        providers.push({
-            provide: facebook_strategy_1.FacebookAuthStrategy,
-            useClass: facebook_strategy_1.FacebookAuthStrategy,
-        });
-    }
-    if (enabled.includes(auth_type_enum_1.AuthStrategy.APPLE)) {
-        providers.push({
-            provide: apple_strategy_1.AppleAuthStrategy,
-            useClass: apple_strategy_1.AppleAuthStrategy,
-        });
-    }
+    // if (enabled.includes(AuthStrategy.GOOGLE)) {
+    //     providers.push({
+    //         provide: GoogleAuthStrategy,
+    //         useClass: GoogleAuthStrategy,
+    //     });
+    // }
+    // if (enabled.includes(AuthStrategy.FACEBOOK)) {
+    //     providers.push({
+    //         provide: FacebookAuthStrategy,
+    //         useClass: FacebookAuthStrategy,
+    //     });
+    // }
+    // if (enabled.includes(AuthStrategy.APPLE)) {
+    //     providers.push({
+    //         provide: AppleAuthStrategy,
+    //         useClass: AppleAuthStrategy,
+    //     });
+    // }
     if (enabled.includes(auth_type_enum_1.AuthStrategy.APPLE) || enabled.includes(auth_type_enum_1.AuthStrategy.FACEBOOK) || enabled.includes(auth_type_enum_1.AuthStrategy.GOOGLE)) {
-        providers.push({
-            provide: oauth_strategy_1.OAuthAuthStrategy,
-            useClass: oauth_strategy_1.OAuthAuthStrategy,
-        });
+        providers.push(...[
+            {
+                provide: google_strategy_1.GoogleAuthStrategy,
+                useClass: google_strategy_1.GoogleAuthStrategy,
+            },
+            {
+                provide: facebook_strategy_1.FacebookAuthStrategy,
+                useClass: facebook_strategy_1.FacebookAuthStrategy,
+            },
+            {
+                provide: apple_strategy_1.AppleAuthStrategy,
+                useClass: apple_strategy_1.AppleAuthStrategy,
+            },
+            {
+                provide: oauth_strategy_1.OAuthAuthStrategy,
+                useClass: oauth_strategy_1.OAuthAuthStrategy,
+            }
+        ]);
     }
     return providers;
 };
