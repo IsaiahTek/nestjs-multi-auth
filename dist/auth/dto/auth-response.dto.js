@@ -13,6 +13,8 @@ exports.AuthResponseDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const auth_type_enum_1 = require("../enums/auth-type.enum");
 const class_transformer_1 = require("class-transformer");
+const identifier_response_dto_1 = require("./identifier-response.dto");
+const oauth_provider_response_dto_1 = require("./oauth-provider-response.dto");
 class AuthResponseDto {
 }
 exports.AuthResponseDto = AuthResponseDto;
@@ -59,12 +61,14 @@ __decorate([
 __decorate([
     (0, class_transformer_1.Expose)(),
     (0, swagger_1.ApiProperty)({ required: false }),
+    (0, class_transformer_1.Type)(() => identifier_response_dto_1.AuthIdentifierDto),
     __metadata("design:type", Array)
 ], AuthResponseDto.prototype, "identifiers", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, swagger_1.ApiProperty)({ required: false }),
-    __metadata("design:type", Object)
+    (0, class_transformer_1.Type)(() => oauth_provider_response_dto_1.OAuthProviderResponseDto),
+    (0, swagger_1.ApiProperty)({ type: oauth_provider_response_dto_1.OAuthProviderResponseDto, required: false }),
+    __metadata("design:type", oauth_provider_response_dto_1.OAuthProviderResponseDto)
 ], AuthResponseDto.prototype, "oauthProvider", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),

@@ -1,4 +1,6 @@
 import { AuthStrategy } from '../enums/auth-type.enum';
+import { AuthIdentifierDto } from './identifier-response.dto';
+import { OAuthProviderResponseDto } from './oauth-provider-response.dto';
 export declare class AuthResponseDto {
     id: string;
     uid: string;
@@ -8,8 +10,8 @@ export declare class AuthResponseDto {
     isActive: boolean;
     meta?: Record<string, any>;
     lastUsedAt?: Date;
-    identifiers?: any[];
-    oauthProvider?: any;
+    identifiers?: AuthIdentifierDto[];
+    oauthProvider?: OAuthProviderResponseDto;
     createdAt: Date;
     updatedAt: Date;
 }
