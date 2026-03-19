@@ -25,7 +25,7 @@ const common_2 = require("@nestjs/common");
 const auth_entity_1 = require("../entities/auth.entity");
 const auth_identify_entity_1 = require("../entities/auth-identify.entity");
 // Enums
-const auth_type_enum_1 = require("../auth-type.enum"); // Ensure this path is correct
+const auth_type_enum_1 = require("../enums/auth-type.enum"); // Ensure this path is correct
 // Services / DTOs
 let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
     constructor(dataSource, authRepo, identifierRepo, options) {

@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
-import { AUTH_MODULE_OPTIONS } from './auth.module';
-import { AuthTransport } from './auth-type.enum';
+import { AuthController } from '../auth.controller';
+import { AuthService } from '../auth.service';
+import { AuthModuleOptions } from '../interfaces/auth-module-options.interface';
+import { AUTH_MODULE_OPTIONS } from '../auth.module';
+import { AuthTransport } from '../enums/auth-type.enum';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 

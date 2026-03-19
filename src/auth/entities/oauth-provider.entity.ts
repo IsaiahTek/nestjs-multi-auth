@@ -2,7 +2,7 @@ import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseEntity } from './base.entity';
 import { Auth } from './auth.entity';
-import { OAuthProviderType } from '../auth-type.enum';
+import { OAuthProviderType } from '../enums/auth-type.enum';
 
 @Entity()
 export class OAuthProvider extends BaseEntity {

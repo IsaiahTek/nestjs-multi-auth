@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService } from '../auth.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { MfaMethod, MfaType } from './entities/mfa-method.entity';
-import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
+import { MfaMethod, MfaType } from '../entities/mfa-method.entity';
+import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { authenticator } from 'otplib';
 import { BadRequestException } from '@nestjs/common';
-import { Session } from './entities/session.entity';
-import { Auth } from './entities/auth.entity';
-import { OtpToken } from './entities/otp-token.entity';
+import { Session } from '../entities/session.entity';
+import { Auth } from '../entities/auth.entity';
+import { OtpToken } from '../entities/otp-token.entity';
 import { JwtService } from '@nestjs/jwt';
-import { LocalAuthStrategy } from './strategies/local-auth.strategy';
-import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
+import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
+import { OAuthAuthStrategy } from '../strategies/oauth/oauth.strategy';
 import { DataSource } from 'typeorm';
 
 describe('AuthService MFA', () => {

@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { AuthTransport, AuthStrategy } from '../auth-type.enum';
+import { AuthTransport, AuthStrategy } from '../enums/auth-type.enum';
 import { AuthNotificationProvider } from './auth-notification-provider.interface';
 export declare const AUTH_MODULE_OPTIONS = "AUTH_MODULE_OPTIONS";
 export interface AuthModuleOptions {

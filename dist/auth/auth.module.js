@@ -15,16 +15,10 @@ const auth_entity_1 = require("./entities/auth.entity");
 const oauth_provider_entity_1 = require("./entities/oauth-provider.entity");
 const otp_token_entity_1 = require("./entities/otp-token.entity");
 const mfa_method_entity_1 = require("./entities/mfa-method.entity");
-const local_auth_strategy_1 = require("./strategies/local-auth.strategy");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_1 = require("@nestjs/jwt");
-const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
-const google_strategy_1 = require("./strategies/oauth/google.strategy");
-const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
-const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
-const jwt_strategy_1 = require("./jwt.strategy");
-const auth_type_enum_1 = require("./auth-type.enum");
+const jwt_strategy_1 = require("./core/jwt.strategy");
 const passport_1 = require("@nestjs/passport");
 const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
@@ -35,36 +29,23 @@ const core_1 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const optional_auth_guard_1 = require("./guards/optional-auth.guard");
 const throttler_1 = require("@nestjs/throttler");
+const registration_1 = require("./core/registration");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
             provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useValue: options,
         };
+        const strategyProviders = (0, registration_1.createStrategyProviders)(options);
         const providers = [
             optionsProvider,
-            jwt_strategy_1.JwtStrategy,
-            auth_service_1.AuthService,
-            jwt_auth_guard_1.JwtAuthGuard,
-            optional_auth_guard_1.OptionalAuthGuard,
-            throttler_1.ThrottlerGuard,
+            ...this.createProviders(),
+            ...strategyProviders,
         ];
-        const enabledStrategies = options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
-        const isLocalEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(s));
-        const isOAuthEnabled = enabledStrategies.some(s => [auth_type_enum_1.AuthStrategy.GOOGLE, auth_type_enum_1.AuthStrategy.FACEBOOK, auth_type_enum_1.AuthStrategy.APPLE, auth_type_enum_1.AuthStrategy.OAUTH].includes(s));
-        const isOtpEnabled = enabledStrategies.includes('OTP'); // Check for legacy if needed, but the user said it is NOT a strategy
-        // Actually, let's just remove the explicit isOtpEnabled check for providers if the strategy is deleted.
-        // We'll keep the OTP repo and other things, but OtpAuthStrategy is gone.
-        if (isLocalEnabled) {
-            providers.push(local_auth_strategy_1.LocalAuthStrategy);
-        }
-        if (isOAuthEnabled) {
-            providers.push(oauth_strategy_1.OAuthAuthStrategy, google_strategy_1.GoogleAuthStrategy, apple_strategy_1.AppleAuthStrategy, facebook_strategy_1.FacebookAuthStrategy);
-        }
         if (options.notificationProvider) {
             providers.push({
                 provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
-                useClass: options.notificationProvider,
+                useValue: options.notificationProvider,
             });
         }
         if (!options.disableGlobalGuard) {
@@ -101,12 +82,75 @@ let AuthModule = AuthModule_1 = class AuthModule {
             ],
             providers,
             controllers: options.disableController ? [] : [auth_controller_1.AuthController],
-            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, throttler_1.ThrottlerModule],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule],
+        };
+    }
+    static createProviders() {
+        return [
+            jwt_strategy_1.JwtStrategy,
+            auth_service_1.AuthService,
+            jwt_auth_guard_1.JwtAuthGuard,
+            optional_auth_guard_1.OptionalAuthGuard,
+            throttler_1.ThrottlerGuard,
+        ];
+    }
+    static forRootAsync(options) {
+        const asyncOptionsProvider = {
+            provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
+            useFactory: options.useFactory,
+            inject: options.inject || [],
+        };
+        return {
+            module: AuthModule_1,
+            global: true,
+            imports: [
+                typeorm_1.TypeOrmModule.forFeature([
+                    auth_entity_1.Auth,
+                    oauth_provider_entity_1.OAuthProvider,
+                    auth_identify_entity_1.AuthIdentifier,
+                    otp_token_entity_1.OtpToken,
+                    mfa_method_entity_1.MfaMethod,
+                    session_entity_1.Session,
+                ]),
+                passport_1.PassportModule,
+                jwt_1.JwtModule.registerAsync({
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
+                    useFactory: async (opts) => ({
+                        secret: opts.jwtSecret || process.env.JWT_SECRET || 'changeme',
+                        signOptions: {
+                            expiresIn: (opts.accessTokenExpiresIn || '15m'),
+                        },
+                    }),
+                }),
+                throttler_1.ThrottlerModule.forRootAsync({
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
+                    useFactory: async (opts) => ({
+                        throttlers: [
+                            {
+                                ttl: (opts.throttlerTtl || 60) * 1000,
+                                limit: opts.throttlerLimit || 10,
+                            },
+                        ],
+                    }),
+                }),
+                ...(options.imports || []),
+            ],
+            providers: [
+                asyncOptionsProvider,
+                ...this.createProviders(),
+                {
+                    provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
+                    useFactory: (opts) => opts.notificationProvider,
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
+                },
+            ],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule],
         };
     }
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = AuthModule_1 = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({})
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

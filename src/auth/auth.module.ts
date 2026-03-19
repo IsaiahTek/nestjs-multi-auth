@@ -1,5 +1,5 @@
 // src/auth/auth.module.ts
-import { Module, DynamicModule, Provider } from '@nestjs/common';
+import { Module, DynamicModule, Provider, Global } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Auth } from './entities/auth.entity';
 import { OAuthProvider } from './entities/oauth-provider.entity';
@@ -13,8 +13,8 @@ import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
-import { JwtStrategy } from './jwt.strategy';
-import { AuthStrategy } from './auth-type.enum';
+import { JwtStrategy } from './core/jwt.strategy';
+import { AuthStrategy } from './enums/auth-type.enum';
 import { PassportModule } from '@nestjs/passport';
 import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
@@ -24,7 +24,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { createStrategyProviders } from './core/registration';
+import { AuthModuleAsyncOptions } from './interfaces/auth-module-async-options.interface';
 
+
+
+@Global()
 @Module({})
 export class AuthModule {
   static register(options: AuthModuleOptions): DynamicModule {
@@ -33,46 +38,18 @@ export class AuthModule {
       useValue: options,
     };
 
+    const strategyProviders = createStrategyProviders(options);
+
     const providers: Provider[] = [
       optionsProvider,
-      JwtStrategy,
-      AuthService,
-      JwtAuthGuard,
-      OptionalAuthGuard,
-      ThrottlerGuard,
+      ...this.createProviders(),
+      ...strategyProviders,
     ];
-
-    const enabledStrategies = options.enabledStrategies || Object.values(AuthStrategy);
-
-    const isLocalEnabled = enabledStrategies.some(s =>
-      [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(s)
-    );
-
-    const isOAuthEnabled = enabledStrategies.some(s =>
-      [AuthStrategy.GOOGLE, AuthStrategy.FACEBOOK, AuthStrategy.APPLE, AuthStrategy.OAUTH].includes(s)
-    );
-
-    const isOtpEnabled = enabledStrategies.includes('OTP' as any); // Check for legacy if needed, but the user said it is NOT a strategy
-    // Actually, let's just remove the explicit isOtpEnabled check for providers if the strategy is deleted.
-    // We'll keep the OTP repo and other things, but OtpAuthStrategy is gone.
-
-    if (isLocalEnabled) {
-      providers.push(LocalAuthStrategy);
-    }
-
-    if (isOAuthEnabled) {
-      providers.push(
-        OAuthAuthStrategy,
-        GoogleAuthStrategy,
-        AppleAuthStrategy,
-        FacebookAuthStrategy,
-      );
-    }
 
     if (options.notificationProvider) {
       providers.push({
         provide: AUTH_NOTIFICATION_PROVIDER,
-        useClass: options.notificationProvider,
+        useValue: options.notificationProvider,
       });
     }
 
@@ -111,7 +88,72 @@ export class AuthModule {
       ],
       providers,
       controllers: options.disableController ? [] : [AuthController],
-      exports: [AuthService, JwtAuthGuard, ThrottlerModule],
+      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule],
+    };
+  }
+
+  private static createProviders(): Provider[] {
+    return [
+      JwtStrategy,
+      AuthService,
+      JwtAuthGuard,
+      OptionalAuthGuard,
+      ThrottlerGuard,
+    ];
+  }
+
+  static forRootAsync(options: AuthModuleAsyncOptions): DynamicModule {
+    const asyncOptionsProvider: Provider = {
+      provide: AUTH_MODULE_OPTIONS,
+      useFactory: options.useFactory,
+      inject: options.inject || [],
+    };
+
+    return {
+      module: AuthModule,
+      global: true,
+      imports: [
+        TypeOrmModule.forFeature([
+          Auth,
+          OAuthProvider,
+          AuthIdentifier,
+          OtpToken,
+          MfaMethod,
+          Session,
+        ]),
+        PassportModule,
+        JwtModule.registerAsync({
+          inject: [AUTH_MODULE_OPTIONS],
+          useFactory: async (opts: AuthModuleOptions) => ({
+            secret: opts.jwtSecret || process.env.JWT_SECRET || 'changeme',
+            signOptions: {
+              expiresIn: (opts.accessTokenExpiresIn || '15m') as any,
+            },
+          }),
+        }),
+        ThrottlerModule.forRootAsync({
+          inject: [AUTH_MODULE_OPTIONS],
+          useFactory: async (opts: AuthModuleOptions) => ({
+            throttlers: [
+              {
+                ttl: (opts.throttlerTtl || 60) * 1000,
+                limit: opts.throttlerLimit || 10,
+              },
+            ],
+          }),
+        }),
+        ...(options.imports || []),
+      ],
+      providers: [
+        asyncOptionsProvider,
+        ...this.createProviders(),
+        {
+          provide: AUTH_NOTIFICATION_PROVIDER,
+          useFactory: (opts: AuthModuleOptions) => opts.notificationProvider,
+          inject: [AUTH_MODULE_OPTIONS],
+        },
+      ],
+      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule],
     };
   }
 }

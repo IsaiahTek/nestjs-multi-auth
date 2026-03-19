@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { BaseEntity } from './base.entity';
 import { AuthIdentifier } from './auth-identify.entity';
 import { OAuthProvider } from './oauth-provider.entity';
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy } from '../enums/auth-type.enum';
 
 @Entity('auth')
 @Index('IDX_user_primary_auth', ['uid'], {

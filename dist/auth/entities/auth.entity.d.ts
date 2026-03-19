@@ -1,7 +1,7 @@
 import { BaseEntity } from './base.entity';
 import { AuthIdentifier } from './auth-identify.entity';
 import { OAuthProvider } from './oauth-provider.entity';
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy } from '../enums/auth-type.enum';
 export declare class Auth extends BaseEntity {
     uid: string;
     strategy: AuthStrategy;
@@ -29,7 +29,7 @@ export declare class Auth extends BaseEntity {
         }[];
         oauthProvider: {
             id: string;
-            provider: import("../auth-type.enum").OAuthProviderType;
+            provider: import("../enums/auth-type.enum").OAuthProviderType;
             providerUserId: string;
             accessToken: string;
             refreshToken: string;

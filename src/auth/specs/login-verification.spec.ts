@@ -1,21 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { AuthModule } from './auth.module';
+import { AuthService } from '../auth.service';
+import { AuthModule } from '../auth.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Auth } from './entities/auth.entity';
-import { AuthIdentifier, IdentifierType } from './entities/auth-identify.entity';
-import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
-import { Session } from './entities/session.entity';
-import { LocalAuthStrategy } from './strategies/local-auth.strategy';
-import { OAuthProvider } from './entities/oauth-provider.entity';
+import { Auth } from '../entities/auth.entity';
+import { AuthIdentifier, IdentifierType } from '../entities/auth-identify.entity';
+import { OtpToken } from '../entities/otp-token.entity';
+import { MfaMethod } from '../entities/mfa-method.entity';
+import { Session } from '../entities/session.entity';
+import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
+import { OAuthProvider } from '../entities/oauth-provider.entity';
 import { DataSource } from 'typeorm';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
-import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
-import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
-import { AuthStrategy } from './auth-type.enum';
+import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
+import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
+import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
+import { AuthStrategy } from '../enums/auth-type.enum';
 import { JwtService } from '@nestjs/jwt';
+import { CurrentAuth } from '../interfaces/current-user.decorator';
 
 describe('Login verification flow', () => {
     let service: AuthService;

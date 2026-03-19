@@ -8,7 +8,7 @@ import {
   IsEnum,
   IsPhoneNumber,
 } from 'class-validator';
-import { AuthStrategy, OAuthProviderType } from '../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
 
 export class SignupDto {
   @ApiProperty({

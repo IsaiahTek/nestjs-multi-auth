@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService } from '../auth.service';
 import { JwtService } from '@nestjs/jwt';
-import { LocalAuthStrategy } from './strategies/local-auth.strategy';
-import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
+import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
+import { OAuthAuthStrategy } from '../strategies/oauth/oauth.strategy';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Session } from './entities/session.entity';
-import { Auth } from './entities/auth.entity';
-import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
-import { AUTH_MODULE_OPTIONS } from './interfaces/auth-module-options.interface';
-import { AuthStrategy } from './auth-type.enum';
+import { Session } from '../entities/session.entity';
+import { Auth } from '../entities/auth.entity';
+import { OtpToken } from '../entities/otp-token.entity';
+import { MfaMethod } from '../entities/mfa-method.entity';
+import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
+import { AuthStrategy } from '../enums/auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 

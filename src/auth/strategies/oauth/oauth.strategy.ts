@@ -3,14 +3,14 @@ import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { Auth } from '../../entities/auth.entity';
 import { AuthIdentifier } from '../../entities/auth-identify.entity';
-import { OAuthProviderType } from '../../auth-type.enum';
+import { OAuthProviderType } from '../../enums/auth-type.enum';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
 import { AppleAuthStrategy } from './apple.strategy';
 import { IOAuthStrategy } from './oauth-strategy.interface';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
-import { AuthStrategy } from '../../auth-type.enum';
+import { AuthStrategy } from '../../enums/auth-type.enum';
 
 @Injectable()
 export class OAuthAuthStrategy implements IOAuthStrategy {

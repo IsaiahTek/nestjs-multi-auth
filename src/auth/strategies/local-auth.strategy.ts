@@ -21,7 +21,7 @@ import {
 } from '../entities/auth-identify.entity';
 
 // Enums
-import { AuthStrategy } from '../auth-type.enum'; // Ensure this path is correct
+import { AuthStrategy } from '../enums/auth-type.enum'; // Ensure this path is correct
 
 // Services / DTOs
 

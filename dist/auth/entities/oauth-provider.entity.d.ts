@@ -1,6 +1,6 @@
 import { BaseEntity } from './base.entity';
 import { Auth } from './auth.entity';
-import { OAuthProviderType } from '../auth-type.enum';
+import { OAuthProviderType } from '../enums/auth-type.enum';
 export declare class OAuthProvider extends BaseEntity {
     auth: Auth;
     provider: OAuthProviderType;

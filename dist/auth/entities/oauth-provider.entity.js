@@ -14,7 +14,7 @@ const typeorm_1 = require("typeorm");
 const swagger_1 = require("@nestjs/swagger");
 const base_entity_1 = require("./base.entity");
 const auth_entity_1 = require("./auth.entity");
-const auth_type_enum_1 = require("../auth-type.enum");
+const auth_type_enum_1 = require("../enums/auth-type.enum");
 let OAuthProvider = class OAuthProvider extends base_entity_1.BaseEntity {
     toMap() {
         return {

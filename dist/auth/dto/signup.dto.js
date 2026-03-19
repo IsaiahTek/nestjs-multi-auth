@@ -13,7 +13,7 @@ exports.SignupDto = void 0;
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
-const auth_type_enum_1 = require("../auth-type.enum");
+const auth_type_enum_1 = require("../enums/auth-type.enum");
 class SignupDto {
 }
 exports.SignupDto = SignupDto;

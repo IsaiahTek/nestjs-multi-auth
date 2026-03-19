@@ -6,7 +6,7 @@ import { Auth } from '../entities/auth.entity';
 import { AuthIdentifier, IdentifierType } from '../entities/auth-identify.entity';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { AuthStrategy } from '../auth-type.enum';
+import { AuthStrategy } from '../enums/auth-type.enum';
 
 describe('LocalAuthStrategy', () => {
     let strategy: LocalAuthStrategy;

@@ -23,7 +23,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorator/public.decorator';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
-import { AuthTransport } from './auth-type.enum';
+import { AuthTransport } from './enums/auth-type.enum';
 import type { Response, Request } from 'express';
 import { parseDuration } from './utils/duration.util';
 import { OptionalAuth } from './decorator/optional.decorator';

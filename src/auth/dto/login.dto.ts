@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
-import { AuthStrategy, OAuthProviderType } from '../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
 
 export class LoginDto {
   @ApiProperty({

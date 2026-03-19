@@ -1,19 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { AuthModule } from './auth.module';
+import { AuthService } from '../auth.service';
+import { AuthModule } from '../auth.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Auth } from './entities/auth.entity';
-import { OAuthProvider } from './entities/oauth-provider.entity';
-import { AuthIdentifier } from './entities/auth-identify.entity';
-import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
-import { Session } from './entities/session.entity';
+import { Auth } from '../entities/auth.entity';
+import { OAuthProvider } from '../entities/oauth-provider.entity';
+import { AuthIdentifier } from '../entities/auth-identify.entity';
+import { OtpToken } from '../entities/otp-token.entity';
+import { MfaMethod } from '../entities/mfa-method.entity';
+import { Session } from '../entities/session.entity';
 import { DataSource } from 'typeorm';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { LocalAuthStrategy } from './strategies/local-auth.strategy';
-import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
-import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
-import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
+import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
+import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
+import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
+import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 
 describe('Throttler Integration', () => {
     let authService: AuthService;

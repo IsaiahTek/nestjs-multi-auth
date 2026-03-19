@@ -8,7 +8,7 @@ import { SignupDto } from '../../dto/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
 import { AuthIdentifier, IdentifierType } from '../../entities/auth-identify.entity';
-import { AuthStrategy, OAuthProviderType } from '../../auth-type.enum';
+import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from './oauth-strategy.interface';
 import { randomUUID } from 'crypto';

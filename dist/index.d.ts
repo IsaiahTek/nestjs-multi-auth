@@ -1,11 +1,11 @@
 export * from './auth/auth.module';
 export * from './auth/auth.service';
 export { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './auth/interfaces/auth-module-options.interface';
-export * from './auth/current-user.decorator';
-export type { AuthCredential } from './auth/current-user-interface';
+export * from './auth/interfaces/current-user.decorator';
+export type { AuthCredential } from './auth/interfaces/current-user-interface';
 export * from './auth/decorator/public.decorator';
 export * from './auth/decorator/optional.decorator';
-export * from './auth/auth-type.enum';
+export * from './auth/enums/auth-type.enum';
 export * from './auth/entities/auth.entity';
 export * from './auth/entities/session.entity';
 export * from './auth/entities/mfa-method.entity';

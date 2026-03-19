@@ -14,13 +14,13 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OAuthAuthStrategy = void 0;
 const common_1 = require("@nestjs/common");
-const auth_type_enum_1 = require("../../auth-type.enum");
+const auth_type_enum_1 = require("../../enums/auth-type.enum");
 const google_strategy_1 = require("./google.strategy");
 const facebook_strategy_1 = require("./facebook.strategy");
 const apple_strategy_1 = require("./apple.strategy");
 const auth_module_options_interface_1 = require("../../interfaces/auth-module-options.interface");
 const common_2 = require("@nestjs/common");
-const auth_type_enum_2 = require("../../auth-type.enum");
+const auth_type_enum_2 = require("../../enums/auth-type.enum");
 let OAuthAuthStrategy = class OAuthAuthStrategy {
     constructor(googleStrategy, facebookStrategy, appleStrategy, options) {
         this.googleStrategy = googleStrategy;

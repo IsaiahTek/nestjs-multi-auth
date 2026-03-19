@@ -2,9 +2,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
-import { JwtPayload } from './jwt-payload-interface';
+import { JwtPayload } from '../interfaces/jwt-payload-interface';
 import { Request } from 'express';
 
 @Injectable()
