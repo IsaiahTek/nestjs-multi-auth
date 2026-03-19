@@ -37,6 +37,16 @@ __decorate([
 ], AuthIdentifierDto.prototype, "isVerified", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], AuthIdentifierDto.prototype, "source", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], AuthIdentifierDto.prototype, "verifiedBy", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
     __metadata("design:type", Date)
 ], AuthIdentifierDto.prototype, "createdAt", void 0);
 __decorate([

@@ -19,6 +19,14 @@ export class AuthIdentifierDto {
   isVerified: boolean;
 
   @Expose()
+  @ApiProperty()
+  source: string;
+
+  @Expose()
+  @ApiProperty()
+  verifiedBy: string;
+
+  @Expose()
   createdAt: Date;
 
   @Expose()

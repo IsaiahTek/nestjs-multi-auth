@@ -3,6 +3,8 @@ export declare class AuthIdentifierDto {
     type: string;
     value: string;
     isVerified: boolean;
+    source: string;
+    verifiedBy: string;
     createdAt: Date;
     updatedAt: Date;
 }

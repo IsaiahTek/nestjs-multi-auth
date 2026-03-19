@@ -11,4 +11,24 @@ export class OAuthProviderResponseDto {
   @Expose()
   @ApiProperty()
   providerUserId: string;
+
+  @Expose()
+  @ApiProperty()
+  expiresAt?: Date;
+
+  @Expose()
+  @ApiProperty()
+  displayName?: string;
+
+  @Expose()
+  @ApiProperty()
+  avatarUrl?: string;
+
+  @Expose()
+  @ApiProperty()
+  emailVerified?: boolean;
+
+  @Expose()
+  @ApiProperty()
+  rawProfile?: Record<string, any>;
 }

@@ -27,4 +27,29 @@ __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", String)
 ], OAuthProviderResponseDto.prototype, "providerUserId", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Date)
+], OAuthProviderResponseDto.prototype, "expiresAt", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OAuthProviderResponseDto.prototype, "displayName", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OAuthProviderResponseDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Boolean)
+], OAuthProviderResponseDto.prototype, "emailVerified", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Object)
+], OAuthProviderResponseDto.prototype, "rawProfile", void 0);
 //# sourceMappingURL=oauth-provider-response.dto.js.map
