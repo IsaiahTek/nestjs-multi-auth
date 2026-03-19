@@ -182,6 +182,9 @@ let AuthController = class AuthController {
     async all() {
         return this.authService.viewAll();
     }
+    async me(req) {
+        return this.authService.me(req.user.uid);
+    }
     async viewAll(req) {
         return this.authService.viewAllMyAuthMethods(req.user.uid);
     }
@@ -296,6 +299,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "all", null);
+__decorate([
+    (0, common_1.Get)('/me'),
+    (0, swagger_1.ApiOperation)({ summary: 'View current Authentication (Auth)' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "me", null);
 __decorate([
     (0, common_1.Get)('view-all'),
     (0, swagger_1.ApiOperation)({ summary: 'View all authentication methods' }),

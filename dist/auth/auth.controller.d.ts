@@ -40,8 +40,9 @@ export declare class AuthController {
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
     }>;
-    all(): Promise<import("..").Auth[]>;
-    viewAll(req: any): Promise<import("..").Auth[]>;
+    all(): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
+    me(req: any): Promise<import("./dto/auth-response.dto").AuthResponseDto>;
+    viewAll(req: any): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
     deleteAccount(req: any, res: Response): Promise<{
         message: string;
     }>;

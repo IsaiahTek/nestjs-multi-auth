@@ -243,6 +243,12 @@ export class AuthController {
     return this.authService.viewAll();
   }
 
+  @Get('/me')
+  @ApiOperation({ summary: 'View current Authentication (Auth)' })
+  async me(@Req() req: any) {
+    return this.authService.me(req.user.uid);
+  }
+
   @Get('view-all')
   @ApiOperation({ summary: 'View all authentication methods' })
   async viewAll(@Req() req: any) {

@@ -24,6 +24,7 @@ import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import * as crypto from 'crypto';
 import { parseDuration } from './utils/duration.util';
+import { AuthMapper } from './core/auth-mapper';
 
 @Injectable()
 export class AuthService {
@@ -539,12 +540,17 @@ export class AuthService {
 
   async viewAll() {
     const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProvider'] });
-    return auths;
+    return AuthMapper.toDtoList(auths);
+  }
+
+  async me(uid: string) {
+    const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+    return AuthMapper.toDto(auth);
   }
 
   async viewAllMyAuthMethods(uid: string) {
-    const auths = await this.authRepo.find({ where: { uid } });
-    return auths;
+    const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+    return AuthMapper.toDtoList(auths);
   }
 
   async deleteAccount(uid: string) {

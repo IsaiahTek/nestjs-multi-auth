@@ -31,6 +31,7 @@ const auth_module_options_interface_1 = require("./interfaces/auth-module-option
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
 const crypto = require("crypto");
 const duration_util_1 = require("./utils/duration.util");
+const auth_mapper_1 = require("./core/auth-mapper");
 let AuthService = AuthService_1 = class AuthService {
     constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider) {
         this.jwtService = jwtService;
@@ -426,11 +427,15 @@ let AuthService = AuthService_1 = class AuthService {
     }
     async viewAll() {
         const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProvider'] });
-        return auths;
+        return auth_mapper_1.AuthMapper.toDtoList(auths);
+    }
+    async me(uid) {
+        const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+        return auth_mapper_1.AuthMapper.toDto(auth);
     }
     async viewAllMyAuthMethods(uid) {
-        const auths = await this.authRepo.find({ where: { uid } });
-        return auths;
+        const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+        return auth_mapper_1.AuthMapper.toDtoList(auths);
     }
     async deleteAccount(uid) {
         // 1. Delete all sessions for this UID

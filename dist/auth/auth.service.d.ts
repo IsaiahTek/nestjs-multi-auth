@@ -142,8 +142,9 @@ export declare class AuthService {
     activateMfa(uid: string, type: MfaType, code: string): Promise<{
         message: string;
     }>;
-    viewAll(): Promise<Auth[]>;
-    viewAllMyAuthMethods(uid: string): Promise<Auth[]>;
+    viewAll(): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
+    me(uid: string): Promise<import("./dto/auth-response.dto").AuthResponseDto>;
+    viewAllMyAuthMethods(uid: string): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
     deleteAccount(uid: string): Promise<void>;
     deleteAuthMethod(uid: string, authId: string): Promise<void>;
 }
