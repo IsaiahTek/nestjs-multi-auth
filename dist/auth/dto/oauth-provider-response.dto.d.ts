@@ -1,4 +1,5 @@
+import { OAuthProviderType } from '../enums/auth-type.enum';
 export declare class OAuthProviderResponseDto {
-    providerName: string;
-    providerId: string;
+    provider: OAuthProviderType;
+    providerUserId: string;
 }

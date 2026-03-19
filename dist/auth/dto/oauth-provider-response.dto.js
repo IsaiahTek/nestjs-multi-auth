@@ -13,17 +13,18 @@ exports.OAuthProviderResponseDto = void 0;
 // oauth-provider-response.dto.ts
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
+const auth_type_enum_1 = require("../enums/auth-type.enum");
 class OAuthProviderResponseDto {
 }
 exports.OAuthProviderResponseDto = OAuthProviderResponseDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, swagger_1.ApiProperty)(),
+    (0, swagger_1.ApiProperty)({ enum: auth_type_enum_1.OAuthProviderType }),
     __metadata("design:type", String)
-], OAuthProviderResponseDto.prototype, "providerName", void 0);
+], OAuthProviderResponseDto.prototype, "provider", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", String)
-], OAuthProviderResponseDto.prototype, "providerId", void 0);
+], OAuthProviderResponseDto.prototype, "providerUserId", void 0);
 //# sourceMappingURL=oauth-provider-response.dto.js.map
