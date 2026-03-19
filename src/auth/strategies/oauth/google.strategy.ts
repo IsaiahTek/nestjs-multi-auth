@@ -9,9 +9,9 @@ import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from './oauth-strategy.interface';
 import { randomUUID } from 'crypto';
-import { LoginDto } from '../../dto/requests/login.dto';
-import { SignupDto } from '../../dto/requests/signup.dto';
-import { OAuthProviderType, AuthStrategy } from '../../enums/auth-type.enum';
+import { LoginDto } from 'src/auth/dto/requests/login.dto';
+import { SignupDto } from 'src/auth/dto/requests/signup.dto';
+import { OAuthProviderType, AuthStrategy } from 'src/auth/enums/auth-type.enum';
 
 @Injectable()
 export class GoogleAuthStrategy implements IOAuthStrategy {
@@ -117,43 +117,86 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     });
   }
 
-  async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
+  // async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
+  //   if (!dto.token) {
+  //     throw new BadRequestException('Google ID token is required');
+  //   }
+
+  //   const payload = await this.verifyToken(dto.token);
+  //   const googleId = payload.sub;
+
+  //   const oauthProvider = await this.oauthProviderRepo.findOne({
+  //     where: { provider: OAuthProviderType.GOOGLE, providerUserId: googleId },
+  //     relations: ['auth', 'auth.identifiers'],
+  //   });
+
+  //   if (!oauthProvider || !oauthProvider.auth) {
+  //     throw new BadRequestException('No account found linked to this Google account. Please sign up.');
+  //   }
+
+  //   const auth = oauthProvider.auth;
+  //   auth.lastUsedAt = new Date();
+  //   await this.authRepo.save(auth);
+
+  //   // Find the identifier that matches the email from Google
+  //   const email = payload.email?.toLowerCase();
+  //   const identifier = auth.identifiers?.find(id => id.value === email);
+
+  //   return { auth, identifier };
+  // }
+
+  async login(
+    dto: LoginDto,
+  ): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
     if (!dto.token) {
       throw new BadRequestException('Google ID token is required');
     }
 
     const payload = await this.verifyToken(dto.token);
+
     const googleId = payload.sub;
     const email = payload.email?.toLowerCase();
 
-    const oauthProvider = await this.oauthProviderRepo.findOne({
-      where: { provider: OAuthProviderType.GOOGLE, providerUserId: googleId },
-      relations: ['auth', 'auth.identifiers'],
-    });
-
-    if (!oauthProvider || !oauthProvider.auth) {
-      throw new BadRequestException(
-        'No account found linked to this Google account. Please sign up.',
-      );
-    }
-
-    const auth = oauthProvider.auth;
-
-    await this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const oauthRepo = manager.getRepository(OAuthProvider);
       const authRepo = manager.getRepository(Auth);
       const identifierRepo = manager.getRepository(AuthIdentifier);
 
-      /* ------------------- Update OAuth Provider ------------------- */
-      oauthProvider.rawProfile = payload;
-      oauthProvider.displayName = payload.name;
-      oauthProvider.avatarUrl = payload.picture;
-      oauthProvider.emailVerified = payload.email_verified;
+      // -------------------------
+      // 1. Load OAuth Provider INSIDE transaction
+      // -------------------------
+      const oauthProvider = await oauthRepo.findOne({
+        where: {
+          provider: OAuthProviderType.GOOGLE,
+          providerUserId: googleId,
+        },
+        relations: ['auth', 'auth.identifiers'],
+      });
 
-      /* ------------------- Update Auth ------------------- */
+      if (!oauthProvider || !oauthProvider.auth) {
+        throw new BadRequestException(
+          'No account found linked to this Google account. Please sign up.',
+        );
+      }
+
+      const auth = oauthProvider.auth;
+
+      // -------------------------
+      // 2. Update OAuth Provider
+      // -------------------------
+      oauthProvider.rawProfile = payload;
+      oauthProvider.displayName = payload.name ?? null;
+      oauthProvider.avatarUrl = payload.picture ?? null;
+      oauthProvider.emailVerified = payload.email_verified ?? false;
+
+      // -------------------------
+      // 3. Update Auth
+      // -------------------------
       auth.lastUsedAt = new Date();
 
-      /* ------------------- Handle Identifier ------------------- */
+      // -------------------------
+      // 4. Handle Identifier (EMAIL)
+      // -------------------------
       let identifier: AuthIdentifier | null = null;
 
       if (email) {
@@ -161,49 +204,51 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
           where: {
             auth: { id: auth.id },
             type: IdentifierType.EMAIL,
-            value: email,
           },
         });
 
         if (!identifier) {
-          // create new identifier
           identifier = identifierRepo.create({
             auth,
             type: IdentifierType.EMAIL,
             value: email,
-            isVerified: payload.email_verified || false,
-            verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
-            source: IdentifierSource.GOOGLE,
+            isVerified: false,
           });
-        } else {
-          // update existing
-          identifier.isVerified = payload.email_verified || false;
-          identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
-          identifier.source = IdentifierSource.GOOGLE;
         }
+
+        // always normalize + update
+        identifier.value = email;
+        identifier.isVerified = payload.email_verified ?? false;
+        identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
+        identifier.source = IdentifierSource.GOOGLE;
 
         await identifierRepo.save(identifier);
       }
 
-      /* ------------------- Save Core Entities ------------------- */
-      await Promise.all([
-        oauthRepo.save(oauthProvider),
-        authRepo.save(auth),
-      ]);
+      // -------------------------
+      // 5. Save core entities
+      // -------------------------
+      await oauthRepo.save(oauthProvider);
+      await authRepo.save(auth);
 
       return { auth, identifier };
     });
 
-    // Reload fresh data if needed
+    // -------------------------
+    // 6. Reload fresh state (important for consistency)
+    // -------------------------
     const updatedAuth = await this.authRepo.findOne({
-      where: { id: auth.id },
+      where: { id: result.auth.id },
       relations: ['identifiers', 'oauthProvider'],
     });
 
     const identifier = updatedAuth?.identifiers?.find(
-      (id) => id.value === email,
+      (i) => i.type === IdentifierType.EMAIL && i.value === email,
     );
 
-    return { auth: updatedAuth, identifier };
+    return {
+      auth: updatedAuth!,
+      identifier,
+    };
   }
 }
