@@ -23,7 +23,7 @@ const oauth_provider_entity_1 = require("../../entities/oauth-provider.entity");
 const auth_identify_entity_1 = require("../../entities/auth-identify.entity");
 const auth_module_options_interface_1 = require("../../interfaces/auth-module-options.interface");
 const crypto_1 = require("crypto");
-const auth_type_enum_1 = require("src/auth/enums/auth-type.enum");
+const auth_type_enum_1 = require("../../enums/auth-type.enum");
 let GoogleAuthStrategy = class GoogleAuthStrategy {
     constructor(dataSource, authRepo, oauthProviderRepo, options) {
         this.dataSource = dataSource;
