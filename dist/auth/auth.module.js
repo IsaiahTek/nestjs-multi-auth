@@ -19,6 +19,7 @@ const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_1 = require("@nestjs/jwt");
 const jwt_strategy_1 = require("./core/jwt.strategy");
+const auth_type_enum_1 = require("./enums/auth-type.enum");
 const passport_1 = require("@nestjs/passport");
 const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
@@ -98,7 +99,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
         const asyncOptionsProvider = {
             provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useFactory: options.useFactory,
-            inject: options.inject || [],
+            inject: options.inject || [auth_type_enum_1.AuthStrategy.EMAIL],
         };
         return {
             module: AuthModule_1,

@@ -106,7 +106,7 @@ export class AuthModule {
     const asyncOptionsProvider: Provider = {
       provide: AUTH_MODULE_OPTIONS,
       useFactory: options.useFactory,
-      inject: options.inject || [],
+      inject: options.inject || [AuthStrategy.EMAIL],
     };
 
     return {
