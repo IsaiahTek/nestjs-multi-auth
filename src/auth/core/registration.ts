@@ -5,6 +5,7 @@ import { GoogleAuthStrategy } from "../strategies/oauth/google.strategy";
 import { FacebookAuthStrategy } from "../strategies/oauth/facebook.strategy";
 import { AppleAuthStrategy } from "../strategies/oauth/apple.strategy";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
+import { OAuthAuthStrategy } from "../strategies/oauth/oauth.strategy";
 
 export const createStrategyProviders = (options: AuthModuleOptions): Provider[] => {
     const providers: Provider[] = [];
@@ -35,6 +36,13 @@ export const createStrategyProviders = (options: AuthModuleOptions): Provider[] 
         providers.push({
             provide: AppleAuthStrategy,
             useClass: AppleAuthStrategy,
+        });
+    }
+
+    if (enabled.includes(AuthStrategy.APPLE) || enabled.includes(AuthStrategy.FACEBOOK) || enabled.includes(AuthStrategy.GOOGLE)) {
+        providers.push({
+            provide: OAuthAuthStrategy,
+            useClass: OAuthAuthStrategy,
         });
     }
 
