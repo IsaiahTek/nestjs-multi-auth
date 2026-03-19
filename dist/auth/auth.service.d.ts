@@ -1,7 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/requests/signup.dto';
+import { LoginDto } from './dto/requests/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { AuthStrategy } from './enums/auth-type.enum';
@@ -142,9 +142,9 @@ export declare class AuthService {
     activateMfa(uid: string, type: MfaType, code: string): Promise<{
         message: string;
     }>;
-    viewAll(): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
-    me(uid: string): Promise<import("./dto/auth-response.dto").AuthResponseDto>;
-    viewAllMyAuthMethods(uid: string): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
+    viewAll(): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
+    me(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto>;
+    viewAllMyAuthMethods(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
     deleteAccount(uid: string): Promise<void>;
     deleteAuthMethod(uid: string, authId: string): Promise<void>;
 }

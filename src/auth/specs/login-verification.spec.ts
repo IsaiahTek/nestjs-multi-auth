@@ -16,7 +16,7 @@ import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 import { AuthStrategy } from '../enums/auth-type.enum';
 import { JwtService } from '@nestjs/jwt';
-import { CurrentAuth } from '../interfaces/current-user.decorator';
+import { CurrentAuth } from '../decorator/current-user.decorator';
 
 describe('Login verification flow', () => {
     let service: AuthService;

@@ -1,6 +1,6 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { MfaType } from '../entities/mfa-method.entity';
+import { MfaType } from '../../entities/mfa-method.entity';
 
 export class EnrollMfaDto {
     @ApiProperty({

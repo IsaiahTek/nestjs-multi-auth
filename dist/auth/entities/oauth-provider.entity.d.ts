@@ -8,6 +8,22 @@ export declare class OAuthProvider extends BaseEntity {
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: Date;
+    /**
+     * Display name from provider (e.g. "John Doe")
+     */
+    displayName?: string;
+    /**
+     * Avatar/profile picture URL
+     */
+    avatarUrl?: string;
+    /**
+     * Whether provider verified the email
+     */
+    emailVerified?: boolean;
+    /**
+     * Raw provider response (for debugging/future-proofing)
+     */
+    rawProfile?: Record<string, any>;
     toMap(): {
         id: string;
         provider: OAuthProviderType;

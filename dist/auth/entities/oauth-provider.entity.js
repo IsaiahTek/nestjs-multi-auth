@@ -62,6 +62,26 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], OAuthProvider.prototype, "expiresAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'John Doe', required: false }),
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], OAuthProvider.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'https://lh3.googleusercontent.com/...', required: false }),
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], OAuthProvider.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true, required: false }),
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Boolean)
+], OAuthProvider.prototype, "emailVerified", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true }),
+    __metadata("design:type", Object)
+], OAuthProvider.prototype, "rawProfile", void 0);
 exports.OAuthProvider = OAuthProvider = __decorate([
     (0, typeorm_1.Entity)()
 ], OAuthProvider);

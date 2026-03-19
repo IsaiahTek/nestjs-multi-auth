@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GoogleAuthStrategy } from './google.strategy';
+import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Auth } from '../../entities/auth.entity';
-import { OAuthProvider } from '../../entities/oauth-provider.entity';
-import { AUTH_MODULE_OPTIONS } from '../../interfaces/auth-module-options.interface';
+import { Auth } from '../entities/auth.entity';
+import { OAuthProvider } from '../entities/oauth-provider.entity';
+import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { BadRequestException } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 

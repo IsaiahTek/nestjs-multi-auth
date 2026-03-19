@@ -1,11 +1,11 @@
 import { DataSource, Repository } from 'typeorm';
-import { LoginDto } from '../../dto/login.dto';
-import { SignupDto } from '../../dto/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
 import { AuthIdentifier } from '../../entities/auth-identify.entity';
 import { AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from './oauth-strategy.interface';
+import { LoginDto } from 'src/auth/dto/requests/login.dto';
+import { SignupDto } from 'src/auth/dto/requests/signup.dto';
 export declare class GoogleAuthStrategy implements IOAuthStrategy {
     private readonly dataSource;
     private authRepo;

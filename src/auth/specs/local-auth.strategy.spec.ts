@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LocalAuthStrategy } from './local-auth.strategy';
+import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth } from '../entities/auth.entity';

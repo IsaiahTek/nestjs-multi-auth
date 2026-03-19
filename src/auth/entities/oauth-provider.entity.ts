@@ -31,6 +31,38 @@ export class OAuthProvider extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   expiresAt?: Date;
 
+  /* ------------------------------------------------------------------
+   * Provider Profile Snapshot (NON-SENSITIVE)
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Display name from provider (e.g. "John Doe")
+   */
+  @ApiProperty({ example: 'John Doe', required: false })
+  @Column({ nullable: true })
+  displayName?: string;
+
+  /**
+   * Avatar/profile picture URL
+   */
+  @ApiProperty({ example: 'https://lh3.googleusercontent.com/...', required: false })
+  @Column({ nullable: true })
+  avatarUrl?: string;
+
+  /**
+   * Whether provider verified the email
+   */
+  @ApiProperty({ example: true, required: false })
+  @Column({ nullable: true })
+  emailVerified?: boolean;
+
+  /**
+   * Raw provider response (for debugging/future-proofing)
+   */
+  @ApiProperty({ required: false })
+  @Column({ type: 'jsonb', nullable: true })
+  rawProfile?: Record<string, any>;
+
   toMap() {
     return {
       id: this.id,

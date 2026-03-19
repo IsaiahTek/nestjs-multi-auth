@@ -21,9 +21,9 @@ const google_auth_library_1 = require("google-auth-library");
 const auth_entity_1 = require("../../entities/auth.entity");
 const oauth_provider_entity_1 = require("../../entities/oauth-provider.entity");
 const auth_identify_entity_1 = require("../../entities/auth-identify.entity");
-const auth_type_enum_1 = require("../../enums/auth-type.enum");
 const auth_module_options_interface_1 = require("../../interfaces/auth-module-options.interface");
 const crypto_1 = require("crypto");
+const auth_type_enum_1 = require("src/auth/enums/auth-type.enum");
 let GoogleAuthStrategy = class GoogleAuthStrategy {
     constructor(dataSource, authRepo, oauthProviderRepo, options) {
         this.dataSource = dataSource;
@@ -90,12 +90,19 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                     type: auth_identify_entity_1.IdentifierType.EMAIL,
                     value: email,
                     isVerified: payload.email_verified || false,
+                    source: auth_identify_entity_1.IdentifierSource.GOOGLE,
+                    verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
                 }));
             }
             newAuth.identifiers = identifiers;
             const oauthProvider = oauthProviderRepo.create({
                 provider: auth_type_enum_1.OAuthProviderType.GOOGLE,
                 providerUserId: googleId,
+                rawProfile: payload,
+                displayName: payload.name,
+                avatarUrl: payload.picture,
+                emailVerified: payload.email_verified,
+                expiresAt: payload.exp,
             });
             newAuth.oauthProvider = oauthProvider;
             return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
@@ -107,6 +114,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
         }
         const payload = await this.verifyToken(dto.token);
         const googleId = payload.sub;
+        const email = payload.email?.toLowerCase();
         const oauthProvider = await this.oauthProviderRepo.findOne({
             where: { provider: auth_type_enum_1.OAuthProviderType.GOOGLE, providerUserId: googleId },
             relations: ['auth', 'auth.identifiers'],
@@ -115,12 +123,60 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
             throw new common_1.BadRequestException('No account found linked to this Google account. Please sign up.');
         }
         const auth = oauthProvider.auth;
-        auth.lastUsedAt = new Date();
-        await this.authRepo.save(auth);
-        // Find the identifier that matches the email from Google
-        const email = payload.email?.toLowerCase();
-        const identifier = auth.identifiers?.find(id => id.value === email);
-        return { auth, identifier };
+        await this.dataSource.transaction(async (manager) => {
+            const oauthRepo = manager.getRepository(oauth_provider_entity_1.OAuthProvider);
+            const authRepo = manager.getRepository(auth_entity_1.Auth);
+            const identifierRepo = manager.getRepository(auth_identify_entity_1.AuthIdentifier);
+            /* ------------------- Update OAuth Provider ------------------- */
+            oauthProvider.rawProfile = payload;
+            oauthProvider.displayName = payload.name;
+            oauthProvider.avatarUrl = payload.picture;
+            oauthProvider.emailVerified = payload.email_verified;
+            /* ------------------- Update Auth ------------------- */
+            auth.lastUsedAt = new Date();
+            /* ------------------- Handle Identifier ------------------- */
+            let identifier = null;
+            if (email) {
+                identifier = await identifierRepo.findOne({
+                    where: {
+                        auth: { id: auth.id },
+                        type: auth_identify_entity_1.IdentifierType.EMAIL,
+                        value: email,
+                    },
+                });
+                if (!identifier) {
+                    // create new identifier
+                    identifier = identifierRepo.create({
+                        auth,
+                        type: auth_identify_entity_1.IdentifierType.EMAIL,
+                        value: email,
+                        isVerified: payload.email_verified || false,
+                        verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
+                        source: auth_identify_entity_1.IdentifierSource.GOOGLE,
+                    });
+                }
+                else {
+                    // update existing
+                    identifier.isVerified = payload.email_verified || false;
+                    identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
+                    identifier.source = auth_identify_entity_1.IdentifierSource.GOOGLE;
+                }
+                await identifierRepo.save(identifier);
+            }
+            /* ------------------- Save Core Entities ------------------- */
+            await Promise.all([
+                oauthRepo.save(oauthProvider),
+                authRepo.save(auth),
+            ]);
+            return { auth, identifier };
+        });
+        // Reload fresh data if needed
+        const updatedAuth = await this.authRepo.findOne({
+            where: { id: auth.id },
+            relations: ['identifiers', 'oauthProvider'],
+        });
+        const identifier = updatedAuth?.identifiers?.find((id) => id.value === email);
+        return { auth: updatedAuth, identifier };
     }
 };
 exports.GoogleAuthStrategy = GoogleAuthStrategy;

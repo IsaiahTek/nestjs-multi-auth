@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext, Logger } from '@nestjs/common';
-import { AuthCredential } from './current-user-interface';
+import { AuthCredential } from '../interfaces/current-user-interface';
 
 // src/auth/current-user.decorator.ts
 export const CurrentAuth = createParamDecorator(

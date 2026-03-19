@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AuthStrategy } from '../enums/auth-type.enum';
+import { AuthStrategy } from '../../enums/auth-type.enum';
 import { Expose, Type } from 'class-transformer';
 import { AuthIdentifierDto } from './identifier-response.dto';
 import { OAuthProviderResponseDto } from './oauth-provider-response.dto';

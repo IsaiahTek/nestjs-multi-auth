@@ -3,15 +3,15 @@ import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OAuth2Client } from 'google-auth-library';
-import { LoginDto } from '../../dto/login.dto';
-import { SignupDto } from '../../dto/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
-import { AuthIdentifier, IdentifierType } from '../../entities/auth-identify.entity';
-import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
+import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities/auth-identify.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from './oauth-strategy.interface';
 import { randomUUID } from 'crypto';
+import { LoginDto } from 'src/auth/dto/requests/login.dto';
+import { SignupDto } from 'src/auth/dto/requests/signup.dto';
+import { OAuthProviderType, AuthStrategy } from 'src/auth/enums/auth-type.enum';
 
 @Injectable()
 export class GoogleAuthStrategy implements IOAuthStrategy {
@@ -93,6 +93,8 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
             type: IdentifierType.EMAIL,
             value: email,
             isVerified: payload.email_verified || false,
+            source: IdentifierSource.GOOGLE,
+            verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
           })
         );
       }
@@ -102,6 +104,11 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
       const oauthProvider = oauthProviderRepo.create({
         provider: OAuthProviderType.GOOGLE,
         providerUserId: googleId,
+        rawProfile: payload,
+        displayName: payload.name,
+        avatarUrl: payload.picture,
+        emailVerified: payload.email_verified,
+        expiresAt: payload.exp,
       });
 
       newAuth.oauthProvider = oauthProvider;
@@ -117,6 +124,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
 
     const payload = await this.verifyToken(dto.token);
     const googleId = payload.sub;
+    const email = payload.email?.toLowerCase();
 
     const oauthProvider = await this.oauthProviderRepo.findOne({
       where: { provider: OAuthProviderType.GOOGLE, providerUserId: googleId },
@@ -124,17 +132,78 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     });
 
     if (!oauthProvider || !oauthProvider.auth) {
-      throw new BadRequestException('No account found linked to this Google account. Please sign up.');
+      throw new BadRequestException(
+        'No account found linked to this Google account. Please sign up.',
+      );
     }
 
     const auth = oauthProvider.auth;
-    auth.lastUsedAt = new Date();
-    await this.authRepo.save(auth);
 
-    // Find the identifier that matches the email from Google
-    const email = payload.email?.toLowerCase();
-    const identifier = auth.identifiers?.find(id => id.value === email);
+    await this.dataSource.transaction(async (manager) => {
+      const oauthRepo = manager.getRepository(OAuthProvider);
+      const authRepo = manager.getRepository(Auth);
+      const identifierRepo = manager.getRepository(AuthIdentifier);
 
-    return { auth, identifier };
+      /* ------------------- Update OAuth Provider ------------------- */
+      oauthProvider.rawProfile = payload;
+      oauthProvider.displayName = payload.name;
+      oauthProvider.avatarUrl = payload.picture;
+      oauthProvider.emailVerified = payload.email_verified;
+
+      /* ------------------- Update Auth ------------------- */
+      auth.lastUsedAt = new Date();
+
+      /* ------------------- Handle Identifier ------------------- */
+      let identifier: AuthIdentifier | null = null;
+
+      if (email) {
+        identifier = await identifierRepo.findOne({
+          where: {
+            auth: { id: auth.id },
+            type: IdentifierType.EMAIL,
+            value: email,
+          },
+        });
+
+        if (!identifier) {
+          // create new identifier
+          identifier = identifierRepo.create({
+            auth,
+            type: IdentifierType.EMAIL,
+            value: email,
+            isVerified: payload.email_verified || false,
+            verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
+            source: IdentifierSource.GOOGLE,
+          });
+        } else {
+          // update existing
+          identifier.isVerified = payload.email_verified || false;
+          identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
+          identifier.source = IdentifierSource.GOOGLE;
+        }
+
+        await identifierRepo.save(identifier);
+      }
+
+      /* ------------------- Save Core Entities ------------------- */
+      await Promise.all([
+        oauthRepo.save(oauthProvider),
+        authRepo.save(auth),
+      ]);
+
+      return { auth, identifier };
+    });
+
+    // Reload fresh data if needed
+    const updatedAuth = await this.authRepo.findOne({
+      where: { id: auth.id },
+      relations: ['identifiers', 'oauthProvider'],
+    });
+
+    const identifier = updatedAuth?.identifiers?.find(
+      (id) => id.value === email,
+    );
+
+    return { auth: updatedAuth, identifier };
   }
 }

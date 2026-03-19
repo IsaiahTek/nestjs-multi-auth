@@ -1,9 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
-import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
+import {
+  IsString,
+  IsEmail,
+  MinLength,
+  IsOptional,
+  IsEnum,
+  IsPhoneNumber,
+} from 'class-validator';
+import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
 
-export class LoginDto {
+export class SignupDto {
   @ApiProperty({
     enum: AuthStrategy,
     example: AuthStrategy.LOCAL,
@@ -24,25 +31,30 @@ export class LoginDto {
   provider?: OAuthProviderType;
 
 
-  @IsOptional()
-  emailOrPhone?: string;
-
-  @ApiProperty({ example: 'john@example.com', required: false })
-  @IsOptional()
-  email?: string;
-
   @ApiProperty({ example: '+2347035742844', required: false })
+  @IsPhoneNumber('NG')
   @IsOptional()
   phone?: string;
 
   @ApiProperty({ example: 'john_doe', required: false })
   @IsOptional()
+  @IsString()
   username?: string;
 
+  @ApiProperty({ example: 'john@example.com', required: false })
   @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ example: 'securePassword123', required: false })
+  @IsOptional()
+  @MinLength(6)
   password?: string;
 
-  // For google / otp
+  /**
+   * For OAuth / OTP verification
+   */
   @IsOptional()
+  @IsString()
   token?: string;
 }

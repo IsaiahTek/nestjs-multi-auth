@@ -37,4 +37,16 @@ export class Session {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  toMap() {
+    return {
+      id: this.id,
+      uid: this.uid,
+      userAgent: this.userAgent,
+      deviceFingerprint: this.deviceFingerprint,
+      ipAddress: this.ipAddress,
+      expiresAt: this.expiresAt,
+      createdAt: this.createdAt,
+    };
+  }
 }

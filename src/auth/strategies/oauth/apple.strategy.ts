@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LoginDto } from '../../dto/login.dto';
-import { SignupDto } from '../../dto/signup.dto';
+import { LoginDto } from '../../dto/requests/login.dto';
+import { SignupDto } from '../../dto/requests/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
 import { AuthIdentifier, IdentifierType } from '../../entities/auth-identify.entity';

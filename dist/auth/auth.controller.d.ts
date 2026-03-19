@@ -1,9 +1,9 @@
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { SignupDto } from './dto/signup.dto';
-import { VerifyDto, ResendVerificationDto } from './dto/verify.dto';
-import { EnrollMfaDto, ActivateMfaDto } from './dto/mfa.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LoginDto } from './dto/requests/login.dto';
+import { SignupDto } from './dto/requests/signup.dto';
+import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
+import { EnrollMfaDto, ActivateMfaDto } from './dto/requests/mfa.dto';
+import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import type { Response, Request } from 'express';
 export declare class AuthController {
@@ -40,9 +40,9 @@ export declare class AuthController {
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
     }>;
-    all(): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
-    me(req: any): Promise<import("./dto/auth-response.dto").AuthResponseDto>;
-    viewAll(req: any): Promise<import("./dto/auth-response.dto").AuthResponseDto[]>;
+    all(): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
+    me(req: any): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto>;
+    viewAll(req: any): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
     deleteAccount(req: any, res: Response): Promise<{
         message: string;
     }>;

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthIdentifier = exports.IdentifierType = void 0;
+exports.AuthIdentifier = exports.IdentifierSource = exports.IdentifierType = void 0;
 const typeorm_1 = require("typeorm");
 const auth_entity_1 = require("./auth.entity");
 const base_entity_1 = require("./base.entity");
@@ -19,6 +19,13 @@ var IdentifierType;
     IdentifierType["PHONE"] = "PHONE";
     IdentifierType["USERNAME"] = "USERNAME";
 })(IdentifierType || (exports.IdentifierType = IdentifierType = {}));
+var IdentifierSource;
+(function (IdentifierSource) {
+    IdentifierSource["APPLE"] = "APPLE";
+    IdentifierSource["FACEBOOK"] = "FACEBOOK";
+    IdentifierSource["GOOGLE"] = "GOOGLE";
+    IdentifierSource["LOCAL"] = "LOCAL";
+})(IdentifierSource || (exports.IdentifierSource = IdentifierSource = {}));
 let AuthIdentifier = class AuthIdentifier extends base_entity_1.BaseEntity {
     toMap() {
         return {
@@ -48,6 +55,18 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], AuthIdentifier.prototype, "isVerified", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: IdentifierSource,
+        default: IdentifierSource.LOCAL,
+    }),
+    __metadata("design:type", String)
+], AuthIdentifier.prototype, "source", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], AuthIdentifier.prototype, "verifiedBy", void 0);
 exports.AuthIdentifier = AuthIdentifier = __decorate([
     (0, typeorm_1.Entity)('auth_identifiers')
 ], AuthIdentifier);

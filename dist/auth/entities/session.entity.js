@@ -12,6 +12,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Session = void 0;
 const typeorm_1 = require("typeorm");
 let Session = class Session {
+    toMap() {
+        return {
+            id: this.id,
+            uid: this.uid,
+            userAgent: this.userAgent,
+            deviceFingerprint: this.deviceFingerprint,
+            ipAddress: this.ipAddress,
+            expiresAt: this.expiresAt,
+            createdAt: this.createdAt,
+        };
+    }
 };
 exports.Session = Session;
 __decorate([

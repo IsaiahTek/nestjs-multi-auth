@@ -7,8 +7,8 @@ import {
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { LoginDto } from '../dto/login.dto';
-import { SignupDto } from '../dto/signup.dto';
+import { LoginDto } from '../dto/requests/login.dto';
+import { SignupDto } from '../dto/requests/signup.dto';
 import * as crypto from 'crypto';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
