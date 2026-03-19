@@ -9,9 +9,9 @@ import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from './oauth-strategy.interface';
 import { randomUUID } from 'crypto';
-import { LoginDto } from 'src/auth/dto/requests/login.dto';
-import { SignupDto } from 'src/auth/dto/requests/signup.dto';
-import { OAuthProviderType, AuthStrategy } from 'src/auth/enums/auth-type.enum';
+import { LoginDto } from '../../dto/requests/login.dto';
+import { SignupDto } from '../../dto/requests/signup.dto';
+import { OAuthProviderType, AuthStrategy } from '../../enums/auth-type.enum';
 
 @Injectable()
 export class GoogleAuthStrategy implements IOAuthStrategy {
