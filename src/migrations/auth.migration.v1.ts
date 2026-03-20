@@ -14,6 +14,27 @@ export class AuthMigrationV1 implements AuthMigration {
   get version() { return AuthMigrationV1.version; }
 
   async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'auth_strategy_enum') THEN
+          CREATE TYPE "auth_strategy_enum" AS ENUM('EMAIL', 'PHONE', 'USERNAME', 'GOOGLE', 'FACEBOOK', 'APPLE', 'LOCAL', 'OAUTH');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'auth_identifier_type_enum') THEN
+          CREATE TYPE "auth_identifier_type_enum" AS ENUM('EMAIL', 'PHONE', 'USERNAME');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'oauth_provider_type_enum') THEN
+          CREATE TYPE "oauth_provider_type_enum" AS ENUM('GOOGLE', 'FACEBOOK', 'APPLE');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mfa_method_type_enum') THEN
+          CREATE TYPE "mfa_method_type_enum" AS ENUM('TOTP', 'SMS', 'EMAIL');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'otp_token_type_enum') THEN
+          CREATE TYPE "otp_token_type_enum" AS ENUM('VERIFY_EMAIL', 'VERIFY_PHONE', 'PASSWORD_RESET', 'LOGIN_2FA');
+        END IF;
+      END $$;
+    `);
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "auth" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
