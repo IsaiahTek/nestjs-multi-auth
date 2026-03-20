@@ -33,21 +33,32 @@ function resolveDataSource() {
   );
 }
 
-function extractDataSourceConfig(exported) {
-    console.log('Data Source Path: ', exported)
-  if (!exported) return null;
+function extractDataSource(exported) {
+  if (!exported) {
+    throw new Error('No exports found in data-source file');
+  }
 
-  // If already a DataSource instance
-  if (exported.options) return exported.options;
+  // ✅ Case 1: Already a DataSource instance
+  if (exported.AppDataSource) {
+    return exported.AppDataSource;
+  }
 
-  // Common patterns
-  return (
+  if (exported.dataSource) {
+    return exported.dataSource;
+  }
+
+  if (exported.default?.options) {
+    return exported.default;
+  }
+
+  // ✅ Case 2: Config object → wrap it
+  const config =
     exported.default ||
-    exported.dataSource ||
-    exported.AppDataSource ||
     exported.databaseConfig ||
-    exported
-  );
+    exported;
+
+  const { DataSource } = require('typeorm');
+  return new DataSource(config);
 }
 
 
@@ -62,7 +73,7 @@ async function loadDataSource() {
   const exported = require(dataSourcePath);
 
   // Support both default export and named export
-  const dataSourceConfig = extractDataSourceConfig(exported);
+  const dataSourceConfig = extractDataSource(exported);
   return dataSourceConfig;
 }
 
