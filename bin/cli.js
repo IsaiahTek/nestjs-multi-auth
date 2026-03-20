@@ -46,7 +46,11 @@ async function loadDataSource() {
 
   // Support both default export and named export
   const dataSourceConfig =
-    exported.default || exported.dataSource || exported;
+    exported.default ||
+    exported.dataSource ||
+    exported.AppDataSource ||
+    exported.databaseConfig ||
+    exported;
 
   return dataSourceConfig;
 }
