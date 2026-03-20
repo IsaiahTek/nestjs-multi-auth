@@ -123,14 +123,21 @@ let AppleAuthStrategy = class AppleAuthStrategy {
                     type: auth_identify_entity_1.IdentifierType.EMAIL,
                     value: email,
                     isVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                    source: auth_identify_entity_1.IdentifierSource.APPLE,
+                    verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
                 }));
             }
             newAuth.identifiers = identifiers;
             const oauthProvider = oauthProviderRepo.create({
                 provider: auth_type_enum_1.OAuthProviderType.APPLE,
                 providerUserId: appleId,
+                expiresAt: payload.exp,
+                rawProfile: payload,
+                emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                displayName: payload.name?.displayName,
+                avatarUrl: payload.picture,
             });
-            newAuth.oauthProvider = oauthProvider;
+            newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
             const savedAuth = await authRepo.save(newAuth);
             return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] };
         });

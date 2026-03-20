@@ -7,7 +7,7 @@ import { OAuthProviderType } from '../../enums/auth-type.enum';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
 import { AppleAuthStrategy } from './apple.strategy';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
 import { AuthStrategy } from '../../enums/auth-type.enum';

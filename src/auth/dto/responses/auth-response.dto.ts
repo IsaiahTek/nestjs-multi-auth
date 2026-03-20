@@ -45,7 +45,7 @@ export class AuthResponseDto {
     @Expose()
     @Type(() => OAuthProviderResponseDto)
     @ApiProperty({ type: OAuthProviderResponseDto, required: false })
-    oauthProvider?: OAuthProviderResponseDto;
+    oauthProviders?: OAuthProviderResponseDto[];
 
     @Expose()
     @ApiProperty()

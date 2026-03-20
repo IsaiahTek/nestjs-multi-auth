@@ -7,7 +7,7 @@ import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
 import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities/auth-identify.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { randomUUID } from 'crypto';
 import { LoginDto } from '../../dto/requests/login.dto';
 import { SignupDto } from '../../dto/requests/signup.dto';
@@ -111,7 +111,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
         expiresAt: payload.exp,
       });
 
-      newAuth.oauthProvider = oauthProvider;
+      newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
 
       return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
     });

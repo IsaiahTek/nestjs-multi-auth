@@ -97,14 +97,21 @@ let FacebookAuthStrategy = class FacebookAuthStrategy {
                     type: auth_identify_entity_1.IdentifierType.EMAIL,
                     value: email,
                     isVerified: true,
+                    source: auth_identify_entity_1.IdentifierSource.FACEBOOK,
+                    verifiedBy: 'PROVIDER',
                 }));
             }
             newAuth.identifiers = identifiers;
             const oauthProvider = oauthProviderRepo.create({
                 provider: auth_type_enum_1.OAuthProviderType.FACEBOOK,
                 providerUserId: facebookId,
+                expiresAt: payload.exp,
+                rawProfile: payload,
+                emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                displayName: payload.name,
+                avatarUrl: payload.picture,
             });
-            newAuth.oauthProvider = oauthProvider;
+            newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
             const savedAuth = await authRepo.save(newAuth);
             return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] };
         });

@@ -5,7 +5,7 @@ import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
 import { AuthIdentifier } from '../../entities/auth-identify.entity';
 import { AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 export declare class FacebookAuthStrategy implements IOAuthStrategy {
     private readonly dataSource;
     private authRepo;

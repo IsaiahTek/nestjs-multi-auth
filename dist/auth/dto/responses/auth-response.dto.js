@@ -68,8 +68,8 @@ __decorate([
     (0, class_transformer_1.Expose)(),
     (0, class_transformer_1.Type)(() => oauth_provider_response_dto_1.OAuthProviderResponseDto),
     (0, swagger_1.ApiProperty)({ type: oauth_provider_response_dto_1.OAuthProviderResponseDto, required: false }),
-    __metadata("design:type", oauth_provider_response_dto_1.OAuthProviderResponseDto)
-], AuthResponseDto.prototype, "oauthProvider", void 0);
+    __metadata("design:type", Array)
+], AuthResponseDto.prototype, "oauthProviders", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     (0, swagger_1.ApiProperty)(),

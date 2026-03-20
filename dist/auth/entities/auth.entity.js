@@ -28,7 +28,7 @@ let Auth = class Auth extends base_entity_1.BaseEntity {
             lastUsedAt: this.lastUsedAt,
             // user: this.user.toMap(),
             identifiers: this.identifiers?.map((id) => id?.toMap()),
-            oauthProvider: this.oauthProvider?.toMap(),
+            oauthProviders: this.oauthProviders?.map((provider) => provider?.toMap()),
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
             deletedAt: this.deletedAt,
@@ -111,12 +111,12 @@ __decorate([
         description: 'OAuth provider details (only for OAUTH method)',
         required: false,
     }),
-    (0, typeorm_1.OneToOne)(() => oauth_provider_entity_1.OAuthProvider, (provider) => provider.auth, {
+    (0, typeorm_1.OneToMany)(() => oauth_provider_entity_1.OAuthProvider, (provider) => provider.auth, {
         cascade: true,
         nullable: true,
     }),
-    __metadata("design:type", oauth_provider_entity_1.OAuthProvider)
-], Auth.prototype, "oauthProvider", void 0);
+    __metadata("design:type", Array)
+], Auth.prototype, "oauthProviders", void 0);
 exports.Auth = Auth = __decorate([
     (0, typeorm_1.Entity)('auth'),
     (0, typeorm_1.Index)('IDX_user_primary_auth', ['uid'], {

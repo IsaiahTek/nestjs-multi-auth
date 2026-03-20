@@ -37,7 +37,7 @@ export declare class AuthService {
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProvider?: import("..").OAuthProvider;
+            oauthProviders?: import("..").OAuthProvider[];
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -54,7 +54,7 @@ export declare class AuthService {
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProvider?: import("..").OAuthProvider;
+            oauthProviders?: import("..").OAuthProvider[];
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -82,7 +82,7 @@ export declare class AuthService {
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProvider?: import("..").OAuthProvider;
+            oauthProviders?: import("..").OAuthProvider[];
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -101,7 +101,7 @@ export declare class AuthService {
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProvider?: import("..").OAuthProvider;
+            oauthProviders?: import("..").OAuthProvider[];
             id: string;
             createdAt: Date;
             updatedAt: Date;

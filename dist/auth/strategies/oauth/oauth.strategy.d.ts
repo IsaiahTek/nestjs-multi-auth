@@ -5,7 +5,7 @@ import { AuthIdentifier } from '../../entities/auth-identify.entity';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';
 import { AppleAuthStrategy } from './apple.strategy';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 export declare class OAuthAuthStrategy implements IOAuthStrategy {
     private googleStrategy;

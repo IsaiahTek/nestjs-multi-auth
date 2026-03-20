@@ -6,7 +6,8 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 
 - **Identity-Only (Firebase Style)**: Pure authentication and session management. Agnostic of your application's user profiles and database structure.
 - **Grouped Identities**: Multiple login methods (Google, Password, etc.) are consolidated under a single, opaque `uid`.
-- **Account Linking**: Link additional auth methods (e.g., Google, Email) to an existing account under the same `uid`.
+- **Account Linking**: Link additional auth methods (e.g., Google, Email, Phone) to an existing account under the same `uid`.
+- **Multiple OAuth Providers**: Link multiple social accounts (e.g., Google AND Facebook) to a single identity simultaneously.
 - **MFA/2FA Ready**: Built-in support for TOTP-based Multi-Factor Authentication (e.g., Google Authenticator).
 - **Secure by Default**: Automatically registers a global authentication guard.
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences both synchronously and asynchronously.
@@ -270,9 +271,9 @@ Once activated, subsequent logins will return `{ mfaRequired: true }` instead of
 
 ---
 
-## Account Linking
+## Account Linking & Multi-OAuth
 
-A logged-in user can link additional authentication methods to their existing account (same `uid`):
+A logged-in user can link additional authentication methods to their existing account (same `uid`). This includes both local methods (Email/Password, Phone) and multiple social accounts simultaneously (e.g., linking both Google AND Facebook to the same user).
 
 ```
 POST /auth/link
@@ -280,6 +281,10 @@ Authorization: Bearer <access_token>
 ```
 
 The request body follows the same shape as `POST /auth/signup`. The new credential will be linked to the same identity as the current session.
+
+- **Unified Identity**: All linked methods share the same `uid`, but have their own `authId`.
+- **Social Linking**: Connect multiple OAuth providers to a single account without creating separate identities.
+- **Verification**: If verification is required, linked methods must be verified independently before they can be used for login.
 
 ---
 

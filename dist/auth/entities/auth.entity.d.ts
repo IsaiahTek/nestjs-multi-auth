@@ -12,7 +12,7 @@ export declare class Auth extends BaseEntity {
     isActive: boolean;
     meta?: Record<string, any>;
     lastUsedAt?: Date;
-    oauthProvider?: OAuthProvider;
+    oauthProviders?: OAuthProvider[];
     toMap(): {
         id: string;
         strategy: AuthStrategy;
@@ -27,7 +27,7 @@ export declare class Auth extends BaseEntity {
             value: string;
             isVerified: boolean;
         }[];
-        oauthProvider: {
+        oauthProviders: {
             id: string;
             provider: import("../enums/auth-type.enum").OAuthProviderType;
             providerUserId: string;
@@ -37,7 +37,7 @@ export declare class Auth extends BaseEntity {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date;
-        };
+        }[];
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date;

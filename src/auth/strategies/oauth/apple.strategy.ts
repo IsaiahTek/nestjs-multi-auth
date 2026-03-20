@@ -5,10 +5,10 @@ import { LoginDto } from '../../dto/requests/login.dto';
 import { SignupDto } from '../../dto/requests/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
-import { AuthIdentifier, IdentifierType } from '../../entities/auth-identify.entity';
+import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities/auth-identify.entity';
 import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { randomUUID, createPublicKey } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 
@@ -130,6 +130,8 @@ export class AppleAuthStrategy implements IOAuthStrategy {
                         type: IdentifierType.EMAIL,
                         value: email,
                         isVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                        source: IdentifierSource.APPLE,
+                        verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
                     })
                 );
             }
@@ -139,9 +141,14 @@ export class AppleAuthStrategy implements IOAuthStrategy {
             const oauthProvider = oauthProviderRepo.create({
                 provider: OAuthProviderType.APPLE,
                 providerUserId: appleId,
+                expiresAt: payload.exp,
+                rawProfile: payload,
+                emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                displayName: payload.name?.displayName,
+                avatarUrl: payload.picture,
             });
 
-            newAuth.oauthProvider = oauthProvider;
+            newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
 
             const savedAuth = await authRepo.save(newAuth);
             return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] };

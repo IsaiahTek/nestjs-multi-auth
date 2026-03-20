@@ -106,11 +106,11 @@ export class Auth extends BaseEntity {
     description: 'OAuth provider details (only for OAUTH method)',
     required: false,
   })
-  @OneToOne(() => OAuthProvider, (provider) => provider.auth, {
+  @OneToMany(() => OAuthProvider, (provider) => provider.auth, {
     cascade: true,
     nullable: true,
   })
-  oauthProvider?: OAuthProvider;
+  oauthProviders?: OAuthProvider[];
 
   toMap() {
     return {
@@ -123,7 +123,7 @@ export class Auth extends BaseEntity {
       lastUsedAt: this.lastUsedAt,
       // user: this.user.toMap(),
       identifiers: this.identifiers?.map((id) => id?.toMap()),
-      oauthProvider: this.oauthProvider?.toMap(),
+      oauthProviders: this.oauthProviders?.map((provider) => provider?.toMap()),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       deletedAt: this.deletedAt,

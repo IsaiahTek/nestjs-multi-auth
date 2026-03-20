@@ -104,7 +104,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 emailVerified: payload.email_verified,
                 expiresAt: payload.exp,
             });
-            newAuth.oauthProvider = oauthProvider;
+            newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
             return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
         });
     }

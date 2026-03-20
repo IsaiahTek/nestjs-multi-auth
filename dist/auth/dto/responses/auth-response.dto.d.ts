@@ -11,7 +11,7 @@ export declare class AuthResponseDto {
     meta?: Record<string, any>;
     lastUsedAt?: Date;
     identifiers?: AuthIdentifierDto[];
-    oauthProvider?: OAuthProviderResponseDto;
+    oauthProviders?: OAuthProviderResponseDto[];
     createdAt: Date;
     updatedAt: Date;
 }

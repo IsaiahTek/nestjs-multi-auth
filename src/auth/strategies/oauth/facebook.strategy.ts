@@ -5,10 +5,10 @@ import { LoginDto } from '../../dto/requests/login.dto';
 import { SignupDto } from '../../dto/requests/signup.dto';
 import { Auth } from '../../entities/auth.entity';
 import { OAuthProvider } from '../../entities/oauth-provider.entity';
-import { AuthIdentifier, IdentifierType } from '../../entities/auth-identify.entity';
+import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities/auth-identify.entity';
 import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
-import { IOAuthStrategy } from './oauth-strategy.interface';
+import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { randomUUID, createHmac } from 'crypto';
 
 @Injectable()
@@ -101,6 +101,8 @@ export class FacebookAuthStrategy implements IOAuthStrategy {
                         type: IdentifierType.EMAIL,
                         value: email,
                         isVerified: true,
+                        source: IdentifierSource.FACEBOOK,
+                        verifiedBy: 'PROVIDER',
                     })
                 );
             }
@@ -110,9 +112,14 @@ export class FacebookAuthStrategy implements IOAuthStrategy {
             const oauthProvider = oauthProviderRepo.create({
                 provider: OAuthProviderType.FACEBOOK,
                 providerUserId: facebookId,
+                expiresAt: payload.exp,
+                rawProfile: payload,
+                emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                displayName: payload.name,
+                avatarUrl: payload.picture,
             });
 
-            newAuth.oauthProvider = oauthProvider;
+            newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
 
             const savedAuth = await authRepo.save(newAuth);
             return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] };
