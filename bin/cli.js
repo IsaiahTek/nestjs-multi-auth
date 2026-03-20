@@ -33,6 +33,23 @@ function resolveDataSource() {
   );
 }
 
+function extractDataSourceConfig(exported) {
+    console.log('Data Source Path: ', exported)
+  if (!exported) return null;
+
+  // If already a DataSource instance
+  if (exported.options) return exported.options;
+
+  // Common patterns
+  return (
+    exported.default ||
+    exported.dataSource ||
+    exported.AppDataSource ||
+    exported.databaseConfig ||
+    exported
+  );
+}
+
 
 // 🔧 Load DataSource (supports TS + JS)
 async function loadDataSource() {
@@ -45,13 +62,7 @@ async function loadDataSource() {
   const exported = require(dataSourcePath);
 
   // Support both default export and named export
-  const dataSourceConfig =
-    exported.default ||
-    exported.dataSource ||
-    exported.AppDataSource ||
-    exported.databaseConfig ||
-    exported;
-
+  const dataSourceConfig = extractDataSourceConfig(exported);
   return dataSourceConfig;
 }
 
