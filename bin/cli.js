@@ -74,6 +74,7 @@ async function loadDataSource() {
 
   // Support both default export and named export
   const dataSourceConfig = extractDataSource(exported);
+  console.log("Data Source Config: ", dataSourceConfig)
   return dataSourceConfig;
 }
 
