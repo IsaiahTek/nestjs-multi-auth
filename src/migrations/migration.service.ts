@@ -52,11 +52,14 @@ export class AuthMigrationService {
 
     async getCurrentVersion(qr?: QueryRunner): Promise<number> {
         const executor = qr || this.dataSource;
-        const result = await executor.query(`
-            SELECT version FROM auth_schema_meta ORDER BY version DESC LIMIT 1
-        `);
-
-        return result.length > 0 ? result[0].version : 0;
+        try {
+            const result = await executor.query(`
+                SELECT version FROM auth_schema_meta ORDER BY version DESC LIMIT 1
+            `);
+            return result.length > 0 ? result[0].version : 0;
+        } catch (err) {
+            return 0;
+        }
     }
 
     async updateVersion(qr?: QueryRunner, version?: number) {
