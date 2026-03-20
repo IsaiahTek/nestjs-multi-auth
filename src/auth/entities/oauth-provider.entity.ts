@@ -1,4 +1,4 @@
-import { Entity, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { BaseEntity } from './base.entity';
 import { Auth } from './auth.entity';
@@ -6,7 +6,8 @@ import { OAuthProviderType } from '../enums/auth-type.enum';
 
 @Entity()
 export class OAuthProvider extends BaseEntity {
-  @OneToMany(() => Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'authId' })
   auth: Auth;
 
   @ApiProperty({ enum: OAuthProviderType, example: OAuthProviderType.GOOGLE })

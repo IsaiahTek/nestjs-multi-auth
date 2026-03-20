@@ -33,7 +33,8 @@ let OAuthProvider = class OAuthProvider extends base_entity_1.BaseEntity {
 };
 exports.OAuthProvider = OAuthProvider;
 __decorate([
-    (0, typeorm_1.OneToMany)(() => auth_entity_1.Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => auth_entity_1.Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'authId' }),
     __metadata("design:type", auth_entity_1.Auth)
 ], OAuthProvider.prototype, "auth", void 0);
 __decorate([

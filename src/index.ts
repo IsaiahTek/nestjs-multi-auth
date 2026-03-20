@@ -17,3 +17,6 @@ export * from './auth/dto/requests/signup.dto';
 export * from './auth/dto/requests/refresh-token.dto';
 export * from './auth/guards/jwt-auth.guard';
 export * from './auth/guards/optional-auth.guard';
+export * from './migrations/auth-schema.initializer';
+export * from './migrations/migration.runner';
+

@@ -5,14 +5,9 @@ import { Auth } from './entities/auth.entity';
 import { OAuthProvider } from './entities/oauth-provider.entity';
 import { OtpToken } from './entities/otp-token.entity';
 import { MfaMethod } from './entities/mfa-method.entity';
-import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
-import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
-import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
-import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { JwtStrategy } from './core/jwt.strategy';
 import { AuthStrategy } from './enums/auth-type.enum';
 import { PassportModule } from '@nestjs/passport';
@@ -26,6 +21,8 @@ import { OptionalAuthGuard } from './guards/optional-auth.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { createStrategyProviders } from './core/registration';
 import { AuthModuleAsyncOptions } from './interfaces/auth-module-async-options.interface';
+import { AuthSchemaInitializer } from '../migrations/auth-schema.initializer';
+import { AuthMigrationService } from '../migrations/migration.runner';
 
 
 
@@ -99,6 +96,9 @@ export class AuthModule {
       JwtAuthGuard,
       OptionalAuthGuard,
       ThrottlerGuard,
+      AuthMigrationService,
+      AuthSchemaInitializer,
+      
     ];
   }
 

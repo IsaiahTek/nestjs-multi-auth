@@ -133,4 +133,9 @@ export interface AuthModuleOptions {
      * If provided, all phone-based signups and signins must match one of these prefixes.
      */
     allowedPhonePrefixes?: string[];
+
+    /**
+     * If true, the library will automatically run migrations on startup.
+     */
+    autoMigrate?: boolean;
 }
