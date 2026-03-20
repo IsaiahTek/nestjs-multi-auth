@@ -32,7 +32,7 @@ const optional_auth_guard_1 = require("./guards/optional-auth.guard");
 const throttler_1 = require("@nestjs/throttler");
 const registration_1 = require("./core/registration");
 const auth_schema_initializer_1 = require("../migrations/auth-schema.initializer");
-const migration_runner_1 = require("../migrations/migration.runner");
+const migration_service_1 = require("../migrations/migration.service");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
@@ -95,7 +95,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             jwt_auth_guard_1.JwtAuthGuard,
             optional_auth_guard_1.OptionalAuthGuard,
             throttler_1.ThrottlerGuard,
-            migration_runner_1.AuthMigrationService,
+            migration_service_1.AuthMigrationService,
             auth_schema_initializer_1.AuthSchemaInitializer,
         ];
     }

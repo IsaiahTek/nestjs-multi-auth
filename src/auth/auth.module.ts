@@ -22,7 +22,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { createStrategyProviders } from './core/registration';
 import { AuthModuleAsyncOptions } from './interfaces/auth-module-async-options.interface';
 import { AuthSchemaInitializer } from '../migrations/auth-schema.initializer';
-import { AuthMigrationService } from '../migrations/migration.runner';
+import { AuthMigrationService } from '../migrations/migration.service';
 
 
 
@@ -98,7 +98,7 @@ export class AuthModule {
       ThrottlerGuard,
       AuthMigrationService,
       AuthSchemaInitializer,
-      
+
     ];
   }
 

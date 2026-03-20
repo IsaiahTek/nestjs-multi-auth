@@ -1,5 +1,5 @@
 import { OnModuleInit } from "@nestjs/common";
-import { AuthMigrationService } from "./migration.runner";
+import { AuthMigrationService } from "./migration.service";
 import { AuthModuleOptions } from "../auth/interfaces/auth-module-options.interface";
 export declare class AuthSchemaInitializer implements OnModuleInit {
     private migrationService;

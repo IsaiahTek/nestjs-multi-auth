@@ -14,7 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthSchemaInitializer = void 0;
 const common_1 = require("@nestjs/common");
-const migration_runner_1 = require("./migration.runner");
+const migration_service_1 = require("./migration.service");
 const auth_module_1 = require("../auth/auth.module");
 let AuthSchemaInitializer = class AuthSchemaInitializer {
     constructor(migrationService, options) {
@@ -31,6 +31,6 @@ exports.AuthSchemaInitializer = AuthSchemaInitializer;
 exports.AuthSchemaInitializer = AuthSchemaInitializer = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, common_1.Inject)(auth_module_1.AUTH_MODULE_OPTIONS)),
-    __metadata("design:paramtypes", [migration_runner_1.AuthMigrationService, Object])
+    __metadata("design:paramtypes", [migration_service_1.AuthMigrationService, Object])
 ], AuthSchemaInitializer);
 //# sourceMappingURL=auth-schema.initializer.js.map
