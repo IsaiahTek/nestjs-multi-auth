@@ -10,7 +10,8 @@ export class AuthMigrationV1 implements AuthMigration {
   down(queryRunner: QueryRunner): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  version = 1;
+  static version = 1;
+  get version() { return AuthMigrationV1.version; }
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

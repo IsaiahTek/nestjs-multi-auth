@@ -2,12 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthMigrationV1 = void 0;
 class AuthMigrationV1 {
-    constructor() {
-        this.version = 1;
-    }
     down(queryRunner) {
         throw new Error('Method not implemented.');
     }
+    get version() { return AuthMigrationV1.version; }
     async up(queryRunner) {
         await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "auth" (
@@ -197,4 +195,5 @@ class AuthMigrationV1 {
     }
 }
 exports.AuthMigrationV1 = AuthMigrationV1;
+AuthMigrationV1.version = 1;
 //# sourceMappingURL=auth.migration.v1.js.map

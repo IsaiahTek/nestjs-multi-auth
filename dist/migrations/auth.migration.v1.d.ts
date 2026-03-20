@@ -6,6 +6,7 @@ export interface AuthMigration {
 }
 export declare class AuthMigrationV1 implements AuthMigration {
     down(queryRunner: QueryRunner): Promise<void>;
-    version: number;
+    static version: number;
+    get version(): number;
     up(queryRunner: QueryRunner): Promise<void>;
 }

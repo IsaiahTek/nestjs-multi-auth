@@ -22,7 +22,7 @@ let AuthMigrationService = class AuthMigrationService {
         await queryRunner.connect();
         await this.ensureMetaTable(queryRunner);
         const currentVersion = await this.getCurrentVersion(queryRunner);
-        const pendingMigrations = auth_migrations_1.AuthMigrations.filter((m) => m.prototype.version > currentVersion);
+        const pendingMigrations = auth_migrations_1.AuthMigrations.filter((M) => M.version > currentVersion);
         for (const MigrationClass of pendingMigrations) {
             const migration = new MigrationClass();
             await queryRunner.startTransaction();

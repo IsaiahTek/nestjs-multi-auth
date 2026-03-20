@@ -2,9 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthMigrationV2 = void 0;
 class AuthMigrationV2 {
-    constructor() {
-        this.version = 2;
-    }
+    get version() { return AuthMigrationV2.version; }
     async up(queryRunner) {
         const tables = ['oauth_provider', 'auth_identifier', 'mfa_method', 'otp_token', 'session'];
         for (const table of tables) {
@@ -37,4 +35,5 @@ class AuthMigrationV2 {
     }
 }
 exports.AuthMigrationV2 = AuthMigrationV2;
+AuthMigrationV2.version = 2;
 //# sourceMappingURL=auth.migration.v2.js.map

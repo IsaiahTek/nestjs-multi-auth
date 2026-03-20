@@ -2,7 +2,8 @@ import { QueryRunner } from 'typeorm';
 import { AuthMigration } from './auth.migration.v1';
 
 export class AuthMigrationV2 implements AuthMigration {
-  version = 2;
+  static version = 2;
+  get version() { return AuthMigrationV2.version; }
 
   async up(queryRunner: QueryRunner): Promise<void> {
     const tables = ['oauth_provider', 'auth_identifier', 'mfa_method', 'otp_token', 'session'];

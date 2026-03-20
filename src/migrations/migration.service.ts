@@ -16,7 +16,7 @@ export class AuthMigrationService {
         const currentVersion = await this.getCurrentVersion(queryRunner);
 
         const pendingMigrations = AuthMigrations.filter(
-            (m) => m.prototype.version > currentVersion
+            (M: any) => M.version > currentVersion
         );
 
         for (const MigrationClass of pendingMigrations) {
