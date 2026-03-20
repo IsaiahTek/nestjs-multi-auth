@@ -28,7 +28,7 @@ function resolveDataSource() {
   }
 
   throw new Error(
-    '❌ Could not find data-source file. Expected one of:\n' +
+    '[!] Could not find data-source file. Expected one of:\n' +
       possiblePaths.map(p => ` - ${p}`).join('\n')
   );
 }
@@ -59,7 +59,7 @@ program
   .action(async () => {
     try {
       const { DataSource } = require('typeorm');
-      const { AuthMigrationService } = require('../dist/migration.service');
+      const { AuthMigrationService } = require('../dist/migrations/migration.service');
 
       const config = await loadDataSource();
 
@@ -70,10 +70,10 @@ program
 
       await service.runMigrations();
 
-      console.log('✅ Auth migrations completed');
+      console.log('[i] Auth migrations completed');
       process.exit(0);
     } catch (err) {
-      console.error('❌ Migration failed:\n', err.message);
+      console.error('[!] Migration failed:\n', err.message);
       process.exit(1);
     }
   });
@@ -86,7 +86,7 @@ program
   .action(async () => {
     try {
       const { DataSource } = require('typeorm');
-      const { AuthMigrationService } = require('../dist/migration.service');
+      const { AuthMigrationService } = require('../dist/migrations/migration.service');
 
       const config = await loadDataSource();
 
@@ -97,11 +97,11 @@ program
 
       const version = await service.getCurrentVersion();
 
-      console.log('🔍 Current auth schema version:', version);
+      console.log('[i] Current auth schema version:', version);
 
       process.exit(0);
     } catch (err) {
-      console.error('❌ Doctor check failed:\n', err.message);
+      console.error('[!] Doctor check failed:\n', err.message);
       process.exit(1);
     }
   });
