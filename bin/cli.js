@@ -6,10 +6,13 @@ const fs = require('fs');
 
 const program = new Command();
 
-program.name('nestjs-multi-auth').description('Auth CLI tools').version('1.0.0');
+program
+  .name('nestjs-multi-auth')
+  .description('Auth CLI tools')
+  .version('1.0.0');
 
 
-// 🔍 Helper: resolve DataSource automatically
+// 🔍 Resolve DataSource path
 function resolveDataSource() {
   const cwd = process.cwd();
 
@@ -33,38 +36,43 @@ function resolveDataSource() {
   );
 }
 
+
+// 🔧 Extract or create DataSource
 function extractDataSource(exported) {
+  const { DataSource } = require('typeorm');
+
   if (!exported) {
     throw new Error('No exports found in data-source file');
   }
 
-  // ✅ Case 1: Already a DataSource instance
-  if (exported.AppDataSource) {
+  // ✅ Already a DataSource instance
+  if (exported.AppDataSource instanceof DataSource) {
     return exported.AppDataSource;
   }
 
-  if (exported.dataSource) {
+  if (exported.dataSource instanceof DataSource) {
     return exported.dataSource;
   }
 
-  if (exported.default?.options) {
+  if (exported.default instanceof DataSource) {
     return exported.default;
   }
 
-  // ✅ Case 2: Config object → wrap it
+  // ✅ Config object → wrap it
   const config =
     exported.default ||
     exported.databaseConfig ||
     exported;
 
-  const { DataSource } = require('typeorm');
   return new DataSource(config);
 }
 
 
-// 🔧 Load DataSource (supports TS + JS)
+// 🔧 Load DataSource (TS + JS support)
 async function loadDataSource() {
   const dataSourcePath = resolveDataSource();
+
+  console.log('[i] Using DataSource at:', dataSourcePath);
 
   if (dataSourcePath.endsWith('.ts')) {
     require('ts-node/register');
@@ -72,10 +80,27 @@ async function loadDataSource() {
 
   const exported = require(dataSourcePath);
 
-  // Support both default export and named export
-  const dataSourceConfig = extractDataSource(exported);
-  console.log("Data Source Config: ", dataSourceConfig)
-  return dataSourceConfig;
+  const dataSource = extractDataSource(exported);
+
+  if (!dataSource.isInitialized) {
+    await dataSource.initialize();
+  }
+
+  return dataSource;
+}
+
+
+// 🔁 Shared runner
+async function runWithDataSource(fn) {
+  const dataSource = await loadDataSource();
+
+  try {
+    await fn(dataSource);
+  } finally {
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+  }
 }
 
 
@@ -85,22 +110,17 @@ program
   .description('Run auth migrations')
   .action(async () => {
     try {
-      const { DataSource } = require('typeorm');
       const { AuthMigrationService } = require('../dist/migrations/migration.service');
 
-      const config = await loadDataSource();
-
-      const dataSource = new DataSource(config);
-      await dataSource.initialize();
-
-      const service = new AuthMigrationService(dataSource);
-
-      await service.runMigrations();
+      await runWithDataSource(async (dataSource) => {
+        const service = new AuthMigrationService(dataSource);
+        await service.runMigrations();
+      });
 
       console.log('[i] Auth migrations completed');
       process.exit(0);
     } catch (err) {
-      console.error('[!] Migration failed:\n', err.message);
+      console.error('[!] Migration failed:\n', err);
       process.exit(1);
     }
   });
@@ -112,23 +132,18 @@ program
   .description('Check auth schema status')
   .action(async () => {
     try {
-      const { DataSource } = require('typeorm');
       const { AuthMigrationService } = require('../dist/migrations/migration.service');
 
-      const config = await loadDataSource();
+      await runWithDataSource(async (dataSource) => {
+        const service = new AuthMigrationService(dataSource);
+        const version = await service.getCurrentVersion();
 
-      const dataSource = new DataSource(config);
-      await dataSource.initialize();
-
-      const service = new AuthMigrationService(dataSource);
-
-      const version = await service.getCurrentVersion();
-
-      console.log('[i] Current auth schema version:', version);
+        console.log('[i] Current auth schema version:', version);
+      });
 
       process.exit(0);
     } catch (err) {
-      console.error('[!] Doctor check failed:\n', err.message);
+      console.error('[!] Doctor check failed:\n', err);
       process.exit(1);
     }
   });
