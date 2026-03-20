@@ -21,7 +21,7 @@ let AuthMigrationService = class AuthMigrationService {
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
         await this.ensureMetaTable(queryRunner);
-        const currentVersion = await this.getCurrentVersion();
+        const currentVersion = await this.getCurrentVersion(queryRunner);
         const pendingMigrations = auth_migrations_1.AuthMigrations.filter((m) => m.prototype.version > currentVersion);
         for (const MigrationClass of pendingMigrations) {
             const migration = new MigrationClass();
@@ -49,16 +49,12 @@ let AuthMigrationService = class AuthMigrationService {
         `);
     }
     async getCurrentVersion(qr) {
+        await this.ensureMetaTable(qr);
         const executor = qr || this.dataSource;
-        try {
-            const result = await executor.query(`
-                SELECT version FROM auth_schema_meta ORDER BY version DESC LIMIT 1
-            `);
-            return result.length > 0 ? result[0].version : 0;
-        }
-        catch (err) {
-            return 0;
-        }
+        const result = await executor.query(`
+            SELECT version FROM auth_schema_meta ORDER BY version DESC LIMIT 1
+        `);
+        return result.length > 0 ? result[0].version : 0;
     }
     async updateVersion(qr, version) {
         const executor = qr || this.dataSource;
