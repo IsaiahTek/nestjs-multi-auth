@@ -83,6 +83,6 @@ __decorate([
     __metadata("design:type", Object)
 ], OAuthProvider.prototype, "rawProfile", void 0);
 exports.OAuthProvider = OAuthProvider = __decorate([
-    (0, typeorm_1.Entity)()
+    (0, typeorm_1.Entity)('oauth_providers')
 ], OAuthProvider);
 //# sourceMappingURL=oauth-provider.entity.js.map

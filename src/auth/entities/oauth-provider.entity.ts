@@ -4,7 +4,7 @@ import { BaseEntity } from './base.entity';
 import { Auth } from './auth.entity';
 import { OAuthProviderType } from '../enums/auth-type.enum';
 
-@Entity()
+@Entity('oauth_providers')
 export class OAuthProvider extends BaseEntity {
   @ManyToOne(() => Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'authId' })
