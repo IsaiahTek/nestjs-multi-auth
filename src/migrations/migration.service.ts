@@ -13,7 +13,7 @@ export class AuthMigrationService {
 
         await this.ensureMetaTable(queryRunner);
 
-        const currentVersion = await this.getCurrentVersion(queryRunner);
+        const currentVersion = await this.getCurrentVersion();
 
         const pendingMigrations = AuthMigrations.filter(
             (m) => m.prototype.version > currentVersion
@@ -39,8 +39,9 @@ export class AuthMigrationService {
         await queryRunner.release();
     }
 
-    async ensureMetaTable(qr: QueryRunner) {
-        await qr.query(`
+    async ensureMetaTable(qr?: QueryRunner) {
+        const executor = qr || this.dataSource;
+        await executor.query(`
             CREATE TABLE IF NOT EXISTS auth_schema_meta (
             id SERIAL PRIMARY KEY,
             version INT NOT NULL,
@@ -49,16 +50,18 @@ export class AuthMigrationService {
         `);
     }
 
-    async getCurrentVersion(qr: QueryRunner): Promise<number> {
-        const result = await qr.query(`
+    async getCurrentVersion(qr?: QueryRunner): Promise<number> {
+        const executor = qr || this.dataSource;
+        const result = await executor.query(`
             SELECT version FROM auth_schema_meta ORDER BY version DESC LIMIT 1
         `);
 
         return result.length > 0 ? result[0].version : 0;
     }
 
-    async updateVersion(qr: QueryRunner, version: number) {
-        await qr.query(`
+    async updateVersion(qr?: QueryRunner, version?: number) {
+        const executor = qr || this.dataSource;
+        await executor.query(`
             INSERT INTO auth_schema_meta (version) VALUES ($1)
         `, [version]);
     }
