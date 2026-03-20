@@ -203,7 +203,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
         // -------------------------
         const updatedAuth = await this.authRepo.findOne({
             where: { id: result.auth.id },
-            relations: ['identifiers', 'oauthProvider'],
+            relations: ['identifiers', 'oauthProviders'],
         });
         const identifier = updatedAuth?.identifiers?.find((i) => i.type === auth_identify_entity_1.IdentifierType.EMAIL && i.value === email);
         return {

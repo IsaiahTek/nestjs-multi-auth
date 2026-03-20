@@ -426,15 +426,15 @@ let AuthService = AuthService_1 = class AuthService {
         return { message: 'MFA activated successfully' };
     }
     async viewAll() {
-        const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProvider'] });
+        const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProviders'] });
         return auth_mapper_1.AuthMapper.toDtoList(auths);
     }
     async me(uid) {
-        const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+        const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
         return auth_mapper_1.AuthMapper.toDto(auth);
     }
     async viewAllMyAuthMethods(uid) {
-        const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+        const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
         return auth_mapper_1.AuthMapper.toDtoList(auths);
     }
     async deleteAccount(uid) {

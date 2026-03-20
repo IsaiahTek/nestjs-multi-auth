@@ -239,7 +239,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     // -------------------------
     const updatedAuth = await this.authRepo.findOne({
       where: { id: result.auth.id },
-      relations: ['identifiers', 'oauthProvider'],
+      relations: ['identifiers', 'oauthProviders'],
     });
 
     const identifier = updatedAuth?.identifiers?.find(

@@ -539,17 +539,17 @@ export class AuthService {
   }
 
   async viewAll() {
-    const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProvider'] });
+    const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProviders'] });
     return AuthMapper.toDtoList(auths);
   }
 
   async me(uid: string) {
-    const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+    const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
     return AuthMapper.toDto(auth);
   }
 
   async viewAllMyAuthMethods(uid: string) {
-    const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProvider'] });
+    const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
     return AuthMapper.toDtoList(auths);
   }
 
