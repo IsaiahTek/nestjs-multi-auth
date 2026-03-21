@@ -108,7 +108,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
         displayName: payload.name,
         avatarUrl: payload.picture,
         emailVerified: payload.email_verified,
-        expiresAt: payload.exp,
+        expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
       });
 
       newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];

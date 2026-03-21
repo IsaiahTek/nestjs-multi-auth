@@ -102,7 +102,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 displayName: payload.name,
                 avatarUrl: payload.picture,
                 emailVerified: payload.email_verified,
-                expiresAt: payload.exp,
+                expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
             });
             newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
             return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };

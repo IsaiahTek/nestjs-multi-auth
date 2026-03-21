@@ -141,7 +141,7 @@ export class AppleAuthStrategy implements IOAuthStrategy {
             const oauthProvider = oauthProviderRepo.create({
                 provider: OAuthProviderType.APPLE,
                 providerUserId: appleId,
-                expiresAt: payload.exp,
+                expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
                 rawProfile: payload,
                 emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
                 displayName: payload.name?.displayName,
