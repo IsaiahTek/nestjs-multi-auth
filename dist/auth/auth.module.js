@@ -48,7 +48,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
         if (options.notificationProvider) {
             providers.push({
                 provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
-                useValue: options.notificationProvider,
+                useClass: options.notificationProvider,
             });
         }
         if (!options.disableGlobalGuard) {

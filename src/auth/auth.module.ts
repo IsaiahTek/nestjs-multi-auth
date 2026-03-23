@@ -46,7 +46,7 @@ export class AuthModule {
     if (options.notificationProvider) {
       providers.push({
         provide: AUTH_NOTIFICATION_PROVIDER,
-        useValue: options.notificationProvider,
+        useClass: options.notificationProvider,
       });
     }
 
