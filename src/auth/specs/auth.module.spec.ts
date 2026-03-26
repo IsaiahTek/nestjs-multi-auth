@@ -1,4 +1,5 @@
 import { AuthModule } from '../auth.module';
+import { AuthController } from '../auth.controller';
 import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
@@ -37,5 +38,28 @@ describe('AuthModule.forRootAsync (Pure)', () => {
 
     expect(appGuardProvider).toBeDefined();
     expect(appGuardProvider.useFactory).toBeInstanceOf(Function);
+  });
+
+  it('should not include AuthController if disableController is true in async options', () => {
+    const options = {
+      disableController: true,
+      useFactory: () => ({
+        jwtSecret: 'test-secret',
+        jwtRefreshSecret: 'test-secret',
+      }),
+    };
+    const dynamicModule = AuthModule.forRootAsync(options);
+    expect(dynamicModule.controllers).toEqual([]);
+  });
+
+  it('should include AuthController by default if disableController is not provided', () => {
+    const options = {
+      useFactory: () => ({
+        jwtSecret: 'test-secret',
+        jwtRefreshSecret: 'test-secret',
+      }),
+    };
+    const dynamicModule = AuthModule.forRootAsync(options);
+    expect(dynamicModule.controllers).toContain(AuthController);
   });
 });

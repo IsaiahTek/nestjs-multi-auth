@@ -170,6 +170,7 @@ export class AuthModule {
           inject: [AUTH_MODULE_OPTIONS, JwtAuthGuard],
         },
       ],
+      controllers: options.disableController ? [] : [AuthController],
       exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule, AUTH_MODULE_OPTIONS],
     };
   }

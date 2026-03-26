@@ -3,4 +3,5 @@ export interface AuthModuleAsyncOptions {
     imports?: any[];
     inject?: any[];
     useFactory: (...args: any[]) => Promise<AuthModuleOptions> | AuthModuleOptions;
+    disableController?: boolean;
 }

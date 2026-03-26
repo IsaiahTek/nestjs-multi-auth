@@ -165,6 +165,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
                     inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, jwt_auth_guard_1.JwtAuthGuard],
                 },
             ],
+            controllers: options.disableController ? [] : [auth_controller_1.AuthController],
             exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule, auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
         };
     }
