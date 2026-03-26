@@ -7,7 +7,7 @@ import { AppleAuthStrategy } from "../strategies/oauth/apple.strategy";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
 import { OAuthAuthStrategy } from "../strategies/oauth/oauth.strategy";
 
-export const createStrategyProviders = (options: AuthModuleOptions): Provider[] => {
+export const    createStrategyProviders = (options: AuthModuleOptions): Provider[] => {
     const providers: Provider[] = [];
     const enabled = options.enabledStrategies || [AuthStrategy.EMAIL];
 

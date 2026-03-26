@@ -19,7 +19,6 @@ const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_1 = require("@nestjs/jwt");
 const jwt_strategy_1 = require("./core/jwt.strategy");
-const auth_type_enum_1 = require("./enums/auth-type.enum");
 const passport_1 = require("@nestjs/passport");
 const auth_identify_entity_1 = require("./entities/auth-identify.entity");
 const session_entity_1 = require("./entities/session.entity");
@@ -33,6 +32,11 @@ const throttler_1 = require("@nestjs/throttler");
 const registration_1 = require("./core/registration");
 const auth_schema_initializer_1 = require("../migrations/auth-schema.initializer");
 const migration_service_1 = require("../migrations/migration.service");
+const local_auth_strategy_1 = require("./strategies/local-auth.strategy");
+const google_strategy_1 = require("./strategies/oauth/google.strategy");
+const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
+const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
+const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
@@ -85,7 +89,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             ],
             providers,
             controllers: options.disableController ? [] : [auth_controller_1.AuthController],
-            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule, auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
         };
     }
     static createProviders() {
@@ -103,7 +107,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
         const asyncOptionsProvider = {
             provide: auth_module_options_interface_1.AUTH_MODULE_OPTIONS,
             useFactory: options.useFactory,
-            inject: options.inject || [auth_type_enum_1.AuthStrategy.EMAIL],
+            inject: options.inject || [],
         };
         return {
             module: AuthModule_1,
@@ -143,13 +147,25 @@ let AuthModule = AuthModule_1 = class AuthModule {
             providers: [
                 asyncOptionsProvider,
                 ...this.createProviders(),
+                local_auth_strategy_1.LocalAuthStrategy,
+                google_strategy_1.GoogleAuthStrategy,
+                facebook_strategy_1.FacebookAuthStrategy,
+                apple_strategy_1.AppleAuthStrategy,
+                oauth_strategy_1.OAuthAuthStrategy,
                 {
                     provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
                     useFactory: (opts) => opts.notificationProvider,
                     inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
                 },
+                {
+                    provide: core_1.APP_GUARD,
+                    useFactory: (opts, guard) => {
+                        return opts.disableGlobalGuard ? { canActivate: () => true } : guard;
+                    },
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, jwt_auth_guard_1.JwtAuthGuard],
+                },
             ],
-            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule],
+            exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, optional_auth_guard_1.OptionalAuthGuard, throttler_1.ThrottlerModule, jwt_1.JwtModule, passport_1.PassportModule, auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
         };
     }
 };

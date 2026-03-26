@@ -23,6 +23,11 @@ import { createStrategyProviders } from './core/registration';
 import { AuthModuleAsyncOptions } from './interfaces/auth-module-async-options.interface';
 import { AuthSchemaInitializer } from '../migrations/auth-schema.initializer';
 import { AuthMigrationService } from '../migrations/migration.service';
+import { LocalAuthStrategy } from './strategies/local-auth.strategy';
+import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
+import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
+import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
+import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 
 
 
@@ -85,7 +90,7 @@ export class AuthModule {
       ],
       providers,
       controllers: options.disableController ? [] : [AuthController],
-      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule],
+      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule, AUTH_MODULE_OPTIONS],
     };
   }
 
@@ -106,7 +111,7 @@ export class AuthModule {
     const asyncOptionsProvider: Provider = {
       provide: AUTH_MODULE_OPTIONS,
       useFactory: options.useFactory,
-      inject: options.inject || [AuthStrategy.EMAIL],
+      inject: options.inject || [],
     };
 
     return {
@@ -147,13 +152,25 @@ export class AuthModule {
       providers: [
         asyncOptionsProvider,
         ...this.createProviders(),
+        LocalAuthStrategy,
+        GoogleAuthStrategy,
+        FacebookAuthStrategy,
+        AppleAuthStrategy,
+        OAuthAuthStrategy,
         {
           provide: AUTH_NOTIFICATION_PROVIDER,
           useFactory: (opts: AuthModuleOptions) => opts.notificationProvider,
           inject: [AUTH_MODULE_OPTIONS],
         },
+        {
+          provide: APP_GUARD,
+          useFactory: (opts: AuthModuleOptions, guard: JwtAuthGuard) => {
+            return opts.disableGlobalGuard ? { canActivate: () => true } : guard;
+          },
+          inject: [AUTH_MODULE_OPTIONS, JwtAuthGuard],
+        },
       ],
-      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule],
+      exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule, AUTH_MODULE_OPTIONS],
     };
   }
 }
