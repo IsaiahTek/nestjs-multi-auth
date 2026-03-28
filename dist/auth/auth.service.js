@@ -125,15 +125,23 @@ let AuthService = AuthService_1 = class AuthService {
             (this.options.verificationRequired && !identifier?.isVerified) ||
             has2FA;
         const { secretHash, ...filteredAuth } = auth;
-        if (triggerVerification && this.notificationProvider) {
-            if (!identifier?.isVerified || has2FA || isPasswordless) {
-                await this.sendVerification(auth, identifier);
+        if (triggerVerification) {
+            if (this.notificationProvider) {
+                if (!identifier?.isVerified || has2FA || isPasswordless) {
+                    await this.sendVerification(auth, identifier);
+                }
+                return {
+                    message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
+                    auth: filteredAuth,
+                    verificationRequired: true
+                };
             }
-            return {
-                message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
-                auth: filteredAuth,
-                verificationRequired: true
-            };
+            else if (isPasswordless) {
+                throw new common_1.BadRequestException('A notification provider is required for passwordless signup.');
+            }
+            else if (this.options.verificationRequired) {
+                throw new common_1.BadRequestException('Verification is required but no notification provider is configured.');
+            }
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
         return { ...tokens, auth: filteredAuth };
@@ -180,14 +188,22 @@ let AuthService = AuthService_1 = class AuthService {
         // MFA (2FA) is handled separately via dedicated endpoints.
         const triggerVerification = isPasswordless ||
             (this.options.verificationRequired && !identifier?.isVerified);
-        if (triggerVerification && this.notificationProvider) {
-            await this.sendVerification(auth, identifier);
-            return {
-                message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
-                auth,
-                verificationRequired: true,
-                tokens: undefined,
-            };
+        if (triggerVerification) {
+            if (this.notificationProvider) {
+                await this.sendVerification(auth, identifier);
+                return {
+                    message: isPasswordless ? 'Passwordless login: Verification code sent.' : 'Identity verification required.',
+                    auth,
+                    verificationRequired: true,
+                    tokens: undefined,
+                };
+            }
+            else if (isPasswordless) {
+                throw new common_1.BadRequestException('A notification provider is required for passwordless login.');
+            }
+            else if (this.options.verificationRequired) {
+                throw new common_1.BadRequestException('Verification is required but no notification provider is configured.');
+            }
         }
         const { secretHash, ...filteredAuth } = auth;
         // If MFA is enabled, inform client that additional MFA verification is required.

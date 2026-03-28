@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AUTH_MODULE_OPTIONS = exports.AuthModule = void 0;
 // src/auth/auth.module.ts
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_entity_1 = require("./entities/auth.entity");
 const oauth_provider_entity_1 = require("./entities/oauth-provider.entity");
@@ -25,7 +26,7 @@ const session_entity_1 = require("./entities/session.entity");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 Object.defineProperty(exports, "AUTH_MODULE_OPTIONS", { enumerable: true, get: function () { return auth_module_options_interface_1.AUTH_MODULE_OPTIONS; } });
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
-const core_1 = require("@nestjs/core");
+const core_2 = require("@nestjs/core");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const optional_auth_guard_1 = require("./guards/optional-auth.guard");
 const throttler_1 = require("@nestjs/throttler");
@@ -57,7 +58,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
         }
         if (!options.disableGlobalGuard) {
             providers.push({
-                provide: core_1.APP_GUARD,
+                provide: core_2.APP_GUARD,
                 useClass: jwt_auth_guard_1.JwtAuthGuard,
             });
         }
@@ -154,11 +155,25 @@ let AuthModule = AuthModule_1 = class AuthModule {
                 oauth_strategy_1.OAuthAuthStrategy,
                 {
                     provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
-                    useFactory: (opts) => opts.notificationProvider,
-                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS],
+                    useFactory: (opts, moduleRef) => {
+                        const provider = opts.notificationProvider;
+                        if (!provider)
+                            return null;
+                        if (typeof provider === 'function' && provider.prototype) {
+                            try {
+                                return moduleRef.get(provider, { strict: false });
+                            }
+                            catch (e) {
+                                // Not registered as a provider, instantiate it directly
+                                return new provider();
+                            }
+                        }
+                        return provider;
+                    },
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, core_1.ModuleRef],
                 },
                 {
-                    provide: core_1.APP_GUARD,
+                    provide: core_2.APP_GUARD,
                     useFactory: (opts, guard) => {
                         return opts.disableGlobalGuard ? { canActivate: () => true } : guard;
                     },

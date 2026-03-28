@@ -357,21 +357,113 @@ The library provides extreme flexibility for how your front-end interacts with t
 
 The library automatically mounts the following endpoints under the `/auth` prefix:
 
-| Method | Endpoint | Auth Required | Description |
-|--------|----------|:---:|-------------|
-| `POST` | `/auth/signup` | ❌ | Register a new identity. |
-| `POST` | `/auth/signin` | ❌ | Authenticate and receive tokens. |
-| `POST` | `/auth/verify` | ❌ | Submit an OTP to complete verification. |
-| `POST` | `/auth/resend-verification` | ❌ | Resend the OTP code. |
-| `POST` | `/auth/refresh` | ❌ | Rotate the access token using a refresh token. |
-| `POST` | `/auth/logout` | ❌ | Invalidate the current session. |
-| `POST` | `/auth/link` | ✅ | Link a new auth method to the current account. |
-| `POST` | `/auth/mfa/enroll` | ✅ | Begin TOTP MFA enrollment; returns secret & QR URI. |
-| `POST` | `/auth/mfa/activate` | ✅ | Confirm TOTP setup with a live code to enable 2FA. |
-| `GET` | `/auth` | Optional | List all auth identities (admin/debug). |
-| `GET` | `/auth/view-all` | ✅ | View all auth methods for the current user. |
-| `DELETE` | `/auth/account` | ✅ | Delete the current user's account and all its data. |
-| `DELETE` | `/auth/method/:id` | ✅ | Delete a specific auth method from the account. |
+| Method | Endpoint | Auth Required | Payload | Description |
+|--------|----------|:---:|:---|-------------|
+| `POST` | `/auth/signup` | ❌ | `SignupDto` | Register a new identity. |
+| `POST` | `/auth/signin` | ❌ | `LoginDto` | Authenticate and receive tokens. |
+| `POST` | `/auth/verify` | ❌ | `VerifyDto` | Submit an OTP to complete verification. |
+| `POST` | `/auth/resend-verification` | ❌ | `ResendVerificationDto` | Resend the OTP code. |
+| `POST` | `/auth/refresh` | ❌ | `RefreshTokenDto` | Rotate the access token using a refresh token. |
+| `POST` | `/auth/logout` | ❌ | `RefreshTokenDto` | Invalidate the current session. |
+| `POST` | `/auth/link` | ✅ | `SignupDto` | Link a new auth method to the current account. |
+| `POST` | `/auth/mfa/enroll` | ✅ | `EnrollMfaDto` | Begin TOTP MFA enrollment. |
+| `POST` | `/auth/mfa/activate` | ✅ | `ActivateMfaDto` | Confirm TOTP setup with a live code. |
+| `GET` | `/auth` | Optional | — | List all auth identities (admin/debug). |
+| `GET` | `/auth/me` | ✅ | — | View current identity details. |
+| `GET` | `/auth/view-all` | ✅ | — | View all auth methods for the current user. |
+| `DELETE` | `/auth/account` | ✅ | — | Delete the user's account andv all data. |
+| `DELETE` | `/auth/method/:id` | ✅ | — | Delete a specific auth method by ID. |
+
+---
+
+## Payload Definitions (DTOs)
+
+These DTOs define the expected request body for each endpoint.
+
+### `SignupDto` / `LoginDto`
+Used for both registration (`/auth/signup`) and authentication (`/auth/signin`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | `AuthStrategy` | ✅ | The authentication strategy (e.g., `EMAIL`, `PHONE`, `GOOGLE`). |
+| `provider` | `OAuthProviderType` | ❌ | Required if `method` is `OAUTH` or a social strategy. |
+| `email` | `string` | ❌ | Required if `method` is `EMAIL`. |
+| `phone` | `string` | ❌ | Required if `method` is `PHONE`. |
+| `username` | `string` | ❌ | Required if `method` is `USERNAME`. |
+| `password` | `string` | ❌ | User's password (min 6 chars). |
+| `token` | `string` | ❌ | OAuth token or verification token for automated flows. |
+
+### `VerifyDto`
+Used to verify an identity with a one-time code (`/auth/verify`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `uid` | `string` | ✅ | The unique identity ID (UUID) being verified. |
+| `code` | `string` | ✅ | The 6-digit verification code sent via Email or SMS. |
+
+### `ResendVerificationDto`
+Used to request a new verification code (`/auth/resend-verification`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `uid` | `string` | ✅ | The unique identity ID (UUID) to resend the code for. |
+
+### `RefreshTokenDto`
+Used to rotate tokens or logout (`/auth/refresh`, `/auth/logout`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `refreshToken` | `string` | ❌ | The refresh token. Required if not using HTTP-only cookies. |
+
+### `EnrollMfaDto`
+Used to start MFA enrollment (`/auth/mfa/enroll`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `MfaType` | ✅ | The type of MFA to enroll (e.g., `TOTP`). |
+
+### `ActivateMfaDto`
+Used to finalize MFA activation (`/auth/mfa/activate`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `MfaType` | ✅ | The type of MFA to activate. |
+| `code` | `string` | ✅ | The 6-digit code from the authenticator app. |
+
+---
+
+## Enumerations (Enums)
+
+### `AuthStrategy`
+The available authentication methods.
+
+- `EMAIL`
+- `PHONE`
+- `USERNAME`
+- `GOOGLE`
+- `FACEBOOK`
+- `APPLE`
+
+### `OAuthProviderType`
+Social authentication providers.
+
+- `GOOGLE`
+- `FACEBOOK`
+- `APPLE`
+
+### `MfaType`
+Supported MFA methods.
+
+- `TOTP` (Time-based One-Time Password)
+
+### `AuthTransport`
+How tokens are delivered to and sent from the client.
+
+- `cookie`: Uses secure, HTTP-only session cookies.
+- `bearer`: Returns tokens in the JSON response body.
+- `both`: Enables both cookie and bearer transport simultaneously.
+
+---
 
 *(All endpoints are automatically documented if you have `@nestjs/swagger` configured in your root app).*
 

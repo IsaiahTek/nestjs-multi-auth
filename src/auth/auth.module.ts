@@ -1,5 +1,6 @@
 // src/auth/auth.module.ts
 import { Module, DynamicModule, Provider, Global } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Auth } from './entities/auth.entity';
 import { OAuthProvider } from './entities/oauth-provider.entity';
@@ -159,8 +160,20 @@ export class AuthModule {
         OAuthAuthStrategy,
         {
           provide: AUTH_NOTIFICATION_PROVIDER,
-          useFactory: (opts: AuthModuleOptions) => opts.notificationProvider,
-          inject: [AUTH_MODULE_OPTIONS],
+          useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {
+            const provider = opts.notificationProvider;
+            if (!provider) return null;
+            if (typeof provider === 'function' && provider.prototype) {
+              try {
+                return moduleRef.get(provider, { strict: false });
+              } catch (e) {
+                // Not registered as a provider, instantiate it directly
+                return new (provider as any)();
+              }
+            }
+            return provider;
+          },
+          inject: [AUTH_MODULE_OPTIONS, ModuleRef],
         },
         {
           provide: APP_GUARD,
