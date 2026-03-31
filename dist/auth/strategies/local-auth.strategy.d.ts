@@ -12,6 +12,7 @@ export declare class LocalAuthStrategy {
     constructor(dataSource: DataSource, authRepo: Repository<Auth>, identifierRepo: Repository<AuthIdentifier>, options: AuthModuleOptions);
     private readonly logger;
     private validatePhoneFormat;
+    private requiresPassword;
     registerCredentials(dto: SignupDto, uid?: string): Promise<{
         auth: Auth;
         identifier?: AuthIdentifier;

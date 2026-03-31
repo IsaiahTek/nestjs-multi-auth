@@ -27,7 +27,10 @@ export interface AuthModuleOptions {
 
     /**
      * If true, the library will NOT automatically register the global JwtAuthGuard.
-     * You will need to apply @UseGuards(JwtAuthGuard) manually.
+     * 
+     * IMPORTANT: When this is set to true, decorators like @CurrentAuth() will return 
+     * undefined unless you manually apply a guard (e.g., @UseGuards(JwtAuthGuard)) 
+     * to the controller or route.
      */
     disableGlobalGuard?: boolean;
 
@@ -89,6 +92,18 @@ export interface AuthModuleOptions {
      * If not provided, all strategies are enabled by default.
      */
     enabledStrategies?: AuthStrategy[];
+
+    /**
+     * Optional: If true, email-based authentication REQUIRES a password.
+     * Defaults to true.
+     */
+    emailRequiresPassword?: boolean;
+
+    /**
+     * Optional: If true, username-based authentication REQUIRES a password.
+     * Defaults to true.
+     */
+    usernameRequiresPassword?: boolean;
 
     /**
      * Optional: If true, phone-based authentication REQUIRES a password.

@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth } from '../entities/auth.entity';
 import { AuthIdentifier, IdentifierType } from '../entities/auth-identify.entity';
-import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { AuthStrategy } from '../enums/auth-type.enum';
 
@@ -29,12 +29,12 @@ describe('LocalAuthStrategy', () => {
         findOne: jest.fn(),
     };
 
-    const createStrategyWithPhonePassword = (required: boolean) => {
+    const createStrategyWithOptions = (options: Partial<AuthModuleOptions>) => {
         return new LocalAuthStrategy(
             mockDataSource as any,
             mockAuthRepo as any,
             mockIdentifierRepo as any,
-            { phoneRequiresPassword: required } as any,
+            options as any,
         );
     };
 
@@ -77,9 +77,33 @@ describe('LocalAuthStrategy', () => {
         });
 
         it('should throw if password is missing and phoneRequiresPassword is true', async () => {
-            const customStrategy = createStrategyWithPhonePassword(true);
-            const dto = { phone: '+1234567890', method: AuthStrategy.LOCAL };
+            const customStrategy = createStrategyWithOptions({ phoneRequiresPassword: true });
+            const dto = { phone: '+1234567890', method: AuthStrategy.PHONE };
             await expect(customStrategy.registerCredentials(dto as any)).rejects.toThrow(BadRequestException);
+        });
+
+        it('should allow email registration without password if emailRequiresPassword is false', async () => {
+            const customStrategy = createStrategyWithOptions({ emailRequiresPassword: false });
+            const dto = { email: 'test@example.com', method: AuthStrategy.EMAIL };
+            mockDataSource.transaction.mockImplementation(async (cb) => cb({
+                getRepository: (entity: any) => {
+                    if (entity === Auth) return mockAuthRepo;
+                    if (entity === AuthIdentifier) return mockIdentifierRepo;
+                }
+            }));
+            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockAuthRepo.create.mockReturnValue({});
+            mockIdentifierRepo.create.mockReturnValue({});
+            mockAuthRepo.save.mockResolvedValue({ id: 'auth-id' });
+
+            const result = await customStrategy.registerCredentials(dto as any);
+            expect(result).toBeDefined();
+        });
+
+        it('should throw if email password missing and emailRequiresPassword is true (default)', async () => {
+            const dto = { email: 'test@example.com', method: AuthStrategy.EMAIL };
+            await expect(strategy.registerCredentials(dto as any)).rejects.toThrow(BadRequestException);
+            await expect(strategy.registerCredentials(dto as any)).rejects.toThrow('Password is required');
         });
     });
 
@@ -96,9 +120,26 @@ describe('LocalAuthStrategy', () => {
         });
 
         it('should throw if password is missing and phoneRequiresPassword is true during login', async () => {
-            const customStrategy = createStrategyWithPhonePassword(true);
-            const dto = { phone: '+1234567890', method: AuthStrategy.LOCAL };
+            const customStrategy = createStrategyWithOptions({ phoneRequiresPassword: true });
+            const dto = { phone: '+1234567890', method: AuthStrategy.PHONE };
             await expect(customStrategy.login(dto as any)).rejects.toThrow(BadRequestException);
+        });
+
+        it('should allow email login without password if emailRequiresPassword is false', async () => {
+            const customStrategy = createStrategyWithOptions({ emailRequiresPassword: false });
+            const dto = { email: 'test@example.com', method: AuthStrategy.EMAIL };
+            identifierRepo.findOne.mockResolvedValue({
+                auth: { id: 'auth-id', strategy: AuthStrategy.EMAIL }
+            });
+            authRepo.findOne.mockResolvedValue({ id: 'auth-id', secretHash: null });
+
+            const result = await customStrategy.login(dto as any);
+            expect(result).toBeDefined();
+        });
+
+        it('should throw if email password missing and emailRequiresPassword is true (default) during login', async () => {
+            const dto = { email: 'test@example.com', method: AuthStrategy.EMAIL };
+            await expect(strategy.login(dto as any)).rejects.toThrow(BadRequestException);
         });
     });
 

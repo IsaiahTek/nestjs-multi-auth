@@ -341,6 +341,9 @@ import { JwtAuthGuard } from 'nestjs-multi-auth';
 export class ProfileController {}
 ```
 
+> [!WARNING]
+> If `disableGlobalGuard: true` is configured and no manual guard is applied, decorators like `@CurrentAuth()` will return `undefined` because the authentication logic never runs for that request.
+
 ---
 
 ## Auth Transports (Cookie vs Bearer)
@@ -498,6 +501,20 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `otpResendInterval` | `number` | `60` | Minimum seconds between OTP resend requests. |
 | `throttlerLimit` | `number` | `10` | Max requests per `throttlerTtl` window. |
 | `throttlerTtl` | `number` | `60` | Throttle window duration in seconds. |
+
+---
+
+## Common Issues & Troubleshooting
+
+### `@CurrentAuth()` returns `undefined`
+If your `@CurrentAuth()` decorator returns `undefined` even when you are sending a valid token, check the following:
+
+1.  **Global Guard Disabled**: Ensure `disableGlobalGuard` is not set to `true` in your `AuthModule` configuration. If it is, you **must** manually apply `@UseGuards(JwtAuthGuard)` to your controller or route.
+2.  **Async Configuration**: If using `forRootAsync`, ensure your factory is correctly returning the `jwtSecret`.
+3.  **Missing Strategy**: Ensure the strategy you are using (e.g., `EMAIL`) is included in `enabledStrategies` (or leave it empty to enable all).
+
+### 401 Unauthorized on Public Routes
+If you are getting 401 errors on routes marked with `@Public()`, ensure that the `AuthModule` is correctly registered as a Global module and that the `JwtAuthGuard` (registered as an `APP_GUARD`) is successfully reading the reflectors.
 
 ---
 

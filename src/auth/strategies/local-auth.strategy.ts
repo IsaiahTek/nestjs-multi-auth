@@ -50,6 +50,22 @@ export class LocalAuthStrategy {
     }
   }
 
+  private requiresPassword(type: IdentifierType | 'EMAIL' | 'PHONE' | 'USERNAME'): boolean {
+    switch (type) {
+      case IdentifierType.EMAIL:
+      case 'EMAIL':
+        return this.options.emailRequiresPassword ?? true;
+      case IdentifierType.PHONE:
+      case 'PHONE':
+        return this.options.phoneRequiresPassword ?? false;
+      case IdentifierType.USERNAME:
+      case 'USERNAME':
+        return this.options.usernameRequiresPassword ?? true;
+      default:
+        return true;
+    }
+  }
+
   async registerCredentials(dto: SignupDto, uid?: string): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
 
@@ -67,13 +83,18 @@ export class LocalAuthStrategy {
     if (!dto.email && !dto.phone && !dto.username) {
       throw new BadRequestException('Email, phone or username is required');
     }
-    const isPhoneSignUp = !!dto.phone;
-    if (isPhoneSignUp) {
+
+    if (dto.phone) {
       this.validatePhoneFormat(dto.phone);
     }
-    const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
 
-    if (!dto.password && (!isPhoneSignUp || phoneRequiresPassword)) {
+    const emailReq = dto.email ? this.requiresPassword('EMAIL') : false;
+    const phoneReq = dto.phone ? this.requiresPassword('PHONE') : false;
+    const userReq = dto.username ? this.requiresPassword('USERNAME') : false;
+
+    const passwordRequired = emailReq || phoneReq || userReq;
+
+    if (!dto.password && passwordRequired) {
       throw new BadRequestException('Password is required');
     }
 
@@ -167,13 +188,6 @@ export class LocalAuthStrategy {
   }
 
   async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
-    const isPhoneLogin = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
-    const phoneRequiresPassword = this.options.phoneRequiresPassword ?? false;
-
-    if (!dto.password && (!isPhoneLogin || phoneRequiresPassword)) {
-      throw new BadRequestException('Password is required');
-    }
-
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
     const identifierValue = dto.emailOrPhone || dto.email || dto.phone || dto.username;
 
@@ -185,6 +199,15 @@ export class LocalAuthStrategy {
     const isEmail = !!dto.email || (!!dto.emailOrPhone && dto.emailOrPhone.includes('@'));
     const isPhone = !!dto.phone || (!!dto.emailOrPhone && /^\+?[0-9]+$/.test(dto.emailOrPhone));
     const isUsername = !!dto.username || (!isEmail && !isPhone);
+
+    const passwordRequired =
+      (isEmail && this.requiresPassword('EMAIL')) ||
+      (isPhone && this.requiresPassword('PHONE')) ||
+      (isUsername && this.requiresPassword('USERNAME'));
+
+    if (!dto.password && passwordRequired) {
+      throw new BadRequestException('Password is required');
+    }
 
     if (isEmail && !enabledStrategies.includes(AuthStrategy.EMAIL) && !enabledStrategies.includes(AuthStrategy.LOCAL)) {
       throw new BadRequestException('Email authentication is currently disabled.');
