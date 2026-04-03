@@ -16,6 +16,8 @@ var AuthStrategy;
     AuthStrategy["LOCAL"] = "LOCAL";
     /** @deprecated Use granular types instead */
     AuthStrategy["OAUTH"] = "OAUTH";
+    // Authentication Extension
+    AuthStrategy["MAGIC_LINK"] = "MAGIC_LINK";
 })(AuthStrategy || (exports.AuthStrategy = AuthStrategy = {}));
 var OAuthProviderType;
 (function (OAuthProviderType) {

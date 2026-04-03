@@ -4,4 +4,4 @@ import { OAuthProvider } from '../auth/entities/oauth-provider.entity';
 import { MfaMethod } from '../auth/entities/mfa-method.entity';
 import { OtpToken } from '../auth/entities/otp-token.entity';
 import { Session } from '../auth/entities/session.entity';
-export declare const AuthEntities: (typeof OAuthProvider | typeof Auth | typeof AuthIdentifier | typeof OtpToken | typeof MfaMethod | typeof Session)[];
+export declare const AuthEntities: (typeof Auth | typeof OAuthProvider | typeof AuthIdentifier | typeof OtpToken | typeof MfaMethod | typeof Session)[];

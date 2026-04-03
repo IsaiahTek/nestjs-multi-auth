@@ -18,6 +18,8 @@ var OtpPurpose;
     OtpPurpose["VERIFY_PHONE"] = "VERIFY_PHONE";
     OtpPurpose["PASSWORD_RESET"] = "PASSWORD_RESET";
     OtpPurpose["LOGIN_2FA"] = "LOGIN_2FA";
+    OtpPurpose["MAGIC_LINK"] = "MAGIC_LINK";
+    OtpPurpose["SECURE_ACCOUNT"] = "SECURE_ACCOUNT";
 })(OtpPurpose || (exports.OtpPurpose = OtpPurpose = {}));
 let OtpToken = class OtpToken extends base_entity_1.BaseEntity {
 };

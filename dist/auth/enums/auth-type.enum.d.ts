@@ -8,7 +8,8 @@ export declare enum AuthStrategy {
     /** @deprecated Use granular types instead */
     LOCAL = "LOCAL",
     /** @deprecated Use granular types instead */
-    OAUTH = "OAUTH"
+    OAUTH = "OAUTH",
+    MAGIC_LINK = "MAGIC_LINK"
 }
 export declare enum OAuthProviderType {
     GOOGLE = "GOOGLE",

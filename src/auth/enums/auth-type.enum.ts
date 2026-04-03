@@ -15,6 +15,9 @@ export enum AuthStrategy {
   LOCAL = 'LOCAL',
   /** @deprecated Use granular types instead */
   OAUTH = 'OAUTH',
+
+  // Authentication Extension
+  MAGIC_LINK = 'MAGIC_LINK',
 }
 
 export enum OAuthProviderType {

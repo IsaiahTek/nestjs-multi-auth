@@ -4,6 +4,11 @@ import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
 import { EnrollMfaDto, ActivateMfaDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
+import { ResetPasswordDto } from './dto/requests/reset-password.dto';
+import { UpdatePasswordDto } from './dto/requests/update-password.dto';
+import { MagicLinkRequestDto } from './dto/requests/magic-link.dto';
+import { SecureAccountDto } from './dto/requests/secure-account.dto';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import type { Response, Request } from 'express';
 export declare class AuthController {
@@ -19,6 +24,22 @@ export declare class AuthController {
     resendVerification(dto: ResendVerificationDto): Promise<{
         message: string;
     }>;
+    forgotPassword(dto: ForgotPasswordDto): Promise<{
+        message: string;
+    }>;
+    resetPassword(dto: ResetPasswordDto): Promise<{
+        message: string;
+    }>;
+    updatePassword(req: any, dto: UpdatePasswordDto): Promise<{
+        message: string;
+    }>;
+    secureAccount(uid: string, dto: SecureAccountDto): Promise<{
+        message: string;
+    }>;
+    requestMagicLink(dto: MagicLinkRequestDto): Promise<{
+        message: string;
+    }>;
+    verifyMagicLink(token: string, res: Response, req: Request): Promise<any>;
     link(dto: SignupDto, req: any, res: Response): Promise<any>;
     refresh(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;

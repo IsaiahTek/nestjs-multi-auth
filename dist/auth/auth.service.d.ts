@@ -11,6 +11,12 @@ import { OtpToken } from './entities/otp-token.entity';
 import { MfaMethod, MfaType } from './entities/mfa-method.entity';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
+import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
+import { ResetPasswordDto } from './dto/requests/reset-password.dto';
+import { UpdatePasswordDto } from './dto/requests/update-password.dto';
+import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
+import { SecureAccountDto } from './dto/requests/secure-account.dto';
+import { AuthIdentifier } from './entities/auth-identify.entity';
 export declare class AuthService {
     private jwtService;
     private passwordStrategy;
@@ -31,7 +37,7 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
@@ -48,7 +54,7 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
@@ -76,7 +82,7 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
@@ -95,7 +101,7 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: import("./entities/auth-identify.entity").AuthIdentifier[];
+            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
@@ -135,6 +141,30 @@ export declare class AuthService {
         refreshToken: string;
     }>;
     logout(refreshToken?: string): Promise<void>;
+    forgotPassword(dto: ForgotPasswordDto): Promise<{
+        message: string;
+    }>;
+    resetPassword(dto: ResetPasswordDto): Promise<{
+        message: string;
+    }>;
+    updatePassword(uid: string, dto: UpdatePasswordDto, userAgent?: string, ip?: string): Promise<{
+        message: string;
+    }>;
+    secureAccount(dto: SecureAccountDto & {
+        uid: string;
+    }): Promise<{
+        message: string;
+    }>;
+    requestMagicLink(dto: MagicLinkRequestDto): Promise<{
+        message: string;
+    }>;
+    verifyMagicLink(dto: MagicLinkVerifyDto, userAgent?: string, ip?: string): Promise<{
+        tokens: {
+            accessToken: string;
+            refreshToken: string;
+        };
+        auth: Auth;
+    }>;
     enrollMfa(uid: string, type: MfaType): Promise<{
         secret: string;
         otpauth: string;

@@ -21,6 +21,12 @@ const signup_dto_1 = require("./dto/requests/signup.dto");
 const verify_dto_1 = require("./dto/requests/verify.dto");
 const mfa_dto_1 = require("./dto/requests/mfa.dto");
 const refresh_token_dto_1 = require("./dto/requests/refresh-token.dto");
+const forgot_password_dto_1 = require("./dto/requests/forgot-password.dto");
+const reset_password_dto_1 = require("./dto/requests/reset-password.dto");
+const update_password_dto_1 = require("./dto/requests/update-password.dto");
+const magic_link_dto_1 = require("./dto/requests/magic-link.dto");
+const secure_account_dto_1 = require("./dto/requests/secure-account.dto");
+const common_2 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
@@ -117,6 +123,39 @@ let AuthController = class AuthController {
     }
     async resendVerification(dto) {
         return this.authService.resendVerification(dto.uid);
+    }
+    // --- PASSWORD MANAGEMENT ---
+    async forgotPassword(dto) {
+        return this.authService.forgotPassword(dto);
+    }
+    async resetPassword(dto) {
+        return this.authService.resetPassword(dto);
+    }
+    async updatePassword(req, dto) {
+        const userAgent = req.headers['user-agent'] || 'Unknown';
+        const ip = req.ip || 'Unknown';
+        return this.authService.updatePassword(req.user.uid, dto, userAgent, ip);
+    }
+    async secureAccount(uid, dto) {
+        return this.authService.secureAccount({ ...dto, uid });
+    }
+    // --- MAGIC LINK ---
+    async requestMagicLink(dto) {
+        return this.authService.requestMagicLink(dto);
+    }
+    async verifyMagicLink(token, res, req) {
+        const result = await this.authService.verifyMagicLink({ token }, req.headers['user-agent'], req.ip);
+        const transports = this.getTransports();
+        if (result.tokens) {
+            if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
+                this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+            }
+        }
+        const response = { message: 'Magic login successful', auth: result.auth };
+        if (result.tokens && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
+            response.tokens = result.tokens;
+        }
+        return response;
     }
     async link(dto, req, res) {
         try {
@@ -243,6 +282,65 @@ __decorate([
     __metadata("design:paramtypes", [verify_dto_1.ResendVerificationDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resendVerification", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 3, ttl: 60000 } }),
+    (0, swagger_1.ApiOperation)({ summary: 'Forgot password - request reset code' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Reset password using OTP code' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [reset_password_dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_2.Patch)('password'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update password (must be logged in)' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, update_password_dto_1.UpdatePasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updatePassword", null);
+__decorate([
+    (0, common_1.Post)('secure-account'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Lock account and invalidate sessions (via security link)' }),
+    __param(0, (0, common_2.Query)('uid')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, secure_account_dto_1.SecureAccountDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "secureAccount", null);
+__decorate([
+    (0, common_1.Post)('magic-link'),
+    (0, public_decorator_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 3, ttl: 60000 } }),
+    (0, swagger_1.ApiOperation)({ summary: 'Request a magic login link' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [magic_link_dto_1.MagicLinkRequestDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "requestMagicLink", null);
+__decorate([
+    (0, common_1.Get)('magic-callback'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify magic link and login' }),
+    __param(0, (0, common_2.Query)('token')),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyMagicLink", null);
 __decorate([
     (0, common_1.Post)('link'),
     (0, swagger_1.ApiOperation)({ summary: 'Link new auth method to current account' }),

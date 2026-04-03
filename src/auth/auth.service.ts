@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { SignupDto } from './dto/requests/signup.dto';
 import { LoginDto } from './dto/requests/login.dto';
@@ -25,6 +25,12 @@ import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfac
 import * as crypto from 'crypto';
 import { parseDuration } from './utils/duration.util';
 import { AuthMapper } from './core/auth-mapper';
+import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
+import { ResetPasswordDto } from './dto/requests/reset-password.dto';
+import { UpdatePasswordDto } from './dto/requests/update-password.dto';
+import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
+import { SecureAccountDto } from './dto/requests/secure-account.dto';
+import { AuthIdentifier, IdentifierType } from './entities/auth-identify.entity';
 
 @Injectable()
 export class AuthService {
@@ -209,6 +215,10 @@ export class AuthService {
         break;
       default:
         throw new Error('Unsupported login provider');
+    }
+
+    if (!auth.isActive) {
+      throw new ForbiddenException('This account is currently locked or disabled. Please contact support or reset your password.');
     }
 
     // Force verification if no password was provided for local strategies (passwordless login)
@@ -482,6 +492,232 @@ export class AuthService {
     } catch (e) {
       this.logger.error('Error logging out', e);
     }
+  }
+
+  // --- PASSWORD MANAGEMENT & SECURITY ---
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const value = dto.email || dto.phone || dto.username;
+    if (!value) throw new BadRequestException('Identifier is required');
+
+    // 1. Find identifier
+    const identifier = await this.authRepo.query(
+      `SELECT ai.*, a.uid, a.id as "authId" FROM auth_identifiers ai 
+       JOIN auth a ON ai."authId" = a.id 
+       WHERE ai.value = $1 LIMIT 1`,
+      [value.toLowerCase()]
+    );
+
+    if (!identifier[0]) {
+      // Security: Don't reveal if user exists. 
+      // But typically for forgot-password, users expect an error if email is wrong.
+      // We'll return success anyway to prevent enumeration.
+      return { message: 'If an account exists, a reset code has been sent.' };
+    }
+
+    const primaryAuth = identifier[0];
+
+    // 2. Generate OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hash = await bcrypt.hash(code, 10);
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + (this.options.otpExpiresIn || 15));
+
+    await this.otpRepo.save(this.otpRepo.create({
+      identifier: primaryAuth.value,
+      purpose: OtpPurpose.PASSWORD_RESET,
+      codeHash: hash,
+      expiresAt,
+      requestUserId: primaryAuth.uid,
+      requestAuthId: primaryAuth.authId,
+    }));
+
+    // 3. Send notification
+    if (this.notificationProvider) {
+      await this.notificationProvider.sendVerificationCode(primaryAuth.value, code, 'email');
+    }
+
+    return { message: 'If an account exists, a reset code has been sent.' };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const otp = await this.otpRepo.findOne({
+      where: { requestUserId: dto.uid, purpose: OtpPurpose.PASSWORD_RESET, isUsed: false },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otp || new Date() > otp.expiresAt) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+
+    const isMatch = await bcrypt.compare(dto.code, otp.codeHash);
+    if (!isMatch) throw new BadRequestException('Invalid reset code');
+
+    // Update password
+    const hash = await bcrypt.hash(dto.newPassword, 10);
+    await this.authRepo.update(otp.requestAuthId, {
+      secretHash: hash,
+      isActive: true // Unlock account on successful reset
+    });
+
+    // Mark OTP as used
+    otp.isUsed = true;
+    await this.otpRepo.save(otp);
+
+    // Security: Invalidate all sessions
+    await this.sessionRepository.delete({ uid: dto.uid });
+
+    return { message: 'Password reset successful. All active sessions have been logged out.' };
+  }
+
+  async updatePassword(uid: string, dto: UpdatePasswordDto, userAgent?: string, ip?: string) {
+    // 1. Get primary LOCAL auth
+    const auth = await this.authRepo.findOne({
+      where: { uid, strategy: In([AuthStrategy.LOCAL, AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME]) as any },
+      select: ['id', 'secretHash', 'uid']
+    });
+
+    if (!auth || !auth.secretHash) {
+      throw new BadRequestException('Password update only available for local accounts');
+    }
+
+    // 2. Verify current password
+    const isMatch = await bcrypt.compare(dto.currentPassword, auth.secretHash);
+    if (!isMatch) throw new BadRequestException('Incorrect current password');
+
+    // 3. Hash and save new password
+    auth.secretHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.authRepo.save(auth);
+
+    // 4. Notification with Security Link
+    if (this.notificationProvider?.sendPasswordChangedNotification) {
+      const secureToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = await bcrypt.hash(secureToken, 10);
+      
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      // Get user email
+      const identifier = await this.authRepo.query(
+        `SELECT value FROM auth_identifiers WHERE "authId" = $1 AND type = 'EMAIL' LIMIT 1`,
+        [auth.id]
+      );
+      
+      if (identifier[0]) {
+        await this.otpRepo.save(this.otpRepo.create({
+          identifier: identifier[0].value,
+          purpose: OtpPurpose.SECURE_ACCOUNT,
+          codeHash: tokenHash,
+          expiresAt,
+          requestUserId: auth.uid,
+          requestAuthId: auth.id,
+        }));
+
+        const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${secureToken}&uid=${auth.uid}`;
+        
+        await this.notificationProvider.sendPasswordChangedNotification(identifier[0].value, {
+          ip: ip || 'Unknown',
+          userAgent: userAgent || 'Unknown',
+          secureAccountLink: secureLink,
+        });
+      }
+    }
+
+    return { message: 'Password updated successfully' };
+  }
+
+  async secureAccount(dto: SecureAccountDto & { uid: string }) {
+    const otp = await this.otpRepo.findOne({
+      where: { requestUserId: dto.uid, purpose: OtpPurpose.SECURE_ACCOUNT, isUsed: false },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otp || new Date() > otp.expiresAt) {
+      throw new BadRequestException('Invalid or expired security token');
+    }
+
+    const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
+    if (!isMatch) throw new BadRequestException('Invalid security token');
+
+    // 1. Lock all auth methods
+    await this.authRepo.update({ uid: dto.uid }, { isActive: false });
+
+    // 2. Invalidate sessions
+    await this.sessionRepository.delete({ uid: dto.uid });
+
+    // 3. Mark OTP as used
+    otp.isUsed = true;
+    await this.otpRepo.save(otp);
+
+    return { message: 'Account secured and locked. Please reset your password to regain access.' };
+  }
+
+  // --- MAGIC LINK ---
+
+  async requestMagicLink(dto: MagicLinkRequestDto) {
+    const identifier = await this.authRepo.query(
+      `SELECT ai.*, a.id as "authId", a.uid FROM auth_identifiers ai 
+       JOIN auth a ON ai."authId" = a.id 
+       WHERE ai.value = $1 LIMIT 1`,
+      [dto.email.toLowerCase()]
+    );
+
+    let authId: string;
+    let uid: string;
+
+    if (!identifier[0]) {
+      // Optional: Auto-signup if not exists, but let's stick to existing for now
+      throw new BadRequestException('No account found with this email');
+    } else {
+      authId = identifier[0].authId;
+      uid = identifier[0].uid;
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const hash = await bcrypt.hash(token, 10);
+    
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    await this.otpRepo.save(this.otpRepo.create({
+      identifier: dto.email.toLowerCase(),
+      purpose: OtpPurpose.MAGIC_LINK,
+      codeHash: hash,
+      expiresAt,
+      requestUserId: uid,
+      requestAuthId: authId,
+    }));
+
+    if (this.notificationProvider?.sendMagicLink) {
+      const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${token}&email=${dto.email}`;
+      await this.notificationProvider.sendMagicLink(dto.email, link);
+    }
+
+    return { message: 'Magic link sent to your email.' };
+  }
+
+  async verifyMagicLink(dto: MagicLinkVerifyDto, userAgent?: string, ip?: string) {
+    const otp = await this.otpRepo.findOne({
+      where: { purpose: OtpPurpose.MAGIC_LINK, isUsed: false },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otp || new Date() > otp.expiresAt) {
+      throw new BadRequestException('Invalid or expired magic link');
+    }
+
+    const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
+    if (!isMatch) throw new BadRequestException('Invalid magic link');
+
+    otp.isUsed = true;
+    await this.otpRepo.save(otp);
+
+    const auth = await this.authRepo.findOne({ where: { id: otp.requestAuthId } });
+    if (!auth) throw new BadRequestException('Identity not found');
+
+    const tokens = await this.createSession(auth.uid, userAgent, ip);
+    return { tokens, auth };
   }
 
   // --- MFA (2FA) LOGIC ---

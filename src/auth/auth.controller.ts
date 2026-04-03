@@ -20,6 +20,12 @@ import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
 import { EnrollMfaDto, ActivateMfaDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
+import { ResetPasswordDto } from './dto/requests/reset-password.dto';
+import { UpdatePasswordDto } from './dto/requests/update-password.dto';
+import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
+import { SecureAccountDto } from './dto/requests/secure-account.dto';
+import { Patch, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorator/public.decorator';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
@@ -150,6 +156,73 @@ export class AuthController {
   @ApiOperation({ summary: 'Resend verification code' })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto.uid);
+  }
+
+  // --- PASSWORD MANAGEMENT ---
+
+  @Post('forgot-password')
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({ summary: 'Forgot password - request reset code' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @ApiOperation({ summary: 'Reset password using OTP code' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @Patch('password')
+  @ApiOperation({ summary: 'Update password (must be logged in)' })
+  async updatePassword(@Req() req: any, @Body() dto: UpdatePasswordDto) {
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const ip = req.ip || 'Unknown';
+    return this.authService.updatePassword(req.user.uid, dto, userAgent, ip);
+  }
+
+  @Post('secure-account')
+  @Public()
+  @ApiOperation({ summary: 'Lock account and invalidate sessions (via security link)' })
+  async secureAccount(@Query('uid') uid: string, @Body() dto: SecureAccountDto) {
+    return this.authService.secureAccount({ ...dto, uid });
+  }
+
+  // --- MAGIC LINK ---
+
+  @Post('magic-link')
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({ summary: 'Request a magic login link' })
+  async requestMagicLink(@Body() dto: MagicLinkRequestDto) {
+    return this.authService.requestMagicLink(dto);
+  }
+
+  @Get('magic-callback')
+  @Public()
+  @ApiOperation({ summary: 'Verify magic link and login' })
+  async verifyMagicLink(
+    @Query('token') token: string,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request
+  ) {
+    const result = await this.authService.verifyMagicLink({ token }, req.headers['user-agent'], req.ip);
+    const transports = this.getTransports();
+
+    if (result.tokens) {
+      if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
+        this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+      }
+    }
+
+    const response: any = { message: 'Magic login successful', auth: result.auth };
+    if (result.tokens && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
+      response.tokens = result.tokens;
+    }
+
+    return response;
   }
 
   @Post('link')

@@ -153,4 +153,9 @@ export interface AuthModuleOptions {
      * If true, the library will automatically run migrations on startup.
      */
     autoMigrate?: boolean;
+
+    /**
+     * The URL of the frontend application (used for Magic Links and Security Alerts).
+     */
+    frontendUrl?: string;
 }

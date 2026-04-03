@@ -8,4 +8,22 @@ export interface AuthNotificationProvider {
      * @param type The type of identifier ('email' | 'phone')
      */
     sendVerificationCode(to: string, code: string, type: 'email' | 'phone'): Promise<void>;
+    /**
+     * Sends a notification when a password is changed, including security context.
+     *
+     * @param to The destination identifier (email or phone number)
+     * @param context The security context
+     */
+    sendPasswordChangedNotification?(to: string, context: {
+        ip: string;
+        userAgent: string;
+        secureAccountLink: string;
+    }): Promise<void>;
+    /**
+     * Sends a magic login link.
+     *
+     * @param to The destination identifier (email or phone number)
+     * @param link The magic link
+     */
+    sendMagicLink?(to: string, link: string): Promise<void>;
 }
