@@ -7,12 +7,8 @@ export const CurrentAuth = createParamDecorator(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const request = ctx.switchToHttp().getRequest();
 
-    const logger = new Logger('CurrentAuthDecorator');
-    // logger.log(`Request keys: ${Object.keys(request)}`)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const user = request.user;
-
-    logger.log(`Extracted auth: ${JSON.stringify(user)}`);
 
     return data ? user?.[data] : user;
   },

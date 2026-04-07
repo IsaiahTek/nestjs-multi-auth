@@ -34,7 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<any> {
-    this.logger.log(`JWT payload: ${JSON.stringify(payload)}`);
 
     // In Identity-Only mode, req.user is the token payload.
     // The application uses the 'sub' (uid) to link to its own user record.

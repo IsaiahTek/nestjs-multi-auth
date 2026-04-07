@@ -42,7 +42,6 @@ let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.Passp
         this.logger = new common_1.Logger(JwtStrategy_1.name);
     }
     async validate(payload) {
-        this.logger.log(`JWT payload: ${JSON.stringify(payload)}`);
         // In Identity-Only mode, req.user is the token payload.
         // The application uses the 'sub' (uid) to link to its own user record.
         return {
