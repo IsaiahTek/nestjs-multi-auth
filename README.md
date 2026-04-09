@@ -9,6 +9,9 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 - **Account Linking**: Link additional auth methods (e.g., Google, Email, Phone) to an existing account under the same `uid`.
 - **Multiple OAuth Providers**: Link multiple social accounts (e.g., Google AND Facebook) to a single identity simultaneously.
 - **MFA/2FA Ready**: Built-in support for TOTP-based Multi-Factor Authentication (e.g., Google Authenticator).
+- **Magic Links**: Passwordless email login via a signed, time-limited magic link — no passwords required.
+- **Password Management**: Built-in flows for forgot password (email/phone/username), reset via OTP, in-session password update, and a security lock endpoint.
+- **Security Alerts**: Sends a "Secure My Account" link via email when a password change is detected from an unfamiliar device.
 - **Secure by Default**: Automatically registers a global authentication guard.
 - **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences both synchronously and asynchronously.
 - **Granular Strategy Selection**: Enable individual authentication methods (Email, Phone, Username, Google, Facebook, Apple).
@@ -111,12 +114,19 @@ import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
       // Optional: defaults to false.
       // disableController: true,
       // disableGlobalGuard: true,
+      // disableThrottler: true,
 
       // Optional: Durations and Intervals
       otpExpiresIn: 15,                // 15 minutes
       otpResendInterval: 60,           // 60 seconds
       accessTokenExpiresIn: '15m',     // Access token
       refreshTokenExpiresIn: '7d',     // Refresh token & Session
+
+      // Required for Magic Links and Security Alert emails
+      frontendUrl: 'https://myapp.com',
+
+      // Optional: Run DB migrations automatically on startup
+      autoMigrate: true,
     }),
   ],
 })
@@ -258,6 +268,172 @@ AuthModule.register({
 
 ---
 
+## Magic Links
+
+Magic links provide a fully **passwordless login experience** via email. The library generates a short-lived, cryptographically signed token, constructs a callback URL, and delivers it to the user via your `notificationProvider`. No password is ever exchanged.
+
+### How It Works
+
+1. **Request**: The client sends the user's email to `POST /auth/magic-link`. The library generates a signed token (valid for 15 minutes), saves a hashed copy, and calls `notificationProvider.sendMagicLink(email, link)` with the full callback URL.
+2. **Click**: The user clicks the link in their inbox, which navigates them to `frontendUrl + /auth/magic-callback?token=<token>&email=<email>`.
+3. **Verify**: Your frontend (or a redirect handler) calls `GET /auth/magic-callback?token=<token>`. The library validates the token, logs the user in, and returns the standard access + refresh tokens.
+
+### 1. Implement `sendMagicLink` in your Provider
+
+Add the optional `sendMagicLink` method to your existing `AuthNotificationProvider`:
+
+```typescript
+import { AuthNotificationProvider } from 'nestjs-multi-auth';
+
+@Injectable()
+export class MyNotificationProvider implements AuthNotificationProvider {
+  constructor(private mailer: MailerService) {}
+
+  // Required for OTP / verification codes
+  async sendVerificationCode(to: string, code: string, type: 'email' | 'phone') {
+    await this.mailer.send({ to, subject: 'Your Code', text: `Code: ${code}` });
+  }
+
+  // Optional — enables Magic Link login
+  async sendMagicLink(to: string, link: string) {
+    await this.mailer.send({
+      to,
+      subject: 'Your Magic Login Link',
+      html: `<p>Click <a href="${link}">here</a> to log in. This link expires in 15 minutes.</p>`,
+    });
+  }
+}
+```
+
+### 2. Configure `frontendUrl`
+
+The library constructs the magic link as:
+
+```
+{frontendUrl}/auth/magic-callback?token={token}&email={email}
+```
+
+Set this in your module configuration:
+
+```typescript
+AuthModule.register({
+  // ...
+  frontendUrl: 'https://myapp.com',
+  notificationProvider: MyNotificationProvider,
+})
+```
+
+### 3. Magic Link Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/magic-link` | Request a magic login link for an email address. |
+| `GET` | `/auth/magic-callback?token=<token>` | Validate the token and issue access + refresh tokens. |
+
+> [!NOTE]
+> Only email addresses that already have an account in the system can receive a magic link. If the email is not recognized, a `400 Bad Request` is returned.
+
+> [!TIP]
+> Magic links are **single-use** and expire after 15 minutes (controlled by `otpExpiresIn`). The callback endpoint respects your configured `transport` (cookie or bearer), just like `signin`.
+
+---
+
+## Password Management
+
+The library provides a complete, secure password lifecycle — from forgotten passwords to in-session updates and emergency account lockdowns.
+
+### Forgot Password
+
+Initiate a password reset by supplying one identifying field (email, phone, or username). A 6-digit OTP is sent via your `notificationProvider`.
+
+```
+POST /auth/forgot-password
+```
+```json
+{ "email": "user@example.com" }
+// OR
+{ "phone": "+2348011223344" }
+// OR
+{ "username": "johndoe" }
+```
+
+> [!NOTE]
+> The response is always `{ "message": "If an account exists, a reset code has been sent." }` regardless of whether the account was found, preventing user enumeration.
+
+### Reset Password
+
+Submit the OTP received via email/SMS together with the new password.
+
+```
+POST /auth/reset-password
+```
+```json
+{
+  "uid": "<uid-from-forgot-password-response>",
+  "code": "123456",
+  "newPassword": "newSecurePassword!"
+}
+```
+
+On success, **all active sessions are invalidated** as a security measure.
+
+### Update Password (Authenticated)
+
+Change the password for a currently logged-in user. Requires the current password.
+
+```
+PATCH /auth/password
+Authorization: Bearer <access_token>
+```
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "newPassword456"
+}
+```
+
+If `sendPasswordChangedNotification` is implemented in your provider, the library will automatically send a security alert email containing the request IP, user agent, and a one-click "Secure My Account" link.
+
+### Secure Account (Emergency Lock)
+
+When a user clicks the "Secure My Account" link in a security alert email, it calls this endpoint to immediately lock all auth methods and invalidate all sessions.
+
+```
+POST /auth/secure-account?uid=<uid>
+```
+```json
+{ "token": "<token-from-email-link>" }
+```
+
+After locking, the user must reset their password to regain access.
+
+### Implement `sendPasswordChangedNotification` in your Provider
+
+```typescript
+@Injectable()
+export class MyNotificationProvider implements AuthNotificationProvider {
+  async sendVerificationCode(to: string, code: string, type: 'email' | 'phone') { /* ... */ }
+
+  // Optional — triggers on PATCH /auth/password
+  async sendPasswordChangedNotification(to: string, context: {
+    ip: string;
+    userAgent: string;
+    secureAccountLink: string;
+  }) {
+    await this.mailer.send({
+      to,
+      subject: 'Your password was changed',
+      html: `
+        <p>Your password was recently changed from IP <strong>${context.ip}</strong>.</p>
+        <p>If this wasn't you, <a href="${context.secureAccountLink}">secure your account immediately</a>.</p>
+      `,
+    });
+  }
+}
+```
+
+---
+
 ## Multi-Factor Authentication (TOTP)
 
 The library has built-in support for TOTP-based 2FA (e.g., Google Authenticator, Authy). Configure the display name shown in authenticator apps with the `appName` option.
@@ -366,6 +542,12 @@ The library automatically mounts the following endpoints under the `/auth` prefi
 | `POST` | `/auth/signin` | ❌ | `LoginDto` | Authenticate and receive tokens. |
 | `POST` | `/auth/verify` | ❌ | `VerifyDto` | Submit an OTP to complete verification. |
 | `POST` | `/auth/resend-verification` | ❌ | `ResendVerificationDto` | Resend the OTP code. |
+| `POST` | `/auth/forgot-password` | ❌ | `ForgotPasswordDto` | Request a password reset OTP via email/phone/username. |
+| `POST` | `/auth/reset-password` | ❌ | `ResetPasswordDto` | Reset password using the OTP code. |
+| `PATCH` | `/auth/password` | ✅ | `UpdatePasswordDto` | Update password for the current authenticated session. |
+| `POST` | `/auth/secure-account?uid=` | ❌ | `SecureAccountDto` | Lock account via a one-click security email link. |
+| `POST` | `/auth/magic-link` | ❌ | `MagicLinkRequestDto` | Request a magic login link for an email address. |
+| `GET` | `/auth/magic-callback?token=` | ❌ | — | Verify the magic link token and issue session tokens. |
 | `POST` | `/auth/refresh` | ❌ | `RefreshTokenDto` | Rotate the access token using a refresh token. |
 | `POST` | `/auth/logout` | ❌ | `RefreshTokenDto` | Invalidate the current session. |
 | `POST` | `/auth/link` | ✅ | `SignupDto` | Link a new auth method to the current account. |
@@ -373,8 +555,8 @@ The library automatically mounts the following endpoints under the `/auth` prefi
 | `POST` | `/auth/mfa/activate` | ✅ | `ActivateMfaDto` | Confirm TOTP setup with a live code. |
 | `GET` | `/auth` | Optional | — | List all auth identities (admin/debug). |
 | `GET` | `/auth/me` | ✅ | — | View current identity details. |
-| `GET` | `/auth/view-all` | ✅ | — | View all auth methods for the current user. |
-| `DELETE` | `/auth/account` | ✅ | — | Delete the user's account andv all data. |
+| `GET` | `/auth/me/methods` | ✅ | — | View all auth methods for the current user. |
+| `DELETE` | `/auth/account` | ✅ | — | Delete the user's account and all data. |
 | `DELETE` | `/auth/method/:id` | ✅ | — | Delete a specific auth method by ID. |
 
 ---
@@ -410,6 +592,48 @@ Used to request a new verification code (`/auth/resend-verification`).
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `uid` | `string` | ✅ | The unique identity ID (UUID) to resend the code for. |
+
+### `ForgotPasswordDto`
+Used to initiate a password reset (`/auth/forgot-password`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | `string` | ❌ | Email address of the account. |
+| `phone` | `string` | ❌ | Phone number of the account. |
+| `username` | `string` | ❌ | Username of the account. |
+
+> At least one of `email`, `phone`, or `username` must be provided.
+
+### `ResetPasswordDto`
+Used to reset the password after receiving an OTP (`/auth/reset-password`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `uid` | `string` | ✅ | The unique identity ID. |
+| `code` | `string` | ✅ | The 6-digit OTP code received via email/SMS. |
+| `newPassword` | `string` | ✅ | The new password (min 6 chars). |
+
+### `UpdatePasswordDto`
+Used to change the password for an authenticated user (`PATCH /auth/password`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `currentPassword` | `string` | ✅ | The user's current password. |
+| `newPassword` | `string` | ✅ | The new password (min 6 chars). |
+
+### `SecureAccountDto`
+Used to lock an account via a security email link (`/auth/secure-account?uid=`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | `string` | ✅ | The signed security token included in the alert email link. |
+
+### `MagicLinkRequestDto`
+Used to request a magic login link (`/auth/magic-link`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | `string` | ✅ | The email address to send the magic link to. |
 
 ### `RefreshTokenDto`
 Used to rotate tokens or logout (`/auth/refresh`, `/auth/logout`).
@@ -495,12 +719,17 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `facebookAppSecret` | `string` | — | Required for Facebook OAuth strategy. |
 | `appleClientId` | `string` | — | Required for Apple OAuth strategy. |
 | `appleTeamId` | `string` | — | Optional for Apple OAuth strategy. |
+| `emailRequiresPassword` | `boolean` | `true` | Require a password for email-based auth. |
+| `usernameRequiresPassword` | `boolean` | `true` | Require a password for username-based auth. |
 | `phoneRequiresPassword` | `boolean` | `false` | Require a password for phone-based auth. |
 | `allowedPhonePrefixes` | `string[]` | — | Restrict phone auth to specific country codes. |
-| `otpExpiresIn` | `number` | `15` | OTP validity in minutes. |
+| `frontendUrl` | `string` | — | Base URL of your frontend app. Used to build Magic Links and Security Alert links. |
+| `otpExpiresIn` | `number` | `15` | OTP validity in minutes. Also controls magic link expiry. |
 | `otpResendInterval` | `number` | `60` | Minimum seconds between OTP resend requests. |
 | `throttlerLimit` | `number` | `10` | Max requests per `throttlerTtl` window. |
 | `throttlerTtl` | `number` | `60` | Throttle window duration in seconds. |
+| `disableThrottler` | `boolean` | `false` | Disable the built-in rate limiting entirely. |
+| `autoMigrate` | `boolean` | `false` | Automatically run database schema migrations on startup. |
 
 ---
 

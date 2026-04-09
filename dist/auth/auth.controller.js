@@ -32,7 +32,6 @@ const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./enums/auth-type.enum");
 const duration_util_1 = require("./utils/duration.util");
-const optional_decorator_1 = require("./decorator/optional.decorator");
 let AuthController = class AuthController {
     constructor(authService, options) {
         this.authService = authService;
@@ -218,9 +217,11 @@ let AuthController = class AuthController {
         res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
         return { message: 'Logged out successfully' };
     }
-    async all() {
-        return this.authService.viewAll();
-    }
+    // @OptionalAuth()
+    // @Get('')
+    // async all() {
+    //   return this.authService.viewAll();
+    // }
     async me(req) {
         return this.authService.me(req.user.uid);
     }
@@ -391,13 +392,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
-    (0, optional_decorator_1.OptionalAuth)(),
-    (0, common_1.Get)(''),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "all", null);
-__decorate([
     (0, common_1.Get)('/me'),
     (0, swagger_1.ApiOperation)({ summary: 'View current Authentication (Auth)' }),
     __param(0, (0, common_1.Req)()),
@@ -406,7 +400,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "me", null);
 __decorate([
-    (0, common_1.Get)('view-all'),
+    (0, common_1.Get)('/me/methods'),
     (0, swagger_1.ApiOperation)({ summary: 'View all authentication methods' }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),

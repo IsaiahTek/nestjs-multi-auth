@@ -310,11 +310,11 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
-  @OptionalAuth()
-  @Get('')
-  async all() {
-    return this.authService.viewAll();
-  }
+  // @OptionalAuth()
+  // @Get('')
+  // async all() {
+  //   return this.authService.viewAll();
+  // }
 
   @Get('/me')
   @ApiOperation({ summary: 'View current Authentication (Auth)' })
@@ -322,7 +322,7 @@ export class AuthController {
     return this.authService.me(req.user.uid);
   }
 
-  @Get('view-all')
+  @Get('/me/methods')
   @ApiOperation({ summary: 'View all authentication methods' })
   async viewAll(@Req() req: any) {
     return this.authService.viewAllMyAuthMethods(req.user.uid);
