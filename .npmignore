@@ -1,4 +1,16 @@
-src/
-src/**/*.spec.ts
-src/**/*.test.ts
-src/**/*.e2e-spec.ts
+# Don't publish development files
+node_modules
+src
+.env
+.env.*
+dist/**/*.spec.*
+dist/**/*.test.*
+coverage
+.vscode
+.idea
+*.log
+.DS_Store
+npm-debug.log*
+tsconfig.json
+tsconfig.build.json
+jest.config.js
