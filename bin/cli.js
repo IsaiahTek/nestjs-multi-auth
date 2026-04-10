@@ -12,7 +12,7 @@ program
   .version('1.0.0');
 
 
-// 🔍 Resolve DataSource path
+// Resolve DataSource path
 function resolveDataSource() {
   const cwd = process.cwd();
 
@@ -37,7 +37,7 @@ function resolveDataSource() {
 }
 
 
-// 🔧 Extract or create DataSource
+// Extract or create DataSource
 function extractDataSource(exported) {
   const { DataSource } = require('typeorm');
 
@@ -45,7 +45,7 @@ function extractDataSource(exported) {
     throw new Error('No exports found in data-source file');
   }
 
-  // ✅ Already a DataSource instance
+  // Already a DataSource instance
   if (exported.AppDataSource instanceof DataSource) {
     return exported.AppDataSource;
   }
@@ -58,7 +58,7 @@ function extractDataSource(exported) {
     return exported.default;
   }
 
-  // ✅ Config object → wrap it
+  // Config object → wrap it
   const config =
     exported.default ||
     exported.databaseConfig ||
@@ -68,7 +68,7 @@ function extractDataSource(exported) {
 }
 
 
-// 🔧 Load DataSource (TS + JS support)
+// Load DataSource (TS + JS support)
 async function loadDataSource() {
   const dataSourcePath = resolveDataSource();
 
@@ -90,7 +90,7 @@ async function loadDataSource() {
 }
 
 
-// 🔁 Shared runner
+// Shared runner
 async function runWithDataSource(fn) {
   const dataSource = await loadDataSource();
 
@@ -104,7 +104,7 @@ async function runWithDataSource(fn) {
 }
 
 
-// 🚀 MIGRATE COMMAND
+// MIGRATE COMMAND
 program
   .command('migrate')
   .description('Run auth migrations')
@@ -126,7 +126,7 @@ program
   });
 
 
-// 🔍 DOCTOR COMMAND
+// DOCTOR COMMAND
 program
   .command('doctor')
   .description('Check auth schema status')

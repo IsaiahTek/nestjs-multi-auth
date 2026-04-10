@@ -108,7 +108,7 @@ export class LocalAuthStrategy {
       const authIdentifierRepo = manager.getRepository(AuthIdentifier);
       const authRepo = manager.getRepository(Auth);
 
-      // 3. 🔒 Check uniqueness
+      // 3. Check uniqueness
       const existing = await authIdentifierRepo.findOne({
         where: { value: In(identifiersToCheck) },
       });

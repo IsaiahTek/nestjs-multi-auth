@@ -95,7 +95,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         return this.dataSource.transaction(async (manager) => {
             const authIdentifierRepo = manager.getRepository(auth_identify_entity_1.AuthIdentifier);
             const authRepo = manager.getRepository(auth_entity_1.Auth);
-            // 3. 🔒 Check uniqueness
+            // 3. Check uniqueness
             const existing = await authIdentifierRepo.findOne({
                 where: { value: (0, typeorm_1.In)(identifiersToCheck) },
             });

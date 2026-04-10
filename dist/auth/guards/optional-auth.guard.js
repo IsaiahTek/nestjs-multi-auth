@@ -22,7 +22,7 @@ let OptionalAuthGuard = OptionalAuthGuard_1 = class OptionalAuthGuard extends (0
         this.logger.debug(`Authorization header: ${authHeader || 'none'}`);
         if (!authHeader) {
             this.logger.debug('No authorization header, skipping JWT check');
-            req.user = null; // 👈 set anonymous user
+            req.user = null; // set anonymous user
             return true;
         }
         // fallback to normal AuthGuard behavior

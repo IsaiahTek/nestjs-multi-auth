@@ -538,18 +538,18 @@ The library automatically mounts the following endpoints under the `/auth` prefi
 
 | Method | Endpoint | Auth Required | Payload | Description |
 |--------|----------|:---:|:---|-------------|
-| `POST` | `/auth/signup` | ❌ | `SignupDto` | Register a new identity. |
-| `POST` | `/auth/signin` | ❌ | `LoginDto` | Authenticate and receive tokens. |
-| `POST` | `/auth/verify` | ❌ | `VerifyDto` | Submit an OTP to complete verification. |
-| `POST` | `/auth/resend-verification` | ❌ | `ResendVerificationDto` | Resend the OTP code. |
-| `POST` | `/auth/forgot-password` | ❌ | `ForgotPasswordDto` | Request a password reset OTP via email/phone/username. |
-| `POST` | `/auth/reset-password` | ❌ | `ResetPasswordDto` | Reset password using the OTP code. |
+| `POST` | `/auth/signup` | - | `SignupDto` | Register a new identity. |
+| `POST` | `/auth/signin` | - | `LoginDto` | Authenticate and receive tokens. |
+| `POST` | `/auth/verify` | - | `VerifyDto` | Submit an OTP to complete verification. |
+| `POST` | `/auth/resend-verification` | - | `ResendVerificationDto` | Resend the OTP code. |
+| `POST` | `/auth/forgot-password` | - | `ForgotPasswordDto` | Request a password reset OTP via email/phone/username. |
+| `POST` | `/auth/reset-password` | - | `ResetPasswordDto` | Reset password using the OTP code. |
 | `PATCH` | `/auth/password` | ✅ | `UpdatePasswordDto` | Update password for the current authenticated session. |
-| `POST` | `/auth/secure-account?uid=` | ❌ | `SecureAccountDto` | Lock account via a one-click security email link. |
-| `POST` | `/auth/magic-link` | ❌ | `MagicLinkRequestDto` | Request a magic login link for an email address. |
-| `GET` | `/auth/magic-callback?token=` | ❌ | — | Verify the magic link token and issue session tokens. |
-| `POST` | `/auth/refresh` | ❌ | `RefreshTokenDto` | Rotate the access token using a refresh token. |
-| `POST` | `/auth/logout` | ❌ | `RefreshTokenDto` | Invalidate the current session. |
+| `POST` | `/auth/secure-account?uid=` | - | `SecureAccountDto` | Lock account via a one-click security email link. |
+| `POST` | `/auth/magic-link` | - | `MagicLinkRequestDto` | Request a magic login link for an email address. |
+| `GET` | `/auth/magic-callback?token=` | - | — | Verify the magic link token and issue session tokens. |
+| `POST` | `/auth/refresh` | - | `RefreshTokenDto` | Rotate the access token using a refresh token. |
+| `POST` | `/auth/logout` | - | `RefreshTokenDto` | Invalidate the current session. |
 | `POST` | `/auth/link` | ✅ | `SignupDto` | Link a new auth method to the current account. |
 | `POST` | `/auth/mfa/enroll` | ✅ | `EnrollMfaDto` | Begin TOTP MFA enrollment. |
 | `POST` | `/auth/mfa/activate` | ✅ | `ActivateMfaDto` | Confirm TOTP setup with a live code. |
@@ -571,12 +571,12 @@ Used for both registration (`/auth/signup`) and authentication (`/auth/signin`).
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `method` | `AuthStrategy` | ✅ | The authentication strategy (e.g., `EMAIL`, `PHONE`, `GOOGLE`). |
-| `provider` | `OAuthProviderType` | ❌ | Required if `method` is `OAUTH` or a social strategy. |
-| `email` | `string` | ❌ | Required if `method` is `EMAIL`. |
-| `phone` | `string` | ❌ | Required if `method` is `PHONE`. |
-| `username` | `string` | ❌ | Required if `method` is `USERNAME`. |
-| `password` | `string` | ❌ | User's password (min 6 chars). |
-| `token` | `string` | ❌ | OAuth token or verification token for automated flows. |
+| `provider` | `OAuthProviderType` | - | Required if `method` is `OAUTH` or a social strategy. |
+| `email` | `string` | - | Required if `method` is `EMAIL`. |
+| `phone` | `string` | - | Required if `method` is `PHONE`. |
+| `username` | `string` | - | Required if `method` is `USERNAME`. |
+| `password` | `string` | - | User's password (min 6 chars). |
+| `token` | `string` | - | OAuth token or verification token for automated flows. |
 
 ### `VerifyDto`
 Used to verify an identity with a one-time code (`/auth/verify`).
@@ -598,9 +598,9 @@ Used to initiate a password reset (`/auth/forgot-password`).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `email` | `string` | ❌ | Email address of the account. |
-| `phone` | `string` | ❌ | Phone number of the account. |
-| `username` | `string` | ❌ | Username of the account. |
+| `email` | `string` | - | Email address of the account. |
+| `phone` | `string` | - | Phone number of the account. |
+| `username` | `string` | - | Username of the account. |
 
 > At least one of `email`, `phone`, or `username` must be provided.
 
@@ -640,7 +640,7 @@ Used to rotate tokens or logout (`/auth/refresh`, `/auth/logout`).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `refreshToken` | `string` | ❌ | The refresh token. Required if not using HTTP-only cookies. |
+| `refreshToken` | `string` | - | The refresh token. Required if not using HTTP-only cookies. |
 
 ### `EnrollMfaDto`
 Used to start MFA enrollment (`/auth/mfa/enroll`).
