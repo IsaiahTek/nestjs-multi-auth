@@ -21,6 +21,7 @@ A flexible, decoupled, and production-ready authentication library for NestJS ap
 - **Token Rotation**: Built-in `/refresh` and `/logout` endpoints with automatic token rotation.
 - **Session Tracking**: Tracks IP and User Agent for basic session security.
 - **Built-in Rate Limiting**: Configurable throttling on all auth endpoints via `@nestjs/throttler`.
+- **Event-Driven Hooks**: Decoupled, reactive workflows using `@nestjs/event-emitter` (Optional).
 - **Account Management**: Built-in endpoints for viewing and deleting auth methods or entire accounts.
 - **Production Ready**: 10/10 code quality rating with standardized security patterns (e.g., Node.js built-in `crypto` for secure UUID generation).
 
@@ -54,6 +55,12 @@ Ensure you have the required peer dependencies installed in your NestJS project:
 
 ```bash
 npm install @nestjs/passport @nestjs/jwt passport passport-jwt class-validator bcrypt typeorm
+```
+
+#### Optional Dependencies
+If you want to use the local event system:
+```bash
+npm install @nestjs/event-emitter
 ```
 
 ---
@@ -693,6 +700,73 @@ How tokens are delivered to and sent from the client.
 ---
 
 *(All endpoints are automatically documented if you have `@nestjs/swagger` configured in your root app).*
+
+---
+
+## Event Hooks
+
+The library emits events for all major authentication actions using `@nestjs/event-emitter`. This allows you to build decoupled, reactive logic such as:
+- Sending a welcome email after signup.
+- Logging login attempts.
+- Invalidating external caches on logout.
+
+### 1. Enable Events
+First, ensure you have `@nestjs/event-emitter` installed and registered in your root `AppModule`:
+
+```typescript
+import { EventEmitterModule } from '@nestjs/event-emitter';
+
+@Module({
+  imports: [
+    EventEmitterModule.forRoot(),
+    AuthModule.register({ ... }),
+  ],
+})
+export class AppModule {}
+```
+
+### 2. Listen for Events
+Use the `@OnEvent()` decorator with the `AuthEvents` enum to handle specific actions:
+
+```typescript
+import { OnEvent } from '@nestjs/event-emitter';
+import { AuthEvents } from 'nestjs-multi-auth';
+
+@Injectable()
+export class NotificationService {
+  @OnEvent(AuthEvents.SIGNUP)
+  async handleUserSignup(payload: any) {
+    // payload = { uid, method, email/phone/username }
+    console.log(`User ${payload.uid} signed up via ${payload.method}`);
+  }
+
+  @OnEvent(AuthEvents.LOGIN)
+  async handleUserLogin(payload: any) {
+    // payload = { uid, sessionId, method }
+    console.log(`User ${payload.uid} logged in!`);
+  }
+}
+```
+
+### Available Events
+
+| Event | Payload | Triggered When |
+|-------|---------|----------------|
+| `auth.signup` | `{ uid, method, ...identifier }` | A new account is successfully created. |
+| `auth.login` | `{ uid, sessionId, method }` | A user successfully authenticates. |
+| `auth.logout` | `{ uid, sessionId }` | A session is invalidated. |
+| `auth.verify.request` | `{ uid, type, to }` | A verification code is sent. |
+| `auth.verify.success` | `{ uid }` | A code is successfully confirmed. |
+| `auth.mfa.enroll` | `{ uid, type }` | MFA enrollment begins. |
+| `auth.mfa.activate` | `{ uid, type }` | MFA is fully enabled. |
+| `auth.password.forgot` | `{ uid }` | Password reset is requested. |
+| `auth.password.reset` | `{ uid }` | Password is changed via OTP. |
+| `auth.password.update` | `{ uid }` | Password is changed via PATCH. |
+| `auth.account.secure` | `{ uid }` | Account is locked via security link. |
+| `auth.account.delete` | `{ uid }` | Entire account is deleted. |
+
+> [!TIP]
+> The event system is completely optional. If you don't register `EventEmitterModule`, the library will skip event emission without throwing errors.
 
 ---
 
