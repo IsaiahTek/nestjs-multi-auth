@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthMigrationService = void 0;
 const common_1 = require("@nestjs/common");
@@ -66,6 +69,7 @@ let AuthMigrationService = class AuthMigrationService {
 exports.AuthMigrationService = AuthMigrationService;
 exports.AuthMigrationService = AuthMigrationService = __decorate([
     (0, common_1.Injectable)(),
+    __param(0, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [typeorm_1.DataSource])
 ], AuthMigrationService);
 //# sourceMappingURL=migration.service.js.map

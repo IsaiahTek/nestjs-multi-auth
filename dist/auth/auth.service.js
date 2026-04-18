@@ -15,6 +15,7 @@ var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
@@ -32,8 +33,9 @@ const auth_notification_provider_interface_1 = require("./interfaces/auth-notifi
 const crypto = require("crypto");
 const duration_util_1 = require("./utils/duration.util");
 const auth_mapper_1 = require("./core/auth-mapper");
+const auth_events_1 = require("./enums/auth.events");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider) {
+    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider, eventEmitter) {
         this.jwtService = jwtService;
         this.passwordStrategy = passwordStrategy;
         this.oauthStrategy = oauthStrategy;
@@ -43,6 +45,7 @@ let AuthService = AuthService_1 = class AuthService {
         this.mfaRepo = mfaRepo;
         this.options = options;
         this.notificationProvider = notificationProvider;
+        this.eventEmitter = eventEmitter;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
@@ -144,6 +147,9 @@ let AuthService = AuthService_1 = class AuthService {
             }
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.SIGNUP, { auth: filteredAuth, identifier });
+        }
         return { ...tokens, auth: filteredAuth };
     }
     async login(dto, userAgent, ip) {
@@ -219,6 +225,9 @@ let AuthService = AuthService_1 = class AuthService {
             };
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.LOGIN, { auth: filteredAuth, tokens });
+        }
         return { ...tokens, auth: filteredAuth };
     }
     // --- VERIFICATION LOGIC ---
@@ -307,6 +316,9 @@ let AuthService = AuthService_1 = class AuthService {
             await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
+        }
         return { message: 'Identity verified successfully', tokens, auth };
     }
     async resendVerification(uid) {
@@ -372,6 +384,9 @@ let AuthService = AuthService_1 = class AuthService {
                 expiresAt: newExpiry,
                 ipAddress: currentIp ?? session.ipAddress,
             });
+            if (this.eventEmitter) {
+                this.eventEmitter.emit(auth_events_1.AuthEvents.TOKEN_REFRESHED, { uid: session.uid, tokens });
+            }
             return tokens;
         }
         catch (e) {
@@ -385,7 +400,11 @@ let AuthService = AuthService_1 = class AuthService {
         try {
             const payload = this.jwtService.decode(refreshToken);
             if (payload?.sessionId) {
+                const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
                 await this.sessionRepository.delete(payload.sessionId);
+                if (session && this.eventEmitter) {
+                    this.eventEmitter.emit(auth_events_1.AuthEvents.LOGOUT, { uid: session.uid });
+                }
             }
         }
         catch (e) {
@@ -425,6 +444,9 @@ let AuthService = AuthService_1 = class AuthService {
         if (this.notificationProvider) {
             await this.notificationProvider.sendVerificationCode(primaryAuth.value, code, 'email');
         }
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_RESET, { auth: primaryAuth });
+        }
         return { message: 'If an account exists, a reset code has been sent.' };
     }
     async resetPassword(dto) {
@@ -449,6 +471,10 @@ let AuthService = AuthService_1 = class AuthService {
         await this.otpRepo.save(otp);
         // Security: Invalidate all sessions
         await this.sessionRepository.delete({ uid: dto.uid });
+        if (this.eventEmitter) {
+            const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
+            this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_RESET, { auth });
+        }
         return { message: 'Password reset successful. All active sessions have been logged out.' };
     }
     async updatePassword(uid, dto, userAgent, ip) {
@@ -492,6 +518,9 @@ let AuthService = AuthService_1 = class AuthService {
                 });
             }
         }
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_UPDATED, { auth });
+        }
         return { message: 'Password updated successfully' };
     }
     async secureAccount(dto) {
@@ -512,6 +541,9 @@ let AuthService = AuthService_1 = class AuthService {
         // 3. Mark OTP as used
         otp.isUsed = true;
         await this.otpRepo.save(otp);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.ACCOUNT_SECURED, { uid: dto.uid });
+        }
         return { message: 'Account secured and locked. Please reset your password to regain access.' };
     }
     // --- MAGIC LINK ---
@@ -545,6 +577,9 @@ let AuthService = AuthService_1 = class AuthService {
             const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${token}&email=${dto.email}`;
             await this.notificationProvider.sendMagicLink(dto.email, link);
         }
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.MAGIC_LINK_REQUESTED, { email: dto.email });
+        }
         return { message: 'Magic link sent to your email.' };
     }
     async verifyMagicLink(dto, userAgent, ip) {
@@ -564,6 +599,9 @@ let AuthService = AuthService_1 = class AuthService {
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
         const tokens = await this.createSession(auth.uid, userAgent, ip);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
+        }
         return { tokens, auth };
     }
     // --- MFA (2FA) LOGIC ---
@@ -590,6 +628,9 @@ let AuthService = AuthService_1 = class AuthService {
             mfa.secret = secret;
         }
         await this.mfaRepo.save(mfa);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.MFA_ENROLLED, { uid, type });
+        }
         return {
             secret,
             otpauth,
@@ -616,6 +657,9 @@ let AuthService = AuthService_1 = class AuthService {
         mfa.isEnabled = true;
         mfa.isDefault = true;
         await this.mfaRepo.save(mfa);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.MFA_ACTIVATED, { uid, type });
+        }
         return { message: 'MFA activated successfully' };
     }
     async viewAll() {
@@ -684,12 +728,13 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __param(7, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __param(8, (0, common_1.Optional)()),
     __param(8, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
+    __param(9, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         local_auth_strategy_1.LocalAuthStrategy,
         oauth_strategy_1.OAuthAuthStrategy,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository, Object, Object])
+        typeorm_2.Repository, Object, Object, event_emitter_1.EventEmitter2])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map
