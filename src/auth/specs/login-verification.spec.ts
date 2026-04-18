@@ -29,7 +29,7 @@ describe('Login verification flow', () => {
     };
     const mockPasswordStrategy = {
         login: jest.fn().mockResolvedValue({
-            auth: { uid: 'user-1', id: 'auth-1' } as any,
+            auth: { uid: 'user-1', id: 'auth-1', isActive: true } as any,
             identifier: { isVerified: true, type: IdentifierType.EMAIL, value: 'test@example.com' } as any,
         }),
     };

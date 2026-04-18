@@ -58,7 +58,7 @@ describe('Reproduction: Phone login without password', () => {
 
         // Mock the auth and identifier lookup in strategy
         mockPasswordStrategy.login.mockResolvedValue({
-            auth: { uid: 'user-1', id: 'auth-1', strategy: AuthStrategy.PHONE } as any,
+            auth: { uid: 'user-1', id: 'auth-1', strategy: AuthStrategy.PHONE, isActive: true } as any,
             identifier: { isVerified: true, type: IdentifierType.PHONE, value: '+1234567890' } as any
         });
 

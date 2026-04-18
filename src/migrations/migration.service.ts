@@ -1,10 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { DataSource, QueryRunner } from "typeorm";
 import { AuthMigrations } from "./auth.migrations";
 
 @Injectable()
 export class AuthMigrationService {
-    constructor(private dataSource: DataSource) { }
+    constructor(@Optional() private dataSource: DataSource) { }
 
     async runMigrations() {
         const queryRunner = this.dataSource.createQueryRunner();

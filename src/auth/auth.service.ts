@@ -6,6 +6,7 @@ import {
   Optional,
   Logger,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -31,6 +32,7 @@ import { UpdatePasswordDto } from './dto/requests/update-password.dto';
 import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
 import { AuthIdentifier, IdentifierType } from './entities/auth-identify.entity';
+import { AuthEvents } from './enums/auth.events';
 
 @Injectable()
 export class AuthService {
@@ -52,6 +54,7 @@ export class AuthService {
     @Optional()
     @Inject(AUTH_NOTIFICATION_PROVIDER)
     private notificationProvider?: AuthNotificationProvider,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) { }
 
   // --- INTERNAL HELPER: Generate Token Pair ---
@@ -180,6 +183,10 @@ export class AuthService {
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier });
+    }
+
     return { ...tokens, auth: filteredAuth };
   }
 
@@ -263,6 +270,10 @@ export class AuthService {
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.LOGIN, { auth: filteredAuth, tokens });
+    }
 
     return { ...tokens, auth: filteredAuth };
   }
@@ -383,6 +394,10 @@ export class AuthService {
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
+    }
+
     return { message: 'Identity verified successfully', tokens, auth };
   }
 
@@ -473,6 +488,10 @@ export class AuthService {
         ipAddress: currentIp ?? session.ipAddress,
       });
 
+      if (this.eventEmitter) {
+        this.eventEmitter.emit(AuthEvents.TOKEN_REFRESHED, { uid: session.uid, tokens });
+      }
+
       return tokens;
     } catch (e) {
       this.logger.error('Error refreshing tokens', e);
@@ -487,7 +506,11 @@ export class AuthService {
         refreshToken,
       );
       if (payload?.sessionId) {
+        const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
         await this.sessionRepository.delete(payload.sessionId);
+        if (session && this.eventEmitter) {
+          this.eventEmitter.emit(AuthEvents.LOGOUT, { uid: session.uid });
+        }
       }
     } catch (e) {
       this.logger.error('Error logging out', e);
@@ -538,6 +561,10 @@ export class AuthService {
       await this.notificationProvider.sendVerificationCode(primaryAuth.value, code, 'email');
     }
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.PASSWORD_RESET, { auth: primaryAuth });
+    }
+
     return { message: 'If an account exists, a reset code has been sent.' };
   }
 
@@ -567,6 +594,11 @@ export class AuthService {
 
     // Security: Invalidate all sessions
     await this.sessionRepository.delete({ uid: dto.uid });
+
+    if (this.eventEmitter) {
+      const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
+      this.eventEmitter.emit(AuthEvents.PASSWORD_RESET, { auth });
+    }
 
     return { message: 'Password reset successful. All active sessions have been logged out.' };
   }
@@ -624,6 +656,10 @@ export class AuthService {
       }
     }
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.PASSWORD_UPDATED, { auth });
+    }
+
     return { message: 'Password updated successfully' };
   }
 
@@ -649,6 +685,10 @@ export class AuthService {
     // 3. Mark OTP as used
     otp.isUsed = true;
     await this.otpRepo.save(otp);
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.ACCOUNT_SECURED, { uid: dto.uid });
+    }
 
     return { message: 'Account secured and locked. Please reset your password to regain access.' };
   }
@@ -694,6 +734,10 @@ export class AuthService {
       await this.notificationProvider.sendMagicLink(dto.email, link);
     }
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.MAGIC_LINK_REQUESTED, { email: dto.email });
+    }
+
     return { message: 'Magic link sent to your email.' };
   }
 
@@ -717,6 +761,11 @@ export class AuthService {
     if (!auth) throw new BadRequestException('Identity not found');
 
     const tokens = await this.createSession(auth.uid, userAgent, ip);
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
+    }
+
     return { tokens, auth };
   }
 
@@ -750,6 +799,10 @@ export class AuthService {
 
     await this.mfaRepo.save(mfa);
 
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.MFA_ENROLLED, { uid, type });
+    }
+
     return {
       secret,
       otpauth,
@@ -782,6 +835,10 @@ export class AuthService {
     mfa.isEnabled = true;
     mfa.isDefault = true;
     await this.mfaRepo.save(mfa);
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.MFA_ACTIVATED, { uid, type });
+    }
 
     return { message: 'MFA activated successfully' };
   }

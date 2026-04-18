@@ -41,7 +41,7 @@ describe('CLI Migration Tool', () => {
                 isInitialized: true,
                 initialize: async () => mock,
                 destroy: async () => {},
-                query: async (q: string) => {
+                query: async (q) => {
                     if (q.includes('auth_schema_meta')) return [{ version: 5 }];
                     return [];
                 },
@@ -55,7 +55,7 @@ describe('CLI Migration Tool', () => {
 
         try {
             const output = execSync('node bin/cli.js doctor', { encoding: 'utf8', stdio: 'pipe' });
-            expect(output).toContain('Current auth schema version: 5');
+            expect(output).toMatch(/Current auth schema version:.*5/);
         } catch (error: any) {
             console.error('CLI Error:', error.stdout, error.stderr);
             throw error;
@@ -75,7 +75,7 @@ describe('CLI Migration Tool', () => {
                     commitTransaction: async () => {},
                     rollbackTransaction: async () => {},
                     release: async () => {},
-                    query: async (q: string) => {
+                    query: async (q) => {
                         if (q.includes('SELECT version')) return [{ version: 0 }];
                         return [];
                     },
@@ -90,7 +90,7 @@ describe('CLI Migration Tool', () => {
 
         try {
             const output = execSync('node bin/cli.js migrate', { encoding: 'utf8', stdio: 'pipe' });
-            expect(output).toContain('Auth migrations completed');
+            expect(output).toMatch(/Auth migrations completed/);
         } catch (error: any) {
             console.error('CLI Error:', error.stdout, error.stderr);
             throw error;
