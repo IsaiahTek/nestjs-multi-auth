@@ -37,4 +37,5 @@ __exportStar(require("./auth/guards/optional-auth.guard"), exports);
 __exportStar(require("./migrations/auth-schema.initializer"), exports);
 __exportStar(require("./migrations/migration.service"), exports);
 __exportStar(require("./auth/enums/auth.events"), exports);
+__exportStar(require("./auth/entities/entities"), exports);
 //# sourceMappingURL=index.js.map
