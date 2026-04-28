@@ -38,4 +38,5 @@ __exportStar(require("./migrations/auth-schema.initializer"), exports);
 __exportStar(require("./migrations/migration.service"), exports);
 __exportStar(require("./auth/enums/auth.events"), exports);
 __exportStar(require("./auth/entities/entities"), exports);
+__exportStar(require("./auth/interfaces/auth-notification-provider.interface"), exports);
 //# sourceMappingURL=index.js.map

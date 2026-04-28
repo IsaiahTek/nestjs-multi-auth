@@ -1,29 +1,46 @@
 # NestJS Multi-Auth
 
-A flexible, decoupled, and production-ready authentication library for NestJS applications. `nestjs-multi-auth` supports JWT/Refresh token rotation, dynamic configuration, and multiple authentication transports (Cookies and Bearer tokens), while remaining completely agnostic of your application's specific `User` entity or ORM structure.
+Build a complete authentication system in NestJS — without Firebase or Auth0.
 
-## Features
+nestjs-multi-auth is a self-hosted identity provider that handles:
+- JWT + refresh tokens
+- OAuth (Google, Facebook, Apple)
+- Magic links (passwordless login)
+- MFA / 2FA (TOTP)
+- Account linking (multiple login methods per user)
 
-- **Identity-Only (Firebase Style)**: Pure authentication and session management. Agnostic of your application's user profiles and database structure.
-- **Grouped Identities**: Multiple login methods (Google, Password, etc.) are consolidated under a single, opaque `uid`.
-- **Account Linking**: Link additional auth methods (e.g., Google, Email, Phone) to an existing account under the same `uid`.
-- **Multiple OAuth Providers**: Link multiple social accounts (e.g., Google AND Facebook) to a single identity simultaneously.
-- **MFA/2FA Ready**: Built-in support for TOTP-based Multi-Factor Authentication (e.g., Google Authenticator).
-- **Magic Links**: Passwordless email login via a signed, time-limited magic link — no passwords required.
-- **Password Management**: Built-in flows for forgot password (email/phone/username), reset via OTP, in-session password update, and a security lock endpoint.
-- **Security Alerts**: Sends a "Secure My Account" link via email when a password change is detected from an unfamiliar device.
-- **Secure by Default**: Automatically registers a global authentication guard.
-- **Dynamic Configuration**: Configure JWT secrets, expiration times, and transport preferences both synchronously and asynchronously.
-- **Granular Strategy Selection**: Enable individual authentication methods (Email, Phone, Username, Google, Facebook, Apple).
-- **Flexible Phone Auth**: Choose whether phone-based authentication requires a password or is password-less by default.
-- **Phone Number Prefix Validation**: Restrict authentication to specific country codes or phone formats (e.g., `['+234', '+44']`).
-- **Multiple Auth Transports**: Supports HTTP-only Cookies, JSON body (Bearer token), or both.
-- **Token Rotation**: Built-in `/refresh` and `/logout` endpoints with automatic token rotation.
-- **Session Tracking**: Tracks IP and User Agent for basic session security.
-- **Built-in Rate Limiting**: Configurable throttling on all auth endpoints via `@nestjs/throttler`.
-- **Event-Driven Hooks**: Decoupled, reactive workflows using `@nestjs/event-emitter` (Optional).
-- **Account Management**: Built-in endpoints for viewing and deleting auth methods or entire accounts.
-- **Production Ready**: 10/10 code quality rating with standardized security patterns (e.g., Node.js built-in `crypto` for secure UUID generation).
+All without coupling to your User entity or database schema.
+
+## When should you use this?
+
+Use this library if:
+- You don’t want to build auth from scratch
+- You want a Firebase/Auth0 alternative inside your NestJS backend
+- You need multiple login methods (email, Google, phone, etc.)
+- You want a clean separation between authentication and user profiles
+
+Do NOT use this if:
+- You only need simple JWT authentication
+- You are already using an external auth provider (Firebase, Auth0)
+
+## What you get
+
+### Authentication
+- JWT + refresh token rotation
+- Cookie or Bearer transport
+
+### Login Methods
+- Email, Phone, Username
+- Google, Facebook, Apple
+
+### Advanced Features
+- Account linking (multiple identities per user)
+- Magic links (passwordless login)
+- MFA / 2FA (TOTP)
+
+### Identity System
+- Firebase-style UID system
+- Completely decoupled from your User model
 
 ---
 
@@ -63,6 +80,20 @@ If you want to use the local event system:
 npm install @nestjs/event-emitter
 ```
 
+```typescript
+import { Module } from '@nestjs/common';
+import { AuthModule, AuthStrategy } from 'nestjs-multi-auth';
+
+@Module({
+  imports: [
+    AuthModule.register({
+      jwtSecret: process.env.JWT_SECRET,
+      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+    }),
+  ],
+})
+export class AppModule {}
+```
 ---
 
 ## Quick Start
@@ -73,71 +104,7 @@ npm install @nestjs/event-emitter
 
 Import and configure the `AuthModule` in your root `AppModule`. No external service implementation is required!
 
-```typescript
-// src/app.module.ts
-import { Module } from '@nestjs/common';
-import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
-
-@Module({
-  imports: [
-    AuthModule.register({
-      jwtSecret: process.env.JWT_SECRET,
-      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-      
-      // Optional: defaults to [AuthTransport.BEARER]
-      transport: [AuthTransport.COOKIE, AuthTransport.BEARER],
-      
-      // Optional: Enable individual strategies
-      enabledStrategies: [
-        AuthStrategy.EMAIL, 
-        AuthStrategy.GOOGLE, 
-        AuthStrategy.PHONE
-      ],
-
-      // Required for Google strategy
-      googleClientId: process.env.GOOGLE_CLIENT_ID,
-
-      // Required for Facebook strategy
-      facebookAppId: process.env.FACEBOOK_APP_ID,
-      facebookAppSecret: process.env.FACEBOOK_APP_SECRET,
-
-      // Required for Apple strategy
-      appleClientId: process.env.APPLE_CLIENT_ID,
-      appleTeamId: process.env.APPLE_TEAM_ID,
-
-      // Optional: If strategy PHONE is enabled, defaults to false
-      phoneRequiresPassword: true, 
-      
-      // Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
-      allowedPhonePrefixes: ['+234', '+44'],
-
-      // Optional: App name shown in TOTP authenticator apps
-      appName: 'MyApp',
-
-      // Optional: Rate limiting (defaults: limit=10, ttl=60s)
-      throttlerLimit: 10,
-      throttlerTtl: 60,
-
-      // Optional: defaults to false.
-      // disableController: true,
-      // disableGlobalGuard: true,
-      // disableThrottler: true,
-
-      // Optional: Durations and Intervals
-      otpExpiresIn: 15,                // 15 minutes
-      otpResendInterval: 60,           // 60 seconds
-      accessTokenExpiresIn: '15m',     // Access token
-      refreshTokenExpiresIn: '7d',     // Refresh token & Session
-
-      // Required for Magic Links and Security Alert emails
-      frontendUrl: 'https://myapp.com',
-
-      // Optional: Run DB migrations automatically on startup
-      autoMigrate: true,
-    }),
-  ],
-})
-export class AppModule {}
+```
 ```
 
 #### Asynchronous Registration (`forRootAsync`)
@@ -804,6 +771,77 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `throttlerTtl` | `number` | `60` | Throttle window duration in seconds. |
 | `disableThrottler` | `boolean` | `false` | Disable the built-in rate limiting entirely. |
 | `autoMigrate` | `boolean` | `false` | Automatically run database schema migrations on startup. |
+
+---
+## Advanced Config
+
+```typescript
+// src/app.module.ts
+import { Module } from '@nestjs/common';
+import { AuthModule, AuthTransport, AuthStrategy } from 'nestjs-multi-auth';
+
+@Module({
+  imports: [
+    AuthModule.register({
+      jwtSecret: process.env.JWT_SECRET,
+      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+      
+      // Optional: defaults to [AuthTransport.BEARER]
+      transport: [AuthTransport.COOKIE, AuthTransport.BEARER],
+      
+      // Optional: Enable individual strategies
+      enabledStrategies: [
+        AuthStrategy.EMAIL, 
+        AuthStrategy.GOOGLE, 
+        AuthStrategy.PHONE
+      ],
+
+      // Required for Google strategy
+      googleClientId: process.env.GOOGLE_CLIENT_ID,
+
+      // Required for Facebook strategy
+      facebookAppId: process.env.FACEBOOK_APP_ID,
+      facebookAppSecret: process.env.FACEBOOK_APP_SECRET,
+
+      // Required for Apple strategy
+      appleClientId: process.env.APPLE_CLIENT_ID,
+      appleTeamId: process.env.APPLE_TEAM_ID,
+
+      // Optional: If strategy PHONE is enabled, defaults to false
+      phoneRequiresPassword: true, 
+      
+      // Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
+      allowedPhonePrefixes: ['+234', '+44'],
+
+      // Optional: App name shown in TOTP authenticator apps
+      appName: 'MyApp',
+
+      // Optional: Rate limiting (defaults: limit=10, ttl=60s)
+      throttlerLimit: 10,
+      throttlerTtl: 60,
+
+      // Optional: defaults to false.
+      // disableController: true,
+      // disableGlobalGuard: true,
+      // disableThrottler: true,
+
+      // Optional: Durations and Intervals
+      otpExpiresIn: 15,                // 15 minutes
+      otpResendInterval: 60,           // 60 seconds
+      accessTokenExpiresIn: '15m',     // Access token
+      refreshTokenExpiresIn: '7d',     // Refresh token & Session
+
+      // Required for Magic Links and Security Alert emails
+      frontendUrl: 'https://myapp.com',
+
+      // Optional: Run DB migrations automatically on startup
+      autoMigrate: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
 
 ---
 

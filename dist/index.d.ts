@@ -21,3 +21,4 @@ export * from './migrations/auth-schema.initializer';
 export * from './migrations/migration.service';
 export * from './auth/enums/auth.events';
 export * from './auth/entities/entities';
+export * from './auth/interfaces/auth-notification-provider.interface';

@@ -6,7 +6,7 @@ import { EntitySchema, EntityTarget } from "typeorm";
 import { MfaMethod } from "./mfa-method.entity";
 import { Session } from "./session.entity";
 
-export const AuthEntities: EntityTarget<any>[] = [
+export const AuthEntities = [
     Auth,
     AuthIdentifier,
     OAuthProvider,
