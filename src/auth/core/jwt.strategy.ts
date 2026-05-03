@@ -1,11 +1,12 @@
 // src/auth/jwt.strategy.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../interfaces/auth-module-options.interface';
 import { Inject } from '@nestjs/common';
 import { JwtPayload } from '../interfaces/jwt-payload-interface';
 import { Request } from 'express';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,6 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   constructor(
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
+    private readonly authService: AuthService,
   ) {
     const cookieExtractor = (req: Request): string | null => {
       if (!req || !req.cookies) {
@@ -33,13 +35,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<any> {
+  async validate(payload: JwtPayload) {
+    const user = await this.authService.me(payload.sub);
 
-    // In Identity-Only mode, req.user is the token payload.
-    // The application uses the 'sub' (uid) to link to its own user record.
+    if (!user) {
+      this.logger.error("User no longer exists");
+      throw new UnauthorizedException('User no longer exists');
+    }
+
     return {
-      uid: payload.sub,
+      uid: user?.uid,
       sessionId: payload.sessionId,
+      user,
     };
   }
 }
