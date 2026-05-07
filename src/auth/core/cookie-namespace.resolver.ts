@@ -1,10 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Request } from "express";
-import { AuthModuleOptions, CookieNameConfig } from "../interfaces/auth-module-options.interface";
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions, CookieNameConfig } from "../interfaces/auth-module-options.interface";
 
 @Injectable()
 export class AuthCookieService {
-  constructor(private readonly options: AuthModuleOptions) {}
+  constructor(
+      @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions
+    ) {}
 
   private getNamespace(req: Request): string {
     const hostname = req.hostname;
