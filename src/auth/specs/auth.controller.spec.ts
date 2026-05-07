@@ -6,10 +6,12 @@ import { AUTH_MODULE_OPTIONS } from '../auth.module';
 import { AuthTransport } from '../enums/auth-type.enum';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response, Request } from 'express';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('AuthController', () => {
     let controller: AuthController;
     let authService: AuthService;
+    let cookieService: AuthCookieService;
 
     const mockOptions: AuthModuleOptions = {
         jwtSecret: 'test-secret',
@@ -26,12 +28,20 @@ describe('AuthController', () => {
         deleteAuthMethod: jest.fn(),
     };
 
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'test_access_token',
+            refreshTokenName: 'test_refresh_token',
+        }),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             controllers: [AuthController],
             providers: [
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
+                { provide: AuthCookieService, useValue: mockCookieService },
             ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
@@ -39,6 +49,7 @@ describe('AuthController', () => {
 
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);
+        cookieService = module.get<AuthCookieService>(AuthCookieService);
     });
 
     afterEach(() => {

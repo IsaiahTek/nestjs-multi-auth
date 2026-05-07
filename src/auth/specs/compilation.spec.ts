@@ -13,6 +13,7 @@ import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('AuthModule Compilation', () => {
     let module: TestingModule;
@@ -22,6 +23,13 @@ describe('AuthModule Compilation', () => {
         create: jest.fn(),
         save: jest.fn(),
         delete: jest.fn(),
+    };
+
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'root_access_token',
+            refreshTokenName: 'root_refresh_token',
+        }),
     };
 
     it('should compile with default options', async () => {
@@ -46,6 +54,7 @@ describe('AuthModule Compilation', () => {
             .overrideProvider(GoogleAuthStrategy).useValue({})
             .overrideProvider(AppleAuthStrategy).useValue({})
             .overrideProvider(FacebookAuthStrategy).useValue({})
+            .overrideProvider(AuthCookieService).useValue(mockCookieService)
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 

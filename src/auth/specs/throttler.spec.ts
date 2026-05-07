@@ -14,6 +14,7 @@ import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('Throttler Integration', () => {
     let authService: AuthService;
@@ -27,6 +28,13 @@ describe('Throttler Integration', () => {
 
     const mockDataSource = {
         transaction: jest.fn(),
+    };
+
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'root_access_token',
+            refreshTokenName: 'root_refresh_token',
+        }),
     };
 
     beforeAll(async () => {
@@ -54,6 +62,7 @@ describe('Throttler Integration', () => {
             .overrideProvider(GoogleAuthStrategy).useValue({})
             .overrideProvider(AppleAuthStrategy).useValue({})
             .overrideProvider(FacebookAuthStrategy).useValue({})
+            .overrideProvider(AuthCookieService).useValue(mockCookieService)
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 

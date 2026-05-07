@@ -32,10 +32,12 @@ const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./enums/auth-type.enum");
 const duration_util_1 = require("./utils/duration.util");
+const cookie_namespace_resolver_1 = require("./core/cookie-namespace.resolver");
 let AuthController = class AuthController {
-    constructor(authService, options) {
+    constructor(authService, options, cookieService) {
         this.authService = authService;
         this.options = options;
+        this.cookieService = cookieService;
     }
     getTransports() {
         const t = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
@@ -49,19 +51,23 @@ let AuthController = class AuthController {
     setCookies(res, req, accessToken, refreshToken) {
         const isProduction = process.env.NODE_ENV === 'production';
         const refreshPath = this.getDynamicPath(req);
-        res.cookie('refresh_token', refreshToken, {
+        // IMPORTANT: must match JWT strategy namespace logic
+        const cookies = this.cookieService.get(req);
+        res.cookie(cookies.refreshTokenName, refreshToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'none' : 'lax',
+            sameSite: isProduction ? 'lax' : 'lax',
             path: refreshPath,
-            maxAge: (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60) * 1000,
+            maxAge: (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn ||
+                '7d', 7 * 24 * 60 * 60) * 1000,
         });
-        res.cookie('access_token', accessToken, {
+        res.cookie(cookies.accessTokenName, accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'none' : 'lax',
+            sameSite: isProduction ? 'lax' : 'lax',
             path: '/',
-            maxAge: (0, duration_util_1.parseDuration)(this.options.accessTokenExpiresIn || '15m', 15 * 60) * 1000,
+            maxAge: (0, duration_util_1.parseDuration)(this.options.accessTokenExpiresIn ||
+                '15m', 15 * 60) * 1000,
         });
     }
     async signup(dto, res, req) {
@@ -179,7 +185,9 @@ let AuthController = class AuthController {
     }
     async refresh(req, res, dto) {
         const transports = this.getTransports();
-        let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+        const cookies = this.cookieService.get(req);
+        let token = req.cookies?.[cookies.refreshTokenName] ||
+            dto.refreshToken;
         if (!token && req.headers.authorization?.startsWith('Bearer ')) {
             token = req.headers.authorization.split(' ')[1];
         }
@@ -196,8 +204,12 @@ let AuthController = class AuthController {
             return { message: 'Token refreshed' };
         }
         catch (e) {
-            res.clearCookie('access_token');
-            res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+            res.clearCookie(cookies.accessTokenName, {
+                path: '/',
+            });
+            res.clearCookie(cookies.refreshTokenName, {
+                path: this.getDynamicPath(req),
+            });
             throw new common_1.HttpException('Invalid session', common_1.HttpStatus.UNAUTHORIZED);
         }
     }
@@ -208,13 +220,14 @@ let AuthController = class AuthController {
         return this.authService.activateMfa(req.user.uid, dto.type, dto.code);
     }
     async logout(req, res, dto) {
-        let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+        const cookies = this.cookieService.get(req);
+        let token = req.cookies?.[cookies.refreshTokenName] || dto.refreshToken;
         if (!token && req.headers.authorization?.startsWith('Bearer ')) {
             token = req.headers.authorization.split(' ')[1];
         }
         await this.authService.logout(token);
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+        res.clearCookie(cookies.accessTokenName, { path: '/' });
+        res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
         return { message: 'Logged out successfully' };
     }
     // @OptionalAuth()
@@ -230,8 +243,9 @@ let AuthController = class AuthController {
     }
     async deleteAccount(req, res) {
         await this.authService.deleteAccount(req.user.uid);
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+        const cookies = this.cookieService.get(req);
+        res.clearCookie(cookies.accessTokenName, { path: '/' });
+        res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
         return { message: 'Account deleted successfully' };
     }
     async deleteAuthMethod(req, authId) {
@@ -429,6 +443,6 @@ exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     (0, common_1.UseGuards)(throttler_1.ThrottlerGuard),
     __param(1, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
-    __metadata("design:paramtypes", [auth_service_1.AuthService, Object])
+    __metadata("design:paramtypes", [auth_service_1.AuthService, Object, cookie_namespace_resolver_1.AuthCookieService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

@@ -4,6 +4,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service';
 import { JwtStrategy } from '../core/jwt.strategy'
 import { UnauthorizedException } from '@nestjs/common';
+import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('JwtStrategy', () => {
     let strategy: JwtStrategy;
@@ -17,6 +19,13 @@ describe('JwtStrategy', () => {
         jwtSecret: 'test-secret',
     };
 
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'root_access_token',
+            refreshTokenName: 'root_refresh_token',
+        }),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -26,8 +35,12 @@ describe('JwtStrategy', () => {
                     useValue: mockAuthService,
                 },
                 {
-                    provide: 'AUTH_MODULE_OPTIONS',
+                    provide: AUTH_MODULE_OPTIONS,
                     useValue: mockOptions,
+                },
+                {
+                    provide: AuthCookieService,
+                    useValue: mockCookieService,
                 },
             ],
         }).compile();

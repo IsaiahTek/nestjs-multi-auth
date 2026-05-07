@@ -10,7 +10,6 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './core/jwt.strategy';
-import { AuthStrategy } from './enums/auth-type.enum';
 import { PassportModule } from '@nestjs/passport';
 import { AuthIdentifier } from './entities/auth-identify.entity';
 import { Session } from './entities/session.entity';
@@ -29,6 +28,7 @@ import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
+import { AuthCookieService } from './core/cookie-namespace.resolver';
 
 
 
@@ -104,7 +104,7 @@ export class AuthModule {
       ThrottlerGuard,
       AuthMigrationService,
       AuthSchemaInitializer,
-
+      AuthCookieService,
     ];
   }
 

@@ -1,14 +1,25 @@
 import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
 import { AuthTransport, AuthStrategy } from '../enums/auth-type.enum';
 import { AuthNotificationProvider } from './auth-notification-provider.interface';
+import { Request } from 'express';
 
 export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
+
+export interface CookieNameConfig {
+  accessTokenName: string;
+  refreshTokenName: string;
+}
 
 export interface AuthModuleOptions {
     /**
      * Secret key for signing Access Tokens
      */
     jwtSecret: string;
+
+    /**
+     * Optional: Custom cookie name resolver
+     */
+    cookieNameResolver?: (req: Request) => CookieNameConfig;
 
     /**
      * Secret key for signing Refresh Tokens

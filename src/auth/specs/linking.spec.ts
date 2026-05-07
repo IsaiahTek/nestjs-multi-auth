@@ -19,6 +19,7 @@ import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
 import { AuthController } from '../auth.controller';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('Account Linking Integration', () => {
     let authService: AuthService;
@@ -27,6 +28,7 @@ describe('Account Linking Integration', () => {
     let facebookStrategy: FacebookAuthStrategy;
     let appleStrategy: AppleAuthStrategy;
     let controller: AuthController;
+    let authCookieService: AuthCookieService;
 
     const mockDataSource = {
         transaction: jest.fn().mockImplementation(async (cb) => cb({
@@ -37,6 +39,13 @@ describe('Account Linking Integration', () => {
                 return {};
             }
         })),
+    };
+
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'root_access_token',
+            refreshTokenName: 'root_refresh_token',
+        }),
     };
 
     const mockAuthRepo = {
@@ -110,6 +119,7 @@ describe('Account Linking Integration', () => {
                 { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
+                { provide: AuthCookieService, useValue: mockCookieService },
             ],
         })
         .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
@@ -121,7 +131,7 @@ describe('Account Linking Integration', () => {
         facebookStrategy = module.get<FacebookAuthStrategy>(FacebookAuthStrategy);
         appleStrategy = module.get<AppleAuthStrategy>(AppleAuthStrategy);
         controller = module.get<AuthController>(AuthController);
-        
+        authCookieService = module.get<AuthCookieService>(AuthCookieService);
         // Mock verifyIdToken for Google
         (googleStrategy as any).client = {
             verifyIdToken: jest.fn().mockResolvedValue({

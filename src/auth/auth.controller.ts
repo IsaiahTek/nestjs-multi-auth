@@ -32,7 +32,8 @@ import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module
 import { AuthTransport } from './enums/auth-type.enum';
 import type { Response, Request } from 'express';
 import { parseDuration } from './utils/duration.util';
-import { OptionalAuth } from './decorator/optional.decorator';
+import { Auth } from './entities/auth.entity';
+import { AuthCookieService } from './core/cookie-namespace.resolver';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -40,6 +41,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
+    private cookieService: AuthCookieService,
   ) { }
 
   private getTransports(): AuthTransport[] {
@@ -53,24 +55,44 @@ export class AuthController {
     return baseUrl.substring(0, lastSlashIndex) + '/refresh';
   }
 
-  private setCookies(res: Response, req: Request, accessToken: string, refreshToken: string) {
-    const isProduction = process.env.NODE_ENV === 'production';
+  private setCookies(
+    res: Response,
+    req: Request,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    const isProduction =
+      process.env.NODE_ENV === 'production';
+
     const refreshPath = this.getDynamicPath(req);
 
-    res.cookie('refresh_token', refreshToken, {
+    // IMPORTANT: must match JWT strategy namespace logic
+    const cookies = this.cookieService.get(req);
+
+    res.cookie(cookies.refreshTokenName, refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      sameSite: isProduction ? 'lax' : 'lax',
       path: refreshPath,
-      maxAge: parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60) * 1000,
+      maxAge:
+        parseDuration(
+          this.options.refreshTokenExpiresIn ||
+          '7d',
+          7 * 24 * 60 * 60,
+        ) * 1000,
     });
 
-    res.cookie('access_token', accessToken, {
+    res.cookie(cookies.accessTokenName, accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      sameSite: isProduction ? 'lax' : 'lax',
       path: '/',
-      maxAge: parseDuration(this.options.accessTokenExpiresIn || '15m', 15 * 60) * 1000,
+      maxAge:
+        parseDuration(
+          this.options.accessTokenExpiresIn ||
+          '15m',
+          15 * 60,
+        ) * 1000,
     });
   }
 
@@ -256,7 +278,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
     const transports = this.getTransports();
-    let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+    const cookies = this.cookieService.get(req);
+
+    let token =
+      req.cookies?.[cookies.refreshTokenName] ||
+      dto.refreshToken;
 
     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
@@ -277,8 +303,13 @@ export class AuthController {
 
       return { message: 'Token refreshed' };
     } catch (e) {
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+      res.clearCookie(cookies.accessTokenName, {
+        path: '/',
+      });
+
+      res.clearCookie(cookies.refreshTokenName, {
+        path: this.getDynamicPath(req),
+      });
       throw new HttpException('Invalid session', HttpStatus.UNAUTHORIZED);
     }
   }
@@ -298,14 +329,15 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({ summary: 'User logout' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
-    let token = req.cookies?.['refresh_token'] || dto.refreshToken;
+    const cookies = this.cookieService.get(req);
+    let token = req.cookies?.[cookies.refreshTokenName] || dto.refreshToken;
     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
     }
-
+    
     await this.authService.logout(token);
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+    res.clearCookie(cookies.accessTokenName, { path: '/' });
+    res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
 
     return { message: 'Logged out successfully' };
   }
@@ -332,8 +364,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Delete user account and all associated data' })
   async deleteAccount(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     await this.authService.deleteAccount(req.user.uid);
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: this.getDynamicPath(req) });
+    const cookies = this.cookieService.get(req);
+    res.clearCookie(cookies.accessTokenName, { path: '/' });
+    res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
     return { message: 'Account deleted successfully' };
   }
 

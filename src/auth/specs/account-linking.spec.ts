@@ -5,15 +5,24 @@ import { AuthTransport } from '../enums/auth-type.enum';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('AuthController Account Linking', () => {
     let controller: AuthController;
     let authService: AuthService;
+    let authCookieService: AuthCookieService;
 
     const mockAuthService = {
         signup: jest.fn(),
     };
 
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'access_token',
+            refreshTokenName: 'refresh_token',
+        }),
+    };
+    
     const mockOptions = {
         transport: [AuthTransport.BEARER],
     };
@@ -37,6 +46,7 @@ describe('AuthController Account Linking', () => {
             providers: [
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
+                { provide: AuthCookieService, useValue: mockCookieService },
             ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
@@ -44,6 +54,7 @@ describe('AuthController Account Linking', () => {
 
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);
+        authCookieService = module.get<AuthCookieService>(AuthCookieService);
     });
 
     afterEach(() => {

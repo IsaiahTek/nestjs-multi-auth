@@ -17,6 +17,7 @@ import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 import { AuthStrategy } from '../enums/auth-type.enum';
 import { JwtService } from '@nestjs/jwt';
 import { CurrentAuth } from '../decorator/current-user.decorator';
+import { AuthCookieService } from '../core/cookie-namespace.resolver';
 
 describe('Login verification flow', () => {
     let service: AuthService;
@@ -38,6 +39,13 @@ describe('Login verification flow', () => {
     };
     const mockJwtService = {
         signAsync: jest.fn().mockResolvedValue('mock-token'),
+    };
+
+    const mockCookieService = {
+        get: jest.fn().mockReturnValue({
+            accessTokenName: 'root_access_token',
+            refreshTokenName: 'root_refresh_token',
+        }),
     };
 
     beforeAll(async () => {
@@ -65,6 +73,7 @@ describe('Login verification flow', () => {
             .overrideProvider(GoogleAuthStrategy).useValue({})
             .overrideProvider(AppleAuthStrategy).useValue({})
             .overrideProvider(FacebookAuthStrategy).useValue({})
+            .overrideProvider(AuthCookieService).useValue(mockCookieService)
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 

@@ -11,10 +11,12 @@ import { MagicLinkRequestDto } from './dto/requests/magic-link.dto';
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import type { Response, Request } from 'express';
+import { AuthCookieService } from './core/cookie-namespace.resolver';
 export declare class AuthController {
     private authService;
     private options;
-    constructor(authService: AuthService, options: AuthModuleOptions);
+    private cookieService;
+    constructor(authService: AuthService, options: AuthModuleOptions, cookieService: AuthCookieService);
     private getTransports;
     private getDynamicPath;
     private setCookies;
