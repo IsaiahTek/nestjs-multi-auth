@@ -1,8 +1,9 @@
-export type IdentifierType = "EMAIL" | string;
-export type IdentifierSource = "LOCAL" | string;
+import { AuthStrategy } from "../enums/auth-type.enum";
+import { AuthIdentifier } from "../entities/auth-identify.entity";
+
 
 export interface Identifier {
-  type: IdentifierType;
+  type: AuthIdentifier;
   value: string;
   verifiedBy: string | null;
   id: string;
@@ -10,13 +11,13 @@ export interface Identifier {
   updatedAt: string; // ISO date
   deletedAt: string | null;
   isVerified: boolean;
-  source: IdentifierSource;
+  source: AuthStrategy;
 }
 
 export interface AuthDTO {
   id: string;
   uid: string;
-  strategy: "EMAIL" | string;
+  strategy: AuthStrategy;
   isPrimary: boolean;
   isActive: boolean;
   isVerified: boolean;
@@ -28,7 +29,11 @@ export interface AuthDTO {
   deletedAt: string | null;
 }
 
-export interface AuthWithIdentifierResponse {
+export interface SignupEventBody {
   auth: AuthDTO;
   identifier: Identifier;
+  /**
+   * Extra data passed during signup
+   */
+  extraData?: Record<string, unknown>;
 }

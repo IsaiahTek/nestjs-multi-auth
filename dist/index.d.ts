@@ -23,3 +23,4 @@ export * from './auth/enums/auth.events';
 export * from './auth/entities/entities';
 export * from './auth/interfaces/auth-notification-provider.interface';
 export * from './auth/interfaces/signin-event-body.interface';
+export * from './auth/interfaces/signup-event-body.interface';

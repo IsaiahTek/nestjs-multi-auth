@@ -127,7 +127,7 @@ export class AuthService {
     }
 
     let auth: Auth;
-    let identifier: any;
+    let identifier: AuthIdentifier;
     switch (dto.method) {
       case AuthStrategy.EMAIL:
       case AuthStrategy.PHONE:
@@ -184,7 +184,7 @@ export class AuthService {
     const tokens = await this.createSession(auth.uid, userAgent, ip);
 
     if (this.eventEmitter) {
-      this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier });
+      this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
     }
 
     return { ...tokens, auth: filteredAuth };
@@ -626,7 +626,7 @@ export class AuthService {
     if (this.notificationProvider?.sendPasswordChangedNotification) {
       const secureToken = crypto.randomBytes(32).toString('hex');
       const tokenHash = await bcrypt.hash(secureToken, 10);
-      
+
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
@@ -635,7 +635,7 @@ export class AuthService {
         `SELECT value FROM auth_identifiers WHERE "authId" = $1 AND type = 'EMAIL' LIMIT 1`,
         [auth.id]
       );
-      
+
       if (identifier[0]) {
         await this.otpRepo.save(this.otpRepo.create({
           identifier: identifier[0].value,
@@ -647,7 +647,7 @@ export class AuthService {
         }));
 
         const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${secureToken}&uid=${auth.uid}`;
-        
+
         await this.notificationProvider.sendPasswordChangedNotification(identifier[0].value, {
           ip: ip || 'Unknown',
           userAgent: userAgent || 'Unknown',
@@ -716,7 +716,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     const hash = await bcrypt.hash(token, 10);
-    
+
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 

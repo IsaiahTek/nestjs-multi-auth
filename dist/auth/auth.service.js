@@ -148,7 +148,7 @@ let AuthService = AuthService_1 = class AuthService {
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip);
         if (this.eventEmitter) {
-            this.eventEmitter.emit(auth_events_1.AuthEvents.SIGNUP, { auth: filteredAuth, identifier });
+            this.eventEmitter.emit(auth_events_1.AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
         }
         return { ...tokens, auth: filteredAuth };
     }

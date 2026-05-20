@@ -10,4 +10,10 @@ export declare class SignupDto {
      * For OAuth / OTP verification
      */
     token?: string;
+    /**
+     * Extra data to be returned along the signup event payload.
+     * This is useful for passing additional information about the user
+     * that may be needed for other purposes.
+     */
+    extraData?: Record<string, unknown>;
 }

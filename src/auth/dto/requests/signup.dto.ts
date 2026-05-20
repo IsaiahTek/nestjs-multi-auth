@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsEnum,
   IsPhoneNumber,
+  IsObject,
 } from 'class-validator';
 import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
 
@@ -57,4 +58,25 @@ export class SignupDto {
   @IsOptional()
   @IsString()
   token?: string;
+
+  /**
+   * Extra data to be returned along the signup event payload.
+   * This is useful for passing additional information about the user
+   * that may be needed for other purposes.
+   */
+  @ApiProperty({
+    description: `Extra data to be returned along the signup event payload. \n` +
+      `This is useful for passing additional information about the user\n` +
+      `that may be needed for other purposes. \n` +
+      `No extra validation is done on this data and it is not stored anywhere by the library, it is simply passed along to the event payload. \n` +
+      `The extraData field can be used to pass any additional data that may be needed for other purposes. \n` +
+      `For example, if you are using the signup event to create a new user profile in your application, you can pass the user's profile data in the extraData field. \n` +
+      `The extraData field is optional and can be omitted if no extra data is needed.`,
+    required: false,
+    example: { name: 'John Doe', role: 'user', avatar: 'https://example.com/avatar.jpg', username: 'johndoe', bio: 'Software Engineer' },
+    additionalProperties: true,
+  })
+  @IsOptional()
+  @IsObject()
+  extraData?: Record<string, unknown>;
 }
