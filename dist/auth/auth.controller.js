@@ -44,27 +44,26 @@ let AuthController = class AuthController {
         return Array.isArray(t) ? t : [t];
     }
     getDynamicPath(req) {
-        const baseUrl = req.originalUrl.split('?')[0];
-        const lastSlashIndex = baseUrl.lastIndexOf('/');
-        return baseUrl.substring(0, lastSlashIndex) + '/refresh';
+        return this.options.refreshTokenPath || '/auth/refresh';
     }
     setCookies(res, req, accessToken, refreshToken) {
         const isProduction = process.env.NODE_ENV === 'production';
         const refreshPath = this.getDynamicPath(req);
-        // IMPORTANT: must match JWT strategy namespace logic
         const cookies = this.cookieService.get(req);
+        const sameSite = this.options.cookieSameSite ?? (isProduction ? 'lax' : 'none');
+        const secure = this.options.cookieSecure ?? sameSite === 'none' ? true : isProduction;
         res.cookie(cookies.refreshTokenName, refreshToken, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'lax' : 'lax',
+            secure,
+            sameSite,
             path: refreshPath,
             maxAge: (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn ||
                 '7d', 7 * 24 * 60 * 60) * 1000,
         });
         res.cookie(cookies.accessTokenName, accessToken, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'lax' : 'lax',
+            secure,
+            sameSite,
             path: '/',
             maxAge: (0, duration_util_1.parseDuration)(this.options.accessTokenExpiresIn ||
                 '15m', 15 * 60) * 1000,

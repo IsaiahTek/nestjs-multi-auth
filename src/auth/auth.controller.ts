@@ -50,9 +50,7 @@ export class AuthController {
   }
 
   private getDynamicPath(req: Request) {
-    const baseUrl = req.originalUrl.split('?')[0];
-    const lastSlashIndex = baseUrl.lastIndexOf('/');
-    return baseUrl.substring(0, lastSlashIndex) + '/refresh';
+    return this.options.refreshTokenPath || '/auth/refresh';
   }
 
   private setCookies(
@@ -61,18 +59,16 @@ export class AuthController {
     accessToken: string,
     refreshToken: string,
   ) {
-    const isProduction =
-      process.env.NODE_ENV === 'production';
-
+    const isProduction = process.env.NODE_ENV === 'production';
     const refreshPath = this.getDynamicPath(req);
-
-    // IMPORTANT: must match JWT strategy namespace logic
     const cookies = this.cookieService.get(req);
+    const sameSite = this.options.cookieSameSite ?? (isProduction ? 'lax' : 'none');
+    const secure = this.options.cookieSecure ?? sameSite === 'none' ? true : isProduction;
 
     res.cookie(cookies.refreshTokenName, refreshToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'lax' : 'lax',
+      secure,
+      sameSite,
       path: refreshPath,
       maxAge:
         parseDuration(
@@ -84,8 +80,8 @@ export class AuthController {
 
     res.cookie(cookies.accessTokenName, accessToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'lax' : 'lax',
+      secure,
+      sameSite,
       path: '/',
       maxAge:
         parseDuration(
@@ -334,7 +330,7 @@ export class AuthController {
     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
     }
-    
+
     await this.authService.logout(token);
     res.clearCookie(cookies.accessTokenName, { path: '/' });
     res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });

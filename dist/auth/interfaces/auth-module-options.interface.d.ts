@@ -17,6 +17,19 @@ export interface AuthModuleOptions {
      */
     cookieNameResolver?: (req: Request) => CookieNameConfig;
     /**
+     * Optional: SameSite policy for auth cookies.
+     * Defaults to 'lax' in production and 'none' in development.
+     * Use 'none' for cross-subdomain local dev (e.g. admin.localhost → localhost:3002).
+     * Note: 'none' sets Secure=true automatically; Chrome allows this for localhost over HTTP.
+     */
+    cookieSameSite?: 'lax' | 'strict' | 'none';
+    /**
+     * Optional: If true, cookies will be explicitly marked as Secure=true.
+     * Defaults to true in production, false in development.
+     * Note: 'none' sameSite policy requires cookies to be Secure.
+     */
+    cookieSecure?: boolean;
+    /**
      * Secret key for signing Refresh Tokens
      */
     jwtRefreshSecret: string;
@@ -28,6 +41,11 @@ export interface AuthModuleOptions {
      * Optional: Custom expiration for Refresh Tokens (e.g., '7d')
      */
     refreshTokenExpiresIn?: string;
+    /**
+     * Optional: Path for the refresh token cookie
+     * Default to '/auth/refresh'
+     */
+    refreshTokenPath?: string;
     /**
      * If true, the library will NOT automatically register the global JwtAuthGuard.
      *

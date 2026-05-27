@@ -11,162 +11,183 @@ export interface CookieNameConfig {
 }
 
 export interface AuthModuleOptions {
-    /**
-     * Secret key for signing Access Tokens
-     */
-    jwtSecret: string;
+  /**
+   * Secret key for signing Access Tokens
+   */
+  jwtSecret: string;
 
-    /**
-     * Optional: Custom cookie name resolver
-     */
-    cookieNameResolver?: (req: Request) => CookieNameConfig;
+  /**
+   * Optional: Custom cookie name resolver
+   */
+  cookieNameResolver?: (req: Request) => CookieNameConfig;
 
-    /**
-     * Secret key for signing Refresh Tokens
-     */
-    jwtRefreshSecret: string;
+  /**
+   * Optional: SameSite policy for auth cookies.
+   * Defaults to 'lax' in production and 'none' in development.
+   * Use 'none' for cross-subdomain local dev (e.g. admin.localhost → localhost:3002).
+   * Note: 'none' sets Secure=true automatically; Chrome allows this for localhost over HTTP.
+   */
+  cookieSameSite?: 'lax' | 'strict' | 'none';
 
-    /**
-     * Optional: Custom expiration for Access Tokens (e.g., '15m')
-     */
-    accessTokenExpiresIn?: string;
+  /**
+   * Optional: If true, cookies will be explicitly marked as Secure=true.
+   * Defaults to true in production, false in development.
+   * Note: 'none' sameSite policy requires cookies to be Secure.
+   */
+  cookieSecure?: boolean;
 
-    /**
-     * Optional: Custom expiration for Refresh Tokens (e.g., '7d')
-     */
-    refreshTokenExpiresIn?: string;
+  /**
+   * Secret key for signing Refresh Tokens
+   */
+  jwtRefreshSecret: string;
 
-    /**
-     * If true, the library will NOT automatically register the global JwtAuthGuard.
-     * 
-     * IMPORTANT: When this is set to true, decorators like @CurrentAuth() will return 
-     * undefined unless you manually apply a guard (e.g., @UseGuards(JwtAuthGuard)) 
-     * to the controller or route.
-     */
-    disableGlobalGuard?: boolean;
+  /**
+   * Optional: Custom expiration for Access Tokens (e.g., '15m')
+   */
+  accessTokenExpiresIn?: string;
 
-    /**
-     * If true, the library will NOT register the default AuthController.
-     * Useful if you want to implement your own auth endpoints using AuthService.
-     */
-    disableController?: boolean;
+  /**
+   * Optional: Custom expiration for Refresh Tokens (e.g., '7d')
+   */
+  refreshTokenExpiresIn?: string;
 
-    /**
-     * Transport methods to support (COOKIE, BEARER, or BOTH)
-     */
-    transport?: AuthTransport | AuthTransport[];
+  /**
+   * Optional: Path for the refresh token cookie
+   * Default to '/auth/refresh'
+   */
+  refreshTokenPath?: string;
 
-    /**
-     * Optional: Pluggable provider for sending notifications (OTPs).
-     */
-    notificationProvider?: Type<AuthNotificationProvider>;
+  /**
+   * If true, the library will NOT automatically register the global JwtAuthGuard.
+   * 
+   * IMPORTANT: When this is set to true, decorators like @CurrentAuth() will return 
+   * undefined unless you manually apply a guard (e.g., @UseGuards(JwtAuthGuard)) 
+   * to the controller or route.
+   */
+  disableGlobalGuard?: boolean;
 
-    /**
-     * If true, identities MUST be verified before they can log in.
-     * Requires a notificationProvider to be configured.
-     */
-    verificationRequired?: boolean;
+  /**
+   * If true, the library will NOT register the default AuthController.
+   * Useful if you want to implement your own auth endpoints using AuthService.
+   */
+  disableController?: boolean;
 
-    /**
-     * Optional: List of modules to import into the AuthModule context.
-     * Use this if your notificationProvider requires specific providers from other modules.
-     */
-    imports?: any[];
+  /**
+   * Transport methods to support (COOKIE, BEARER, or BOTH)
+   */
+  transport?: AuthTransport | AuthTransport[];
 
-    /**
-     * Google OAuth Client ID for token verification
-     */
-    googleClientId?: string;
+  /**
+   * Optional: Pluggable provider for sending notifications (OTPs).
+   */
+  notificationProvider?: Type<AuthNotificationProvider>;
 
-    /**
-     * Facebook App ID for token verification
-     */
-    facebookAppId?: string;
+  /**
+   * If true, identities MUST be verified before they can log in.
+   * Requires a notificationProvider to be configured.
+   */
+  verificationRequired?: boolean;
 
-    /**
-     * Facebook App Secret for App Secret Proof security
-     */
-    facebookAppSecret?: string;
+  /**
+   * Optional: List of modules to import into the AuthModule context.
+   * Use this if your notificationProvider requires specific providers from other modules.
+   */
+  imports?: any[];
 
-    /**
-     * Apple Client ID (Services ID or App ID)
-     */
-    appleClientId?: string;
+  /**
+   * Google OAuth Client ID for token verification
+   */
+  googleClientId?: string;
 
-    /**
-     * Apple Team ID (optional)
-     */
-    appleTeamId?: string;
+  /**
+   * Facebook App ID for token verification
+   */
+  facebookAppId?: string;
 
-    /**
-     * Optional: List of enabled authentication strategies.
-     * If not provided, all strategies are enabled by default.
-     */
-    enabledStrategies?: AuthStrategy[];
+  /**
+   * Facebook App Secret for App Secret Proof security
+   */
+  facebookAppSecret?: string;
 
-    /**
-     * Optional: If true, email-based authentication REQUIRES a password.
-     * Defaults to true.
-     */
-    emailRequiresPassword?: boolean;
+  /**
+   * Apple Client ID (Services ID or App ID)
+   */
+  appleClientId?: string;
 
-    /**
-     * Optional: If true, username-based authentication REQUIRES a password.
-     * Defaults to true.
-     */
-    usernameRequiresPassword?: boolean;
+  /**
+   * Apple Team ID (optional)
+   */
+  appleTeamId?: string;
 
-    /**
-     * Optional: If true, phone-based authentication REQUIRES a password.
-     * Defaults to false (password-less phone auth allowed).
-     */
-    phoneRequiresPassword?: boolean;
+  /**
+   * Optional: List of enabled authentication strategies.
+   * If not provided, all strategies are enabled by default.
+   */
+  enabledStrategies?: AuthStrategy[];
 
-    /**
-     * Optional: Duration for OTP expiration in minutes.
-     * Defaults to 15 minutes.
-     */
-    otpExpiresIn?: number;
+  /**
+   * Optional: If true, email-based authentication REQUIRES a password.
+   * Defaults to true.
+   */
+  emailRequiresPassword?: boolean;
 
-    /**
-     * Optional: Minimum interval between OTP resends in seconds.
-     * Defaults to 60 seconds.
-     */
-    otpResendInterval?: number;
+  /**
+   * Optional: If true, username-based authentication REQUIRES a password.
+   * Defaults to true.
+   */
+  usernameRequiresPassword?: boolean;
 
-    /**
-     * Optional: Application name shown in TOTP apps (e.g., Google Authenticator)
-     */
-    appName?: string;
+  /**
+   * Optional: If true, phone-based authentication REQUIRES a password.
+   * Defaults to false (password-less phone auth allowed).
+   */
+  phoneRequiresPassword?: boolean;
 
-    /**
-     * Optional: Max number of requests within the ttl (default: 10)
-     */
-    throttlerLimit?: number;
+  /**
+   * Optional: Duration for OTP expiration in minutes.
+   * Defaults to 15 minutes.
+   */
+  otpExpiresIn?: number;
 
-    /**
-     * Optional: Time to live for the throttler in seconds (default: 60)
-     */
-    throttlerTtl?: number;
+  /**
+   * Optional: Minimum interval between OTP resends in seconds.
+   * Defaults to 60 seconds.
+   */
+  otpResendInterval?: number;
 
-    /**
-     * Optional: If true, the built-in rate limiting is disabled.
-     */
-    disableThrottler?: boolean;
+  /**
+   * Optional: Application name shown in TOTP apps (e.g., Google Authenticator)
+   */
+  appName?: string;
 
-    /**
-     * Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
-     * If provided, all phone-based signups and signins must match one of these prefixes.
-     */
-    allowedPhonePrefixes?: string[];
+  /**
+   * Optional: Max number of requests within the ttl (default: 10)
+   */
+  throttlerLimit?: number;
 
-    /**
-     * If true, the library will automatically run migrations on startup.
-     */
-    autoMigrate?: boolean;
+  /**
+   * Optional: Time to live for the throttler in seconds (default: 60)
+   */
+  throttlerTtl?: number;
 
-    /**
-     * The URL of the frontend application (used for Magic Links and Security Alerts).
-     */
-    frontendUrl?: string;
+  /**
+   * Optional: If true, the built-in rate limiting is disabled.
+   */
+  disableThrottler?: boolean;
+
+  /**
+   * Optional: List of allowed phone number prefixes (e.g. ['+234', '+44']).
+   * If provided, all phone-based signups and signins must match one of these prefixes.
+   */
+  allowedPhonePrefixes?: string[];
+
+  /**
+   * If true, the library will automatically run migrations on startup.
+   */
+  autoMigrate?: boolean;
+
+  /**
+   * The URL of the frontend application (used for Magic Links and Security Alerts).
+   */
+  frontendUrl?: string;
 }
