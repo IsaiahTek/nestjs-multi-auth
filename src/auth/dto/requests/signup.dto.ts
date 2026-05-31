@@ -33,7 +33,7 @@ export class SignupDto {
 
 
   @ApiProperty({ example: '+2347035742844', required: false })
-  @IsPhoneNumber('NG')
+  @IsPhoneNumber()
   @IsOptional()
   phone?: string;
 

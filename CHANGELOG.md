@@ -1,3 +1,7 @@
+# v0.1.10
+## Phone Auth with Internationalized Numbers
+1. This release fixed bugs and issues around phone auth and support for internationalized phone numbers.
+
 # v0.1.9
 ## Cookie Path Configuration
 1. This release adds support for configuring the refresh token cookie path via the `refreshTokenPath` option in `AuthModuleOptions`. The default value is now set to '/auth/refresh' instead of '/'.
