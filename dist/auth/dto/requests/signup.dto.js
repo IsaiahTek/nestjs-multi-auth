@@ -40,7 +40,7 @@ __decorate([
 ], SignupDto.prototype, "provider", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: '+2347035742844', required: false }),
-    (0, class_validator_1.IsPhoneNumber)('NG'),
+    (0, class_validator_1.Matches)(/^\+?[0-9]{7,15}$/, { message: 'phone must be a valid phone number with country code' }),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], SignupDto.prototype, "phone", void 0);

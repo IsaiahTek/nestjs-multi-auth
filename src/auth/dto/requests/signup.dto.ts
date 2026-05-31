@@ -6,7 +6,7 @@ import {
   MinLength,
   IsOptional,
   IsEnum,
-  IsPhoneNumber,
+  Matches,
   IsObject,
 } from 'class-validator';
 import { AuthStrategy, OAuthProviderType } from '../../enums/auth-type.enum';
@@ -33,7 +33,7 @@ export class SignupDto {
 
 
   @ApiProperty({ example: '+2347035742844', required: false })
-  @IsPhoneNumber()
+  @Matches(/^\+?[0-9]{7,15}$/, { message: 'phone must be a valid phone number with country code' })
   @IsOptional()
   phone?: string;
 

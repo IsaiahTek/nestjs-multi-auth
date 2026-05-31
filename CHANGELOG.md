@@ -1,3 +1,7 @@
+# v0.1.11
+## Phone Auth Regex Validation
+1. This release fixes an issue where the phone auth regex was not working as expected.
+
 # v0.1.10
 ## Phone Auth with Internationalized Numbers
 1. This release fixed bugs and issues around phone auth and support for internationalized phone numbers.
