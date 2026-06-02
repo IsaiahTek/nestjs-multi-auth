@@ -190,4 +190,20 @@ export interface AuthModuleOptions {
    * The URL of the frontend application (used for Magic Links and Security Alerts).
    */
   frontendUrl?: string;
+
+  /**
+   * Optional: Enable debug mode. When true, some operations can use default values (e.g., OTP).
+   */
+  debugMode?: boolean;
+
+  /**
+   * Optional: Default OTP to use when debugMode is true.
+   */
+  defaultOtp?: string;
+
+  /**
+   * Optional: If true, Google OAuth will not automatically mark accounts/identifiers as verified,
+   * forcing the user to undergo the standard OTP verification flow even if Google verified their email.
+   */
+  forceVerificationOnGoogle?: boolean;
 }

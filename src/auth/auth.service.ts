@@ -316,7 +316,9 @@ export class AuthService {
     }
 
     // 2. Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = (this.options.debugMode && this.options.defaultOtp)
+      ? this.options.defaultOtp
+      : Math.floor(100000 + Math.random() * 900000).toString();
     const hash = await bcrypt.hash(code, 10);
 
     // 3. Save OTP Token
@@ -541,7 +543,9 @@ export class AuthService {
     const primaryAuth = identifier[0];
 
     // 2. Generate OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = (this.options.debugMode && this.options.defaultOtp)
+      ? this.options.defaultOtp
+      : Math.floor(100000 + Math.random() * 900000).toString();
     const hash = await bcrypt.hash(code, 10);
 
     const expiresAt = new Date();

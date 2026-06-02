@@ -771,6 +771,9 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `throttlerTtl` | `number` | `60` | Throttle window duration in seconds. |
 | `disableThrottler` | `boolean` | `false` | Disable the built-in rate limiting entirely. |
 | `autoMigrate` | `boolean` | `false` | Automatically run database schema migrations on startup. |
+| `debugMode` | `boolean` | `false` | Enable debug mode (allows using `defaultOtp`). |
+| `defaultOtp` | `string` | — | A static OTP value to use when `debugMode` is enabled. |
+| `forceVerificationOnGoogle` | `boolean` | `false` | Force OTP validation for Google OAuth, bypassing Google's `email_verified`. |
 
 ---
 ## Advanced Config

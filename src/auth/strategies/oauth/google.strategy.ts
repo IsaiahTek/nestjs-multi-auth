@@ -82,7 +82,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
         uid: identityUid,
         strategy: AuthStrategy.OAUTH,
         isActive: true,
-        isVerified: payload.email_verified || false,
+        isVerified: this.options.forceVerificationOnGoogle ? false : (payload.email_verified || false),
         isPrimary: true,
       });
 
@@ -92,7 +92,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
           identifierRepo.create({
             type: IdentifierType.EMAIL,
             value: email,
-            isVerified: payload.email_verified || false,
+            isVerified: this.options.forceVerificationOnGoogle ? false : (payload.email_verified || false),
             source: IdentifierSource.GOOGLE,
             verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
           })
@@ -218,7 +218,9 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
 
         // always normalize + update
         identifier.value = email;
-        identifier.isVerified = payload.email_verified ?? false;
+        if (!this.options.forceVerificationOnGoogle) {
+          identifier.isVerified = payload.email_verified ?? false;
+        }
         identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
         identifier.source = IdentifierSource.GOOGLE;
 

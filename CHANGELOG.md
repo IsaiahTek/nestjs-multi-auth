@@ -1,3 +1,10 @@
+# v0.1.12
+## Force Verification on Google
+1. This release adds `forceVerificationOnGoogle` option to `AuthModuleOptions` which allows developers to force OTP validation even for Google if they want to.
+
+## Debug Mode and Default OTP
+1. This release adds support for `debugMode` and `defaultOtp` options in `AuthModuleOptions`.
+
 # v0.1.11
 ## Phone Auth Regex Validation
 1. This release fixes an issue where the phone auth regex was not working as expected.
