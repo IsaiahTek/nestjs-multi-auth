@@ -280,7 +280,9 @@ let AuthService = AuthService_1 = class AuthService {
             primaryIdentifier = fullAuth?.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
         }
         if (!primaryIdentifier) {
-            this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
+            if (this.options.debug) {
+                this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
+            }
             return;
         }
         // 2. Generate 6-digit code
@@ -393,6 +395,9 @@ let AuthService = AuthService_1 = class AuthService {
                 throw new common_1.ForbiddenException('Device mismatch');
             }
             if (session.namespace !== namespace) {
+                if (this.options.debug) {
+                    this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`);
+                }
                 await this.sessionRepository.delete(session.id);
                 throw new common_1.ForbiddenException("Namespace mismatch");
             }
@@ -421,7 +426,9 @@ let AuthService = AuthService_1 = class AuthService {
             return tokens;
         }
         catch (e) {
-            this.logger.error('Error refreshing tokens', e);
+            if (this.options.debug) {
+                this.logger.error('Error refreshing tokens', e);
+            }
             throw new common_1.ForbiddenException('Invalid request');
         }
     }
@@ -439,7 +446,9 @@ let AuthService = AuthService_1 = class AuthService {
             }
         }
         catch (e) {
-            this.logger.error('Error logging out', e);
+            if (this.options.debug) {
+                this.logger.error('Error logging out', e);
+            }
         }
     }
     // --- PASSWORD MANAGEMENT & SECURITY ---

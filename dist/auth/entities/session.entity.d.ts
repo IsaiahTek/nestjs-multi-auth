@@ -16,5 +16,6 @@ export declare class Session {
         ipAddress: string;
         expiresAt: Date;
         createdAt: Date;
+        namespace: string;
     };
 }

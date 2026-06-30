@@ -51,6 +51,7 @@ export class Session {
       ipAddress: this.ipAddress,
       expiresAt: this.expiresAt,
       createdAt: this.createdAt,
+      namespace: this.namespace,
     };
   }
 }

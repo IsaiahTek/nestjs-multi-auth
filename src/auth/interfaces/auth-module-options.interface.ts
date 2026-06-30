@@ -240,5 +240,11 @@ export interface AuthModuleOptions {
    * Optional: Session Creation on login or Reuse if existing
    * Default: `SessionCreationPolicy.ALWAYS_NEW` Always create on login
    */
-  sessionCreationPolicy?: SessionCreationPolicy
+  sessionCreationPolicy?: SessionCreationPolicy;
+
+  /**
+   * Optional: Flag to print logs in console if set to `true`.
+   * Default is `false`
+   */
+  debug?: boolean
 }

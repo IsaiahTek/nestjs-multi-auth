@@ -336,7 +336,9 @@ export class AuthService {
     }
 
     if (!primaryIdentifier) {
-      this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
+      if (this.options.debug) {
+        this.logger.warn(`No email or phone found for Auth UID: ${auth.uid}. Verification skipped.`);
+      }
       return;
     }
 
@@ -488,6 +490,9 @@ export class AuthService {
       }
 
       if (session.namespace !== namespace) {
+        if (this.options.debug) {
+          this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`)
+        }
         await this.sessionRepository.delete(session.id);
         throw new ForbiddenException("Namespace mismatch")
       }
@@ -527,7 +532,9 @@ export class AuthService {
 
       return tokens;
     } catch (e) {
-      this.logger.error('Error refreshing tokens', e);
+      if (this.options.debug) {
+        this.logger.error('Error refreshing tokens', e);
+      }
       throw new ForbiddenException('Invalid request');
     }
   }
@@ -546,7 +553,9 @@ export class AuthService {
         }
       }
     } catch (e) {
-      this.logger.error('Error logging out', e);
+      if (this.options.debug) {
+        this.logger.error('Error logging out', e);
+      }
     }
   }
 
