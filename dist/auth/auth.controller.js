@@ -199,7 +199,7 @@ let AuthController = class AuthController {
         if (!token)
             throw new common_1.BadRequestException('Refresh token is required');
         try {
-            const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip, namespace);
+            const tokens = await this.authService.refreshTokens({ refreshToken: token, currentUserAgent: req.headers['user-agent'] || '', currentIp: req.ip, namespace });
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, tokens.accessToken, tokens.refreshToken);
             }

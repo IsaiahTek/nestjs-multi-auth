@@ -72,16 +72,40 @@ let AuthService = AuthService_1 = class AuthService {
         const durationSeconds = (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
         expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
         const deviceFingerprint = this.fingerprint(userAgent);
-        const session = this.sessionRepository.create({
-            uid,
-            namespace,
-            deviceFingerprint,
-            ipAddress: ip,
-            expiresAt,
-            refreshTokenHash: '',
-            userAgent,
-        });
-        await this.sessionRepository.save(session);
+        let session;
+        const _createSession = () => {
+            return this.sessionRepository.create({
+                id: crypto.randomUUID(),
+                uid,
+                namespace,
+                deviceFingerprint,
+                ipAddress: ip,
+                expiresAt,
+                refreshTokenHash: '',
+                userAgent,
+            });
+        };
+        if (this.options.sessionCreationPolicy === auth_module_options_interface_1.SessionCreationPolicy.REUSE_DEVICE) {
+            session = await this.sessionRepository.findOne({
+                where: {
+                    uid,
+                    namespace,
+                    deviceFingerprint,
+                },
+            });
+            if (session) {
+                session.expiresAt = expiresAt;
+                session.ipAddress = ip;
+                session.userAgent = userAgent;
+                session.deviceFingerprint = deviceFingerprint;
+            }
+            else {
+                session = _createSession();
+            }
+        }
+        else {
+            session = _createSession();
+        }
         const tokens = await this.generateTokens(uid, session.id, namespace);
         session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
         await this.sessionRepository.save(session);
@@ -347,7 +371,7 @@ let AuthService = AuthService_1 = class AuthService {
         await this.sendVerification(auth);
         return { message: 'Verification code resent' };
     }
-    async refreshTokens(refreshToken, currentUserAgent, currentIp, namespace) {
+    async refreshTokens({ refreshToken, currentUserAgent, currentIp, namespace }) {
         try {
             const payload = await this.jwtService.verifyAsync(refreshToken, { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET });
             const session = await this.sessionRepository.findOne({
@@ -367,6 +391,10 @@ let AuthService = AuthService_1 = class AuthService {
             if (session.deviceFingerprint !== incomingFingerprint) {
                 await this.sessionRepository.delete(session.id);
                 throw new common_1.ForbiddenException('Device mismatch');
+            }
+            if (session.namespace !== namespace) {
+                await this.sessionRepository.delete(session.id);
+                throw new common_1.ForbiddenException("Namespace mismatch");
             }
             if (new Date() > session.expiresAt) {
                 await this.sessionRepository.delete(session.id);
@@ -719,6 +747,14 @@ let AuthService = AuthService_1 = class AuthService {
                 await this.authRepo.save(remainingAuth);
             }
         }
+    }
+    async getSessions({ uid, namespace }) {
+        const whereClause = { uid };
+        if (typeof namespace === "string") {
+            whereClause.namespace = namespace;
+        }
+        const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
+        return (await sessions).map((d) => Object.assign(new session_entity_1.Session(), d.toMap()));
     }
 };
 exports.AuthService = AuthService;

@@ -21,7 +21,7 @@ import { Session } from './entities/session.entity';
 import { OtpToken, OtpPurpose } from './entities/otp-token.entity';
 import { MfaMethod, MfaType } from './entities/mfa-method.entity';
 import { authenticator } from 'otplib';
-import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
+import { AUTH_MODULE_OPTIONS, AuthModuleOptions, SessionCreationPolicy } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import * as crypto from 'crypto';
 import { parseDuration } from './utils/duration.util';
@@ -98,18 +98,41 @@ export class AuthService {
     expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
 
     const deviceFingerprint = this.fingerprint(userAgent);
+    let session: Session;
 
-    const session = this.sessionRepository.create({
-      uid,
-      namespace,
-      deviceFingerprint,
-      ipAddress: ip,
-      expiresAt,
-      refreshTokenHash: '',
-      userAgent,
-    });
+    const _createSession = (): Session => {
+      return this.sessionRepository.create({
+        id: crypto.randomUUID(),
+        uid,
+        namespace,
+        deviceFingerprint,
+        ipAddress: ip,
+        expiresAt,
+        refreshTokenHash: '',
+        userAgent,
+      })
+    }
 
-    await this.sessionRepository.save(session);
+    if (this.options.sessionCreationPolicy === SessionCreationPolicy.REUSE_DEVICE) {
+      session = await this.sessionRepository.findOne({
+        where: {
+          uid,
+          namespace,
+          deviceFingerprint,
+        },
+      });
+      if (session) {
+        session.expiresAt = expiresAt;
+        session.ipAddress = ip;
+        session.userAgent = userAgent;
+        session.deviceFingerprint = deviceFingerprint;
+      } else {
+        session = _createSession();
+      }
+    } else {
+      session = _createSession();
+
+    }
 
     const tokens = await this.generateTokens(uid, session.id, namespace);
 
@@ -432,12 +455,12 @@ export class AuthService {
     return { message: 'Verification code resent' };
   }
 
-  async refreshTokens(
+  async refreshTokens({ refreshToken, currentUserAgent, currentIp, namespace }: {
     refreshToken: string,
     currentUserAgent: string,
     currentIp?: string,
-    namespace?: string,
-  ) {
+    namespace: string,
+  }) {
     try {
       const payload = await this.jwtService.verifyAsync<{ sessionId: string }>(
         refreshToken,
@@ -462,6 +485,11 @@ export class AuthService {
       if (session.deviceFingerprint !== incomingFingerprint) {
         await this.sessionRepository.delete(session.id);
         throw new ForbiddenException('Device mismatch');
+      }
+
+      if (session.namespace !== namespace) {
+        await this.sessionRepository.delete(session.id);
+        throw new ForbiddenException("Namespace mismatch")
       }
 
       if (new Date() > session.expiresAt) {
@@ -913,5 +941,14 @@ export class AuthService {
         await this.authRepo.save(remainingAuth);
       }
     }
+  }
+
+  async getSessions({ uid, namespace }: { uid: string, namespace?: string }): Promise<Session[]> {
+    const whereClause: { uid: string, namespace?: string } = { uid };
+    if (typeof namespace === "string") {
+      whereClause.namespace = namespace;
+    }
+    const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
+    return (await sessions).map((d) => Object.assign(new Session(), d.toMap()));
   }
 }

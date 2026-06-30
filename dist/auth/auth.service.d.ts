@@ -155,7 +155,12 @@ export declare class AuthService {
     resendVerification(uid: string): Promise<{
         message: string;
     }>;
-    refreshTokens(refreshToken: string, currentUserAgent: string, currentIp?: string, namespace?: string): Promise<{
+    refreshTokens({ refreshToken, currentUserAgent, currentIp, namespace }: {
+        refreshToken: string;
+        currentUserAgent: string;
+        currentIp?: string;
+        namespace: string;
+    }): Promise<{
         accessToken: string;
         refreshToken: string;
     }>;
@@ -201,4 +206,8 @@ export declare class AuthService {
     viewAllMyAuthMethods(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
     deleteAccount(uid: string): Promise<void>;
     deleteAuthMethod(uid: string, authId: string): Promise<void>;
+    getSessions({ uid, namespace }: {
+        uid: string;
+        namespace?: string;
+    }): Promise<Session[]>;
 }

@@ -11,6 +11,8 @@
 
 ## Features
 1. Scoped sessions are now supported. See README.md for more information about this feature
+2. Added SessionCreationPolicy for configuring existing session reuse
+3. Add support for fetching sessions for a `uid` in `AuthService`
 
 # v0.1.11
 ## Phone Auth Regex Validation

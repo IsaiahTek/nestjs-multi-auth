@@ -18,6 +18,13 @@ export interface AuthContext {
     accessTokenName: string;
     refreshTokenName: string;
 }
+/**
+ * How session creation is done. Default is create session for every login without reusing old/existing session.
+ */
+export declare enum SessionCreationPolicy {
+    ALWAYS_NEW = 0,
+    REUSE_DEVICE = 1
+}
 export interface AuthModuleOptions {
     /**
      * Secret key for signing Access Tokens
@@ -187,4 +194,9 @@ export interface AuthModuleOptions {
      * forcing the user to undergo the standard OTP verification flow if they hadn't verified previously via OTP.
      */
     forceVerificationOnGoogleLogin?: boolean;
+    /**
+     * Optional: Session Creation on login or Reuse if existing
+     * Default: `SessionCreationPolicy.ALWAYS_NEW` Always create on login
+     */
+    sessionCreationPolicy?: SessionCreationPolicy;
 }

@@ -293,7 +293,7 @@ export class AuthController {
     if (!token) throw new BadRequestException('Refresh token is required');
 
     try {
-      const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip, namespace);
+      const tokens = await this.authService.refreshTokens({ refreshToken: token, currentUserAgent: req.headers['user-agent'] || '', currentIp: req.ip, namespace });
 
       if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
         this.setCookies(res, req, tokens.accessToken, tokens.refreshToken);
