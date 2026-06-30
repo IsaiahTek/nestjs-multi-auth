@@ -57,6 +57,7 @@ let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.Passp
         return {
             uid: user?.uid,
             sessionId: payload.sessionId,
+            namespace: payload.namespace,
             user,
         };
     }

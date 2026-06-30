@@ -15,6 +15,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
     validate(payload: JwtPayload): Promise<{
         uid: string;
         sessionId: string;
+        namespace: string;
         user: import("../dto/responses/auth-response.dto").AuthResponseDto;
     }>;
 }

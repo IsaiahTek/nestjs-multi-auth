@@ -376,8 +376,13 @@ let AuthService = AuthService_1 = class AuthService {
     async refreshTokens({ refreshToken, currentUserAgent, currentIp, namespace }) {
         try {
             const payload = await this.jwtService.verifyAsync(refreshToken, { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET });
+            const resolvedNamespace = namespace ?? payload.namespace;
+            const whereClause = { id: payload.sessionId };
+            if (resolvedNamespace) {
+                whereClause.namespace = resolvedNamespace;
+            }
             const session = await this.sessionRepository.findOne({
-                where: { id: payload.sessionId },
+                where: whereClause,
                 select: [
                     'id',
                     'uid',
@@ -394,7 +399,7 @@ let AuthService = AuthService_1 = class AuthService {
                 await this.sessionRepository.delete(session.id);
                 throw new common_1.ForbiddenException('Device mismatch');
             }
-            if (session.namespace !== namespace) {
+            if (session.namespace !== namespace && session.namespace !== resolvedNamespace) {
                 if (this.options.debug) {
                     this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`);
                 }

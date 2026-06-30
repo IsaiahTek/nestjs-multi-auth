@@ -1,3 +1,11 @@
+# v0.2.2
+## Fixed Namespace bug
+Fixed token refresh bug which was falsely throwing `Namespace mismatch` error.
+
+# v0.2.1
+## Debug in module config options
+Added a flag for printing logs to console in debug mode
+
 # v0.2.0
 ## Force Verification on Google
 1. This release splits the Google verification force option into `forceVerificationOnGoogleSignup` and `forceVerificationOnGoogleLogin` in `AuthModuleOptions` for finer control.

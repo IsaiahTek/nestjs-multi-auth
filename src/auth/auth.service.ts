@@ -464,13 +464,20 @@ export class AuthService {
     namespace: string,
   }) {
     try {
-      const payload = await this.jwtService.verifyAsync<{ sessionId: string }>(
+      const payload = await this.jwtService.verifyAsync<{ sessionId: string, namespace?: string }>(
         refreshToken,
         { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET },
       );
 
+      const resolvedNamespace = namespace ?? payload.namespace
+
+      const whereClause: { id: string, namespace?: string } = { id: payload.sessionId }
+      if (resolvedNamespace) {
+        whereClause.namespace = resolvedNamespace;
+      }
+
       const session = await this.sessionRepository.findOne({
-        where: { id: payload.sessionId },
+        where: whereClause,
         select: [
           'id',
           'uid',
@@ -489,7 +496,7 @@ export class AuthService {
         throw new ForbiddenException('Device mismatch');
       }
 
-      if (session.namespace !== namespace) {
+      if (session.namespace !== namespace && session.namespace !== resolvedNamespace) {
         if (this.options.debug) {
           this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`)
         }
