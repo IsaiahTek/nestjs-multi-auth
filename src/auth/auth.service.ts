@@ -1064,6 +1064,14 @@ export class AuthService {
     return (await sessions).map((d) => Object.assign(new Session(), d.toMap()));
   }
 
+  async getSession(id: string) {
+    return this.sessionRepository.findOne({ where: { id } });
+  }
+
+  async revokeSession({ sessionId }: { sessionId: string }) {
+    await this.invalidateSession({ sessionId, event: SessionEvent.REVOKE, reason: 'User requested session revoke' })
+  }
+
   async getSessionLogs({ uid, namespace }: { uid: string, namespace: string }): Promise<SessionLog[]> {
     const whereClause: { uid: string, namespace?: string } = { uid };
     if (typeof namespace === "string") {
@@ -1073,11 +1081,4 @@ export class AuthService {
     return (await sessions).map((d) => Object.assign(new SessionLog(), d.toMap()));
   }
 
-  async getSession(id: string) {
-    return this.sessionRepository.findOne({ where: { id } });
-  }
-
-  async revokeSession({ sessionId }: { sessionId: string }) {
-    await this.invalidateSession({ sessionId, event: SessionEvent.REVOKE, reason: 'User requested session revoke' })
-  }
 }

@@ -1,3 +1,9 @@
+# v0.3.0
+## Added Session Log (Optional)
+1. Added `createSessionLogOnInvalid` flag to the module config options to enable session logs
+[Optional]: Defaults to `false`. Set to `true` if you want session log table and records populated to your database.
+2. Also added some methods for session management
+
 # v0.2.2
 ## Fixed Namespace bug
 Fixed token refresh bug which was falsely throwing `Namespace mismatch` error.

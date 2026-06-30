@@ -216,12 +216,12 @@ export declare class AuthService {
         uid: string;
         namespace?: string;
     }): Promise<Session[]>;
-    getSessionLogs({ uid, namespace }: {
-        uid: string;
-        namespace: string;
-    }): Promise<SessionLog[]>;
     getSession(id: string): Promise<Session>;
     revokeSession({ sessionId }: {
         sessionId: string;
     }): Promise<void>;
+    getSessionLogs({ uid, namespace }: {
+        uid: string;
+        namespace: string;
+    }): Promise<SessionLog[]>;
 }

@@ -824,6 +824,12 @@ let AuthService = AuthService_1 = class AuthService {
         const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
         return (await sessions).map((d) => Object.assign(new session_entity_1.Session(), d.toMap()));
     }
+    async getSession(id) {
+        return this.sessionRepository.findOne({ where: { id } });
+    }
+    async revokeSession({ sessionId }) {
+        await this.invalidateSession({ sessionId, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User requested session revoke' });
+    }
     async getSessionLogs({ uid, namespace }) {
         const whereClause = { uid };
         if (typeof namespace === "string") {
@@ -831,12 +837,6 @@ let AuthService = AuthService_1 = class AuthService {
         }
         const sessions = this.sessionLogRepo.find({ where: whereClause, relations: [] });
         return (await sessions).map((d) => Object.assign(new session_log_entity_1.SessionLog(), d.toMap()));
-    }
-    async getSession(id) {
-        return this.sessionRepository.findOne({ where: { id } });
-    }
-    async revokeSession({ sessionId }) {
-        await this.invalidateSession({ sessionId, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User requested session revoke' });
     }
 };
 exports.AuthService = AuthService;
