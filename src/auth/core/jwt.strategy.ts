@@ -15,7 +15,7 @@ import {
 import { JwtPayload } from '../interfaces/jwt-payload-interface';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
-import { AuthCookieService } from './cookie-namespace.resolver';
+import { AuthContextService } from './auth-context.resolver';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         @Inject(AUTH_MODULE_OPTIONS)
         private readonly options: AuthModuleOptions,
         private readonly authService: AuthService,
-        private readonly cookieService: AuthCookieService,
+        private readonly cookieService: AuthContextService,
     ) {
         const cookieExtractor = (req: Request): string | null => {
             if (!req?.cookies) return null;

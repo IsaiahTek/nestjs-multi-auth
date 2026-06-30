@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
 import { JwtStrategy } from '../core/jwt.strategy'
 import { UnauthorizedException } from '@nestjs/common';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
-import { AuthCookieService } from '../core/cookie-namespace.resolver';
+import { AuthContextService } from '../core/auth-context.resolver';
 
 describe('JwtStrategy', () => {
     let strategy: JwtStrategy;
@@ -39,7 +39,7 @@ describe('JwtStrategy', () => {
                     useValue: mockOptions,
                 },
                 {
-                    provide: AuthCookieService,
+                    provide: AuthContextService,
                     useValue: mockCookieService,
                 },
             ],

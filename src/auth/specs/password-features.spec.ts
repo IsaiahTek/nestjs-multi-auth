@@ -72,9 +72,9 @@ describe('AuthService - New Features', () => {
   describe('forgotPassword', () => {
     it('should send an OTP if user exists', async () => {
       authRepo.query.mockResolvedValue([{ value: 'test@test.com', uid: 'user-uid', authId: 'auth-id' }]);
-      
+
       const result = await service.forgotPassword({ email: 'test@test.com' });
-      
+
       expect(otpRepo.save).toHaveBeenCalled();
       expect(notificationProvider.sendVerificationCode).toHaveBeenCalled();
       expect(result.message).toContain('reset code has been sent');
@@ -89,7 +89,7 @@ describe('AuthService - New Features', () => {
         secretHash: await bcrypt.hash('old-password', 10),
       });
       authRepo.query.mockResolvedValue([{ value: 'test@test.com' }]);
-      
+
       await service.updatePassword('user-uid', {
         currentPassword: 'old-password',
         newPassword: 'new-password-123'
@@ -134,10 +134,10 @@ describe('AuthService - New Features', () => {
     it('should throw ForbiddenException if account is inactive', async () => {
       // Mocking login result
       (service as any).passwordStrategy = {
-          login: jest.fn().mockResolvedValue({ auth: { isActive: false }, identifier: {} })
+        login: jest.fn().mockResolvedValue({ auth: { isActive: false }, identifier: {} })
       };
 
-      await expect(service.login({ method: AuthStrategy.EMAIL, emailOrPhone: 'test' } as any))
+      await expect(service.login({ dto: { method: AuthStrategy.EMAIL, emailOrPhone: 'test' } }))
         .rejects.toThrow(ForbiddenException);
     });
   });

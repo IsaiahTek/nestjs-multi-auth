@@ -17,7 +17,7 @@ import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 import { AuthStrategy } from '../enums/auth-type.enum';
 import { JwtService } from '@nestjs/jwt';
 import { CurrentAuth } from '../decorator/current-user.decorator';
-import { AuthCookieService } from '../core/cookie-namespace.resolver';
+import { AuthContextService } from '../core/auth-context.resolver';
 
 describe('Login verification flow', () => {
     let service: AuthService;
@@ -73,7 +73,7 @@ describe('Login verification flow', () => {
             .overrideProvider(GoogleAuthStrategy).useValue({})
             .overrideProvider(AppleAuthStrategy).useValue({})
             .overrideProvider(FacebookAuthStrategy).useValue({})
-            .overrideProvider(AuthCookieService).useValue(mockCookieService)
+            .overrideProvider(AuthContextService).useValue(mockCookieService)
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 
@@ -81,7 +81,7 @@ describe('Login verification flow', () => {
     });
 
     it('should login without triggering verification when identifier is already verified', async () => {
-        const result = await service.login({ method: AuthStrategy.EMAIL, email: 'test@example.com', password: 'pwd' } as any) as any;
+        const result = await service.login({ dto: { method: AuthStrategy.EMAIL, email: 'test@example.com', password: 'pwd' } }) as any;
         expect(result.accessToken).toBeDefined();
         expect(result.refreshToken).toBeDefined();
         expect(result.auth).toBeDefined();

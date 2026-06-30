@@ -28,7 +28,7 @@ import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
-import { AuthCookieService } from './core/cookie-namespace.resolver';
+import { AuthContextService } from './core/auth-context.resolver';
 
 
 
@@ -104,7 +104,7 @@ export class AuthModule {
       ThrottlerGuard,
       AuthMigrationService,
       AuthSchemaInitializer,
-      AuthCookieService,
+      AuthContextService,
     ];
   }
 

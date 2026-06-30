@@ -5,7 +5,19 @@ import { Request } from 'express';
 
 export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';
 
-export interface CookieNameConfig {
+/**
+ * @deprecated Use `AuthContext` instead
+ */
+export interface CookieNameConfig extends AuthContext {
+}
+
+/**
+ * This gives the auth session context.
+ * If your app needs to seperate auth session by subdomain or app type
+ * then use this config together with `authContextResolver`
+ */
+export interface AuthContext {
+  namespace: string;
   accessTokenName: string;
   refreshTokenName: string;
 }
@@ -18,8 +30,11 @@ export interface AuthModuleOptions {
 
   /**
    * Optional: Custom cookie name resolver
+   * @deprecated Use `authContextResolver` instead
    */
   cookieNameResolver?: (req: Request) => CookieNameConfig;
+
+  authContextResolver?: (req: Request) => AuthContext;
 
   /**
    * Optional: SameSite policy for auth cookies.
@@ -202,8 +217,14 @@ export interface AuthModuleOptions {
   defaultOtp?: string;
 
   /**
-   * Optional: If true, Google OAuth will not automatically mark accounts/identifiers as verified,
+   * Optional: If true, Google OAuth will not automatically mark new accounts/identifiers as verified during signup,
    * forcing the user to undergo the standard OTP verification flow even if Google verified their email.
    */
-  forceVerificationOnGoogle?: boolean;
+  forceVerificationOnGoogleSignup?: boolean;
+
+  /**
+   * Optional: If true, Google OAuth will not automatically update the account/identifier as verified during login,
+   * forcing the user to undergo the standard OTP verification flow if they hadn't verified previously via OTP.
+   */
+  forceVerificationOnGoogleLogin?: boolean;
 }

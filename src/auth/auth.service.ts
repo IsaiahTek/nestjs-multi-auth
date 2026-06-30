@@ -58,19 +58,19 @@ export class AuthService {
   ) { }
 
   // --- INTERNAL HELPER: Generate Token Pair ---
-  private async generateTokens(uid: string, sessionId: string) {
+  private async generateTokens(uid: string, sessionId: string, namespace?: string) {
     const refreshJti = crypto.randomUUID();
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: uid, sessionId },
+        { sub: uid, sessionId, namespace },
         {
           secret: this.options.jwtSecret || process.env.JWT_SECRET,
           expiresIn: (this.options.accessTokenExpiresIn || '15m') as any,
         },
       ),
       this.jwtService.signAsync(
-        { sub: uid, sessionId, jti: refreshJti },
+        { sub: uid, sessionId, jti: refreshJti, namespace },
         {
           secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET,
           expiresIn: (this.options.refreshTokenExpiresIn || '7d') as any,
@@ -91,6 +91,7 @@ export class AuthService {
     uid: string,
     userAgent: string = 'Unknown',
     ip: string = 'Unknown',
+    namespace?: string,
   ) {
     const expiresAt = new Date();
     const durationSeconds = parseDuration(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
@@ -100,6 +101,7 @@ export class AuthService {
 
     const session = this.sessionRepository.create({
       uid,
+      namespace,
       deviceFingerprint,
       ipAddress: ip,
       expiresAt,
@@ -109,7 +111,7 @@ export class AuthService {
 
     await this.sessionRepository.save(session);
 
-    const tokens = await this.generateTokens(uid, session.id);
+    const tokens = await this.generateTokens(uid, session.id, namespace);
 
     session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
     await this.sessionRepository.save(session);
@@ -117,7 +119,7 @@ export class AuthService {
     return tokens;
   }
 
-  async signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string) {
+  async signup({ dto, uid, userAgent, ip, namespace }: { dto: SignupDto, uid?: string, userAgent?: string, ip?: string, namespace?: string }) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
@@ -181,7 +183,7 @@ export class AuthService {
       }
     }
 
-    const tokens = await this.createSession(auth.uid, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
@@ -190,7 +192,7 @@ export class AuthService {
     return { ...tokens, auth: filteredAuth };
   }
 
-  async login(dto: LoginDto, userAgent?: string, ip?: string) {
+  async login({ dto, userAgent, ip, namespace }: { dto: LoginDto, userAgent?: string, ip?: string, namespace?: string }) {
     if (!dto.method) throw new BadRequestException('Method is required');
 
     const enabledStrategies = this.options.enabledStrategies || Object.values(AuthStrategy);
@@ -269,7 +271,7 @@ export class AuthService {
       };
     }
 
-    const tokens = await this.createSession(auth.uid, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.LOGIN, { auth: filteredAuth, tokens });
@@ -350,7 +352,7 @@ export class AuthService {
     }
   }
 
-  async verifyCode(uid: string, code: string, userAgent?: string, ip?: string) {
+  async verifyCode({ uid, code, userAgent, ip, namespace }: { uid: string, code: string, userAgent?: string, ip?: string, namespace?: string }) {
     const auth = await this.authRepo.findOne({ where: { uid } });
     if (!auth) throw new BadRequestException('Identity not found');
 
@@ -394,7 +396,7 @@ export class AuthService {
       );
     }
 
-    const tokens = await this.createSession(auth.uid, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
@@ -434,6 +436,7 @@ export class AuthService {
     refreshToken: string,
     currentUserAgent: string,
     currentIp?: string,
+    namespace?: string,
   ) {
     try {
       const payload = await this.jwtService.verifyAsync<{ sessionId: string }>(
@@ -476,7 +479,7 @@ export class AuthService {
         throw new ForbiddenException('Invalid refresh token');
       }
 
-      const tokens = await this.generateTokens(session.uid, session.id);
+      const tokens = await this.generateTokens(session.uid, session.id, namespace);
 
       const newHash = await bcrypt.hash(tokens.refreshToken, 10);
 
@@ -745,7 +748,7 @@ export class AuthService {
     return { message: 'Magic link sent to your email.' };
   }
 
-  async verifyMagicLink(dto: MagicLinkVerifyDto, userAgent?: string, ip?: string) {
+  async verifyMagicLink({ dto, userAgent, ip, namespace }: { dto: MagicLinkVerifyDto, userAgent?: string, ip?: string, namespace?: string }) {
     const otp = await this.otpRepo.findOne({
       where: { purpose: OtpPurpose.MAGIC_LINK, isUsed: false },
       order: { createdAt: 'DESC' },
@@ -764,7 +767,7 @@ export class AuthService {
     const auth = await this.authRepo.findOne({ where: { id: otp.requestAuthId } });
     if (!auth) throw new BadRequestException('Identity not found');
 
-    const tokens = await this.createSession(auth.uid, userAgent, ip);
+    const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.IDENTITY_VERIFIED, { auth, tokens });

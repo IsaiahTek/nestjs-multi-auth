@@ -5,12 +5,12 @@ import { AuthTransport } from '../enums/auth-type.enum';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
-import { AuthCookieService } from '../core/cookie-namespace.resolver';
+import { AuthContextService } from '../core/auth-context.resolver';
 
 describe('AuthController Account Linking', () => {
     let controller: AuthController;
     let authService: AuthService;
-    let authCookieService: AuthCookieService;
+    let authCookieService: AuthContextService;
 
     const mockAuthService = {
         signup: jest.fn(),
@@ -21,8 +21,9 @@ describe('AuthController Account Linking', () => {
             accessTokenName: 'access_token',
             refreshTokenName: 'refresh_token',
         }),
+        getNamespace: jest.fn().mockReturnValue(undefined)
     };
-    
+
     const mockOptions = {
         transport: [AuthTransport.BEARER],
     };
@@ -46,7 +47,7 @@ describe('AuthController Account Linking', () => {
             providers: [
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
-                { provide: AuthCookieService, useValue: mockCookieService },
+                { provide: AuthContextService, useValue: mockCookieService },
             ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
@@ -54,7 +55,7 @@ describe('AuthController Account Linking', () => {
 
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);
-        authCookieService = module.get<AuthCookieService>(AuthCookieService);
+        authCookieService = module.get<AuthContextService>(AuthContextService);
     });
 
     afterEach(() => {
@@ -69,7 +70,7 @@ describe('AuthController Account Linking', () => {
 
             const result = await controller.link(dto, mockRequest, mockResponse);
 
-            expect(authService.signup).toHaveBeenCalledWith(dto, 'user-123', 'test-agent', '127.0.0.1');
+            expect(authService.signup).toHaveBeenCalledWith({ dto, uid: 'user-123', userAgent: 'test-agent', ip: '127.0.0.1' });
             expect(result).toEqual({ message: 'Linked', auth: mockResult.auth });
         });
 

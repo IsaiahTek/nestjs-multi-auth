@@ -68,8 +68,10 @@ describe('Reproduction: Phone login without password', () => {
 
     it('should trigger verification for phone login without password', async () => {
         const result = await service.login({
-            method: AuthStrategy.PHONE,
-            phone: '+1234567890',
+            dto: {
+                method: AuthStrategy.PHONE,
+                phone: '+1234567890',
+            }
         }) as any;
 
         // If it's working as expected (triggering verification), tokens should be undefined

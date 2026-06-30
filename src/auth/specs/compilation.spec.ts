@@ -13,7 +13,7 @@ import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
-import { AuthCookieService } from '../core/cookie-namespace.resolver';
+import { AuthContextService } from '../core/auth-context.resolver';
 
 describe('AuthModule Compilation', () => {
     let module: TestingModule;
@@ -54,7 +54,7 @@ describe('AuthModule Compilation', () => {
             .overrideProvider(GoogleAuthStrategy).useValue({})
             .overrideProvider(AppleAuthStrategy).useValue({})
             .overrideProvider(FacebookAuthStrategy).useValue({})
-            .overrideProvider(AuthCookieService).useValue(mockCookieService)
+            .overrideProvider(AuthContextService).useValue(mockCookieService)
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
 

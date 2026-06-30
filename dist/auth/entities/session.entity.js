@@ -35,6 +35,11 @@ __decorate([
     __metadata("design:type", String)
 ], Session.prototype, "uid", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Session.prototype, "namespace", void 0);
+__decorate([
     (0, typeorm_1.Column)({ select: false }) // Do not return in standard queries
     ,
     __metadata("design:type", String)

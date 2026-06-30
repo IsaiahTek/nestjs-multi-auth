@@ -103,8 +103,8 @@ describe('AuthService', () => {
                 { enabledStrategies: [AuthStrategy.LOCAL] } as any,
             );
 
-            await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(BadRequestException);
-            await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(/disabled/);
+            await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(BadRequestException);
+            await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(/disabled/);
         });
 
         it('should throw BadRequestException if strategy provider is missing', async () => {
@@ -120,8 +120,8 @@ describe('AuthService', () => {
                 { enabledStrategies: [AuthStrategy.APPLE] } as any,
             );
 
-            await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(BadRequestException);
-            await expect(restrictedService.signup(signupDto as any)).rejects.toThrow(/not configured/);
+            await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(BadRequestException);
+            await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(/not configured/);
         });
     });
 
@@ -168,7 +168,7 @@ describe('AuthService', () => {
             });
             mockJwtService.signAsync.mockResolvedValue('token');
 
-            const result = await service.verifyCode(uid, code);
+            const result = await service.verifyCode({ uid, code });
             expect(result.message).toBe('Identity verified successfully');
         });
     });

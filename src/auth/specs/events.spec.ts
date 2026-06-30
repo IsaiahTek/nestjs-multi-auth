@@ -73,7 +73,7 @@ describe('AuthService Events', () => {
     const emitSpy = jest.spyOn(eventEmitter, 'emit');
     const dto: SignupDto = { method: AuthStrategy.EMAIL, email: 'test@example.com', password: 'password' };
 
-    await service.signup(dto);
+    await service.signup({ dto });
 
     expect(emitSpy).toHaveBeenCalledWith(
       AuthEvents.SIGNUP,
@@ -87,7 +87,7 @@ describe('AuthService Events', () => {
     const emitSpy = jest.spyOn(eventEmitter, 'emit');
     const dto = { method: AuthStrategy.EMAIL, email: 'test@example.com', password: 'password' };
 
-    await service.login(dto as any);
+    await service.login({ dto });
 
     expect(emitSpy).toHaveBeenCalledWith(
       AuthEvents.LOGIN,

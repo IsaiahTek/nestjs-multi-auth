@@ -773,7 +773,8 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `autoMigrate` | `boolean` | `false` | Automatically run database schema migrations on startup. |
 | `debugMode` | `boolean` | `false` | Enable debug mode (allows using `defaultOtp`). |
 | `defaultOtp` | `string` | — | A static OTP value to use when `debugMode` is enabled. |
-| `forceVerificationOnGoogle` | `boolean` | `false` | Force OTP validation for Google OAuth, bypassing Google's `email_verified`. |
+| `forceVerificationOnGoogleSignup` | `boolean` | `false` | Force OTP validation for Google OAuth during signup, bypassing Google's `email_verified`. |
+| `forceVerificationOnGoogleLogin` | `boolean` | `false` | Force OTP validation for Google OAuth during login if not already verified. |
 
 ---
 ## Advanced Config

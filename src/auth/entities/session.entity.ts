@@ -16,6 +16,10 @@ export class Session {
   @Index()
   uid: string;
 
+  @Column({ nullable: true })
+  @Index()
+  namespace: string;
+
   // We store a HASH of the refresh token, not the plain token.
   // If the DB is leaked, attackers cannot generate new access tokens.
   @Column({ select: false }) // Do not return in standard queries

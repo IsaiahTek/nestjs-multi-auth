@@ -19,7 +19,7 @@ import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
 import { AuthController } from '../auth.controller';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
-import { AuthCookieService } from '../core/cookie-namespace.resolver';
+import { AuthContextService } from '../core/auth-context.resolver';
 
 describe('Account Linking Integration', () => {
     let authService: AuthService;
@@ -28,7 +28,7 @@ describe('Account Linking Integration', () => {
     let facebookStrategy: FacebookAuthStrategy;
     let appleStrategy: AppleAuthStrategy;
     let controller: AuthController;
-    let authCookieService: AuthCookieService;
+    let authCookieService: AuthContextService;
 
     const mockDataSource = {
         transaction: jest.fn().mockImplementation(async (cb) => cb({
@@ -46,6 +46,7 @@ describe('Account Linking Integration', () => {
             accessTokenName: 'root_access_token',
             refreshTokenName: 'root_refresh_token',
         }),
+        getNamespace: jest.fn().mockReturnValue(undefined)
     };
 
     const mockAuthRepo = {
@@ -119,11 +120,11 @@ describe('Account Linking Integration', () => {
                 { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
-                { provide: AuthCookieService, useValue: mockCookieService },
+                { provide: AuthContextService, useValue: mockCookieService },
             ],
         })
-        .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
-        .compile();
+            .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
+            .compile();
 
         authService = module.get<AuthService>(AuthService);
         localStrategy = module.get<LocalAuthStrategy>(LocalAuthStrategy);
@@ -131,7 +132,7 @@ describe('Account Linking Integration', () => {
         facebookStrategy = module.get<FacebookAuthStrategy>(FacebookAuthStrategy);
         appleStrategy = module.get<AppleAuthStrategy>(AppleAuthStrategy);
         controller = module.get<AuthController>(AuthController);
-        authCookieService = module.get<AuthCookieService>(AuthCookieService);
+        authCookieService = module.get<AuthContextService>(AuthContextService);
         // Mock verifyIdToken for Google
         (googleStrategy as any).client = {
             verifyIdToken: jest.fn().mockResolvedValue({
@@ -164,14 +165,14 @@ describe('Account Linking Integration', () => {
         const existingUid = 'existing-user-uuid';
 
         it('should link EMAIL strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.EMAIL, 
-                email: 'new-email@example.com', 
-                password: 'password123' 
+            const dto = {
+                method: AuthStrategy.EMAIL,
+                email: 'new-email@example.com',
+                password: 'password123'
             };
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -181,14 +182,14 @@ describe('Account Linking Integration', () => {
         });
 
         it('should link PHONE strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.PHONE, 
-                phone: '+1234567890', 
-                password: 'password123' 
+            const dto = {
+                method: AuthStrategy.PHONE,
+                phone: '+1234567890',
+                password: 'password123'
             };
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -198,14 +199,14 @@ describe('Account Linking Integration', () => {
         });
 
         it('should link USERNAME strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.USERNAME, 
-                username: 'newuser', 
-                password: 'password123' 
+            const dto = {
+                method: AuthStrategy.USERNAME,
+                username: 'newuser',
+                password: 'password123'
             };
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -215,15 +216,15 @@ describe('Account Linking Integration', () => {
         });
 
         it('should link GOOGLE strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.GOOGLE, 
+            const dto = {
+                method: AuthStrategy.GOOGLE,
                 provider: OAuthProviderType.GOOGLE,
-                token: 'mock-google-token' 
+                token: 'mock-google-token'
             };
             mockOAuthProviderRepo.findOne.mockResolvedValue(null);
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -233,15 +234,15 @@ describe('Account Linking Integration', () => {
         });
 
         it('should link FACEBOOK strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.FACEBOOK, 
+            const dto = {
+                method: AuthStrategy.FACEBOOK,
                 provider: OAuthProviderType.FACEBOOK,
-                token: 'mock-fb-token' 
+                token: 'mock-fb-token'
             };
             mockOAuthProviderRepo.findOne.mockResolvedValue(null);
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -251,15 +252,15 @@ describe('Account Linking Integration', () => {
         });
 
         it('should link APPLE strategy to existing UID', async () => {
-            const dto = { 
-                method: AuthStrategy.APPLE, 
+            const dto = {
+                method: AuthStrategy.APPLE,
                 provider: OAuthProviderType.APPLE,
-                token: 'mock-apple-token' 
+                token: 'mock-apple-token'
             };
             mockOAuthProviderRepo.findOne.mockResolvedValue(null);
             mockIdentifierRepo.findOne.mockResolvedValue(null);
 
-            const result = await authService.signup(dto as any, existingUid);
+            const result = await authService.signup({ dto, uid: existingUid });
 
             expect(mockAuthRepo.save).toHaveBeenCalledWith(expect.objectContaining({
                 uid: existingUid,
@@ -273,29 +274,29 @@ describe('Account Linking Integration', () => {
         const existingUid = 'existing-user-uuid';
 
         it('should fail if identifier (email) is already in use by another account', async () => {
-            const dto = { 
-                method: AuthStrategy.EMAIL, 
-                email: 'already@taken.com', 
-                password: 'password123' 
+            const dto = {
+                method: AuthStrategy.EMAIL,
+                email: 'already@taken.com',
+                password: 'password123'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue({ 
-                id: 'existing-id', 
+            mockIdentifierRepo.findOne.mockResolvedValue({
+                id: 'existing-id',
                 value: 'already@taken.com',
-                type: IdentifierType.EMAIL 
+                type: IdentifierType.EMAIL
             });
 
-            await expect(authService.signup(dto as any, existingUid)).rejects.toThrow(/already exists|taken|Unable to signup/);
+            await expect(authService.signup({ dto, uid: existingUid })).rejects.toThrow(/already exists|taken|Unable to signup/);
         });
 
         it('should fail if OAuth account is already linked to another account', async () => {
-            const dto = { 
-                method: AuthStrategy.GOOGLE, 
+            const dto = {
+                method: AuthStrategy.GOOGLE,
                 provider: OAuthProviderType.GOOGLE,
-                token: 'mock-google-token' 
+                token: 'mock-google-token'
             };
             mockOAuthProviderRepo.findOne.mockResolvedValue({ id: 'existing-provider-id', providerUserId: 'google-uid-123' });
 
-            await expect(authService.signup(dto as any, existingUid)).rejects.toThrow(/already linked/);
+            await expect(authService.signup({ dto, uid: existingUid })).rejects.toThrow(/already linked/);
         });
     });
 
@@ -312,10 +313,10 @@ describe('Account Linking Integration', () => {
         } as unknown as Response;
 
         it('should call authService.signup with existing UID when link is called', async () => {
-            const dto = { 
-                method: AuthStrategy.GOOGLE, 
-                provider: OAuthProviderType.GOOGLE, 
-                token: 'token' 
+            const dto = {
+                method: AuthStrategy.GOOGLE,
+                provider: OAuthProviderType.GOOGLE,
+                token: 'token'
             };
             mockIdentifierRepo.findOne.mockResolvedValue(null);
             mockOAuthProviderRepo.findOne.mockResolvedValue(null);

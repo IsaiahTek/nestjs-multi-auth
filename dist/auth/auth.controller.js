@@ -32,12 +32,12 @@ const public_decorator_1 = require("./decorator/public.decorator");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_type_enum_1 = require("./enums/auth-type.enum");
 const duration_util_1 = require("./utils/duration.util");
-const cookie_namespace_resolver_1 = require("./core/cookie-namespace.resolver");
+const auth_context_resolver_1 = require("./core/auth-context.resolver");
 let AuthController = class AuthController {
-    constructor(authService, options, cookieService) {
+    constructor(authService, options, authContext) {
         this.authService = authService;
         this.options = options;
-        this.cookieService = cookieService;
+        this.authContext = authContext;
     }
     getTransports() {
         const t = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
@@ -49,7 +49,7 @@ let AuthController = class AuthController {
     setCookies(res, req, accessToken, refreshToken) {
         const isProduction = process.env.NODE_ENV === 'production';
         const refreshPath = this.getDynamicPath(req);
-        const cookies = this.cookieService.get(req);
+        const cookies = this.authContext.get(req);
         const sameSite = this.options.cookieSameSite ?? (isProduction ? 'lax' : 'none');
         const secure = this.options.cookieSecure ?? sameSite === 'none' ? true : isProduction;
         res.cookie(cookies.refreshTokenName, refreshToken, {
@@ -71,7 +71,8 @@ let AuthController = class AuthController {
     }
     async signup(dto, res, req) {
         try {
-            const result = await this.authService.signup(dto, undefined, req.headers['user-agent'], req.ip);
+            const namespace = this.authContext.getNamespace(req);
+            const result = await this.authService.signup({ dto, uid: undefined, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
             const transports = this.getTransports();
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -92,7 +93,8 @@ let AuthController = class AuthController {
     }
     async login(dto, res, req) {
         try {
-            const result = await this.authService.login(dto, req.headers['user-agent'], req.ip);
+            const namespace = this.authContext.getNamespace(req);
+            const result = await this.authService.login({ dto, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
             const transports = this.getTransports();
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -112,7 +114,8 @@ let AuthController = class AuthController {
         }
     }
     async verify(dto, res, req) {
-        const result = await this.authService.verifyCode(dto.uid, dto.code, req.headers['user-agent'], req.ip);
+        const namespace = this.authContext.getNamespace(req);
+        const result = await this.authService.verifyCode({ uid: dto.uid, code: dto.code, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
         const transports = this.getTransports();
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -148,7 +151,8 @@ let AuthController = class AuthController {
         return this.authService.requestMagicLink(dto);
     }
     async verifyMagicLink(token, res, req) {
-        const result = await this.authService.verifyMagicLink({ token }, req.headers['user-agent'], req.ip);
+        const namespace = this.authContext.getNamespace(req);
+        const result = await this.authService.verifyMagicLink({ dto: { token }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
         const transports = this.getTransports();
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -163,7 +167,8 @@ let AuthController = class AuthController {
     }
     async link(dto, req, res) {
         try {
-            const result = await this.authService.signup(dto, req.user.uid, req.headers['user-agent'], req.ip);
+            const namespace = this.authContext.getNamespace(req);
+            const result = await this.authService.signup({ dto, uid: req.user.uid, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
             const transports = this.getTransports();
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -184,7 +189,8 @@ let AuthController = class AuthController {
     }
     async refresh(req, res, dto) {
         const transports = this.getTransports();
-        const cookies = this.cookieService.get(req);
+        const namespace = this.authContext.getNamespace(req);
+        const cookies = this.authContext.get(req);
         let token = req.cookies?.[cookies.refreshTokenName] ||
             dto.refreshToken;
         if (!token && req.headers.authorization?.startsWith('Bearer ')) {
@@ -193,7 +199,7 @@ let AuthController = class AuthController {
         if (!token)
             throw new common_1.BadRequestException('Refresh token is required');
         try {
-            const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip);
+            const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip, namespace);
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, tokens.accessToken, tokens.refreshToken);
             }
@@ -219,7 +225,7 @@ let AuthController = class AuthController {
         return this.authService.activateMfa(req.user.uid, dto.type, dto.code);
     }
     async logout(req, res, dto) {
-        const cookies = this.cookieService.get(req);
+        const cookies = this.authContext.get(req);
         let token = req.cookies?.[cookies.refreshTokenName] || dto.refreshToken;
         if (!token && req.headers.authorization?.startsWith('Bearer ')) {
             token = req.headers.authorization.split(' ')[1];
@@ -242,7 +248,7 @@ let AuthController = class AuthController {
     }
     async deleteAccount(req, res) {
         await this.authService.deleteAccount(req.user.uid);
-        const cookies = this.cookieService.get(req);
+        const cookies = this.authContext.get(req);
         res.clearCookie(cookies.accessTokenName, { path: '/' });
         res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
         return { message: 'Account deleted successfully' };
@@ -442,6 +448,6 @@ exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     (0, common_1.UseGuards)(throttler_1.ThrottlerGuard),
     __param(1, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
-    __metadata("design:paramtypes", [auth_service_1.AuthService, Object, cookie_namespace_resolver_1.AuthCookieService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService, Object, auth_context_resolver_1.AuthContextService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

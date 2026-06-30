@@ -81,7 +81,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 uid: identityUid,
                 strategy: auth_type_enum_1.AuthStrategy.OAUTH,
                 isActive: true,
-                isVerified: this.options.forceVerificationOnGoogle ? false : (payload.email_verified || false),
+                isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
                 isPrimary: true,
             });
             const identifiers = [];
@@ -89,7 +89,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 identifiers.push(identifierRepo.create({
                     type: auth_identify_entity_1.IdentifierType.EMAIL,
                     value: email,
-                    isVerified: this.options.forceVerificationOnGoogle ? false : (payload.email_verified || false),
+                    isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
                     source: auth_identify_entity_1.IdentifierSource.GOOGLE,
                     verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
                 }));
@@ -186,7 +186,7 @@ let GoogleAuthStrategy = class GoogleAuthStrategy {
                 }
                 // always normalize + update
                 identifier.value = email;
-                if (!this.options.forceVerificationOnGoogle) {
+                if (!this.options.forceVerificationOnGoogleLogin) {
                     identifier.isVerified = payload.email_verified ?? false;
                 }
                 identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;

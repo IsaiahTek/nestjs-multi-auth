@@ -20,7 +20,7 @@ const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const auth_module_options_interface_1 = require("../interfaces/auth-module-options.interface");
 const auth_service_1 = require("../auth.service");
-const cookie_namespace_resolver_1 = require("./cookie-namespace.resolver");
+const auth_context_resolver_1 = require("./auth-context.resolver");
 let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(options, authService, cookieService) {
         const cookieExtractor = (req) => {
@@ -66,6 +66,6 @@ exports.JwtStrategy = JwtStrategy = JwtStrategy_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __metadata("design:paramtypes", [Object, auth_service_1.AuthService,
-        cookie_namespace_resolver_1.AuthCookieService])
+        auth_context_resolver_1.AuthContextService])
 ], JwtStrategy);
 //# sourceMappingURL=jwt.strategy.js.map

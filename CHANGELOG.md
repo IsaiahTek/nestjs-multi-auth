@@ -1,9 +1,16 @@
-# v0.1.12
+# v0.2.0
 ## Force Verification on Google
-1. This release adds `forceVerificationOnGoogle` option to `AuthModuleOptions` which allows developers to force OTP validation even for Google if they want to.
+1. This release splits the Google verification force option into `forceVerificationOnGoogleSignup` and `forceVerificationOnGoogleLogin` in `AuthModuleOptions` for finer control.
 
 ## Debug Mode and Default OTP
 1. This release adds support for `debugMode` and `defaultOtp` options in `AuthModuleOptions`.
+
+## Deprecations
+1. `CookieNameConfig` is deprecated in favour of `AuthContext`
+2. `cookieNameResolver` is deprecated in favour of `authContextResolver`
+
+## Features
+1. Scoped sessions are now supported. See README.md for more information about this feature
 
 # v0.1.11
 ## Phone Auth Regex Validation

@@ -34,7 +34,13 @@ export declare class AuthService {
     private generateTokens;
     private fingerprint;
     private createSession;
-    signup(dto: SignupDto, uid?: string, userAgent?: string, ip?: string): Promise<{
+    signup({ dto, uid, userAgent, ip, namespace }: {
+        dto: SignupDto;
+        uid?: string;
+        userAgent?: string;
+        ip?: string;
+        namespace?: string;
+    }): Promise<{
         message: string;
         auth: {
             uid: string;
@@ -73,7 +79,12 @@ export declare class AuthService {
         message?: undefined;
         verificationRequired?: undefined;
     }>;
-    login(dto: LoginDto, userAgent?: string, ip?: string): Promise<{
+    login({ dto, userAgent, ip, namespace }: {
+        dto: LoginDto;
+        userAgent?: string;
+        ip?: string;
+        namespace?: string;
+    }): Promise<{
         message: string;
         auth: Auth;
         verificationRequired: boolean;
@@ -123,7 +134,13 @@ export declare class AuthService {
         mfaRequired?: undefined;
     }>;
     private sendVerification;
-    verifyCode(uid: string, code: string, userAgent?: string, ip?: string): Promise<{
+    verifyCode({ uid, code, userAgent, ip, namespace }: {
+        uid: string;
+        code: string;
+        userAgent?: string;
+        ip?: string;
+        namespace?: string;
+    }): Promise<{
         message: string;
         tokens?: undefined;
         auth?: undefined;
@@ -138,7 +155,7 @@ export declare class AuthService {
     resendVerification(uid: string): Promise<{
         message: string;
     }>;
-    refreshTokens(refreshToken: string, currentUserAgent: string, currentIp?: string): Promise<{
+    refreshTokens(refreshToken: string, currentUserAgent: string, currentIp?: string, namespace?: string): Promise<{
         accessToken: string;
         refreshToken: string;
     }>;
@@ -160,7 +177,12 @@ export declare class AuthService {
     requestMagicLink(dto: MagicLinkRequestDto): Promise<{
         message: string;
     }>;
-    verifyMagicLink(dto: MagicLinkVerifyDto, userAgent?: string, ip?: string): Promise<{
+    verifyMagicLink({ dto, userAgent, ip, namespace }: {
+        dto: MagicLinkVerifyDto;
+        userAgent?: string;
+        ip?: string;
+        namespace?: string;
+    }): Promise<{
         tokens: {
             accessToken: string;
             refreshToken: string;

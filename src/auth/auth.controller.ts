@@ -33,7 +33,7 @@ import { AuthTransport } from './enums/auth-type.enum';
 import type { Response, Request } from 'express';
 import { parseDuration } from './utils/duration.util';
 import { Auth } from './entities/auth.entity';
-import { AuthCookieService } from './core/cookie-namespace.resolver';
+import { AuthContextService } from './core/auth-context.resolver';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -41,7 +41,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
-    private cookieService: AuthCookieService,
+    private authContext: AuthContextService,
   ) { }
 
   private getTransports(): AuthTransport[] {
@@ -61,7 +61,7 @@ export class AuthController {
   ) {
     const isProduction = process.env.NODE_ENV === 'production';
     const refreshPath = this.getDynamicPath(req);
-    const cookies = this.cookieService.get(req);
+    const cookies = this.authContext.get(req);
     const sameSite = this.options.cookieSameSite ?? (isProduction ? 'lax' : 'none');
     const secure = this.options.cookieSecure ?? sameSite === 'none' ? true : isProduction;
 
@@ -98,7 +98,8 @@ export class AuthController {
   @ApiOperation({ summary: 'User signup' })
   async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     try {
-      const result = await this.authService.signup(dto, undefined, req.headers['user-agent'] as string, req.ip);
+      const namespace = this.authContext.getNamespace(req);
+      const result = await this.authService.signup({ dto, uid: undefined, userAgent: req.headers['user-agent'] as string, ip: req.ip, namespace });
       const transports = this.getTransports();
 
       if ('accessToken' in result) {
@@ -126,7 +127,8 @@ export class AuthController {
   @ApiOperation({ summary: 'User login' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     try {
-      const result = await this.authService.login(dto, req.headers['user-agent'], req.ip);
+      const namespace = this.authContext.getNamespace(req);
+      const result = await this.authService.login({ dto, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
       const transports = this.getTransports();
 
       if ('accessToken' in result) {
@@ -152,7 +154,8 @@ export class AuthController {
   @Public()
   @ApiOperation({ summary: 'Verify identity with OTP code' })
   async verify(@Body() dto: VerifyDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
-    const result = await this.authService.verifyCode(dto.uid, dto.code, req.headers['user-agent'], req.ip);
+    const namespace = this.authContext.getNamespace(req);
+    const result = await this.authService.verifyCode({ uid: dto.uid, code: dto.code, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
     const transports = this.getTransports();
 
     if (result.tokens) {
@@ -226,7 +229,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request
   ) {
-    const result = await this.authService.verifyMagicLink({ token }, req.headers['user-agent'], req.ip);
+    const namespace = this.authContext.getNamespace(req);
+    const result = await this.authService.verifyMagicLink({ dto: { token }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
     const transports = this.getTransports();
 
     if (result.tokens) {
@@ -247,7 +251,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Link new auth method to current account' })
   async link(@Body() dto: SignupDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     try {
-      const result = await this.authService.signup(dto, req.user.uid, req.headers['user-agent'] as string, req.ip);
+      const namespace = this.authContext.getNamespace(req);
+      const result = await this.authService.signup({ dto, uid: req.user.uid, userAgent: req.headers['user-agent'] as string, ip: req.ip, namespace });
       const transports = this.getTransports();
 
       if ('accessToken' in result) {
@@ -274,7 +279,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
     const transports = this.getTransports();
-    const cookies = this.cookieService.get(req);
+    const namespace = this.authContext.getNamespace(req);
+    const cookies = this.authContext.get(req);
 
     let token =
       req.cookies?.[cookies.refreshTokenName] ||
@@ -287,7 +293,7 @@ export class AuthController {
     if (!token) throw new BadRequestException('Refresh token is required');
 
     try {
-      const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip);
+      const tokens = await this.authService.refreshTokens(token, req.headers['user-agent'] || '', req.ip, namespace);
 
       if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
         this.setCookies(res, req, tokens.accessToken, tokens.refreshToken);
@@ -325,7 +331,7 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({ summary: 'User logout' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
-    const cookies = this.cookieService.get(req);
+    const cookies = this.authContext.get(req);
     let token = req.cookies?.[cookies.refreshTokenName] || dto.refreshToken;
     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
@@ -360,7 +366,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Delete user account and all associated data' })
   async deleteAccount(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     await this.authService.deleteAccount(req.user.uid);
-    const cookies = this.cookieService.get(req);
+    const cookies = this.authContext.get(req);
     res.clearCookie(cookies.accessTokenName, { path: '/' });
     res.clearCookie(cookies.refreshTokenName, { path: this.getDynamicPath(req) });
     return { message: 'Account deleted successfully' };

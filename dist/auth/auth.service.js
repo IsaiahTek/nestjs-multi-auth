@@ -49,14 +49,14 @@ let AuthService = AuthService_1 = class AuthService {
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
-    async generateTokens(uid, sessionId) {
+    async generateTokens(uid, sessionId, namespace) {
         const refreshJti = crypto.randomUUID();
         const [accessToken, refreshToken] = await Promise.all([
-            this.jwtService.signAsync({ sub: uid, sessionId }, {
+            this.jwtService.signAsync({ sub: uid, sessionId, namespace }, {
                 secret: this.options.jwtSecret || process.env.JWT_SECRET,
                 expiresIn: (this.options.accessTokenExpiresIn || '15m'),
             }),
-            this.jwtService.signAsync({ sub: uid, sessionId, jti: refreshJti }, {
+            this.jwtService.signAsync({ sub: uid, sessionId, jti: refreshJti, namespace }, {
                 secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET,
                 expiresIn: (this.options.refreshTokenExpiresIn || '7d'),
             }),
@@ -67,13 +67,14 @@ let AuthService = AuthService_1 = class AuthService {
         return crypto.createHash('sha256').update(userAgent).digest('hex');
     }
     // --- INTERNAL HELPER: Create/Update Session in DB ---
-    async createSession(uid, userAgent = 'Unknown', ip = 'Unknown') {
+    async createSession(uid, userAgent = 'Unknown', ip = 'Unknown', namespace) {
         const expiresAt = new Date();
         const durationSeconds = (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
         expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
         const deviceFingerprint = this.fingerprint(userAgent);
         const session = this.sessionRepository.create({
             uid,
+            namespace,
             deviceFingerprint,
             ipAddress: ip,
             expiresAt,
@@ -81,12 +82,12 @@ let AuthService = AuthService_1 = class AuthService {
             userAgent,
         });
         await this.sessionRepository.save(session);
-        const tokens = await this.generateTokens(uid, session.id);
+        const tokens = await this.generateTokens(uid, session.id, namespace);
         session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
         await this.sessionRepository.save(session);
         return tokens;
     }
-    async signup(dto, uid, userAgent, ip) {
+    async signup({ dto, uid, userAgent, ip, namespace }) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
         const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
@@ -146,13 +147,13 @@ let AuthService = AuthService_1 = class AuthService {
                 throw new common_1.BadRequestException('Verification is required but no notification provider is configured.');
             }
         }
-        const tokens = await this.createSession(auth.uid, userAgent, ip);
+        const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
         }
         return { ...tokens, auth: filteredAuth };
     }
-    async login(dto, userAgent, ip) {
+    async login({ dto, userAgent, ip, namespace }) {
         if (!dto.method)
             throw new common_1.BadRequestException('Method is required');
         const enabledStrategies = this.options.enabledStrategies || Object.values(auth_type_enum_1.AuthStrategy);
@@ -224,7 +225,7 @@ let AuthService = AuthService_1 = class AuthService {
                 tokens: undefined,
             };
         }
-        const tokens = await this.createSession(auth.uid, userAgent, ip);
+        const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.LOGIN, { auth: filteredAuth, tokens });
         }
@@ -285,7 +286,7 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.BadRequestException('Failed to send verification code');
         }
     }
-    async verifyCode(uid, code, userAgent, ip) {
+    async verifyCode({ uid, code, userAgent, ip, namespace }) {
         const auth = await this.authRepo.findOne({ where: { uid } });
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
@@ -317,7 +318,7 @@ let AuthService = AuthService_1 = class AuthService {
             await this.authRepo.update(otp.requestAuthId, { isVerified: true });
             await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
         }
-        const tokens = await this.createSession(auth.uid, userAgent, ip);
+        const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
         }
@@ -346,7 +347,7 @@ let AuthService = AuthService_1 = class AuthService {
         await this.sendVerification(auth);
         return { message: 'Verification code resent' };
     }
-    async refreshTokens(refreshToken, currentUserAgent, currentIp) {
+    async refreshTokens(refreshToken, currentUserAgent, currentIp, namespace) {
         try {
             const payload = await this.jwtService.verifyAsync(refreshToken, { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET });
             const session = await this.sessionRepository.findOne({
@@ -376,7 +377,7 @@ let AuthService = AuthService_1 = class AuthService {
                 await this.sessionRepository.delete(session.id);
                 throw new common_1.ForbiddenException('Invalid refresh token');
             }
-            const tokens = await this.generateTokens(session.uid, session.id);
+            const tokens = await this.generateTokens(session.uid, session.id, namespace);
             const newHash = await bcrypt.hash(tokens.refreshToken, 10);
             const newExpiry = new Date();
             const durationSeconds = (0, duration_util_1.parseDuration)(this.options.refreshTokenExpiresIn || '7d', 7 * 24 * 60 * 60);
@@ -586,7 +587,7 @@ let AuthService = AuthService_1 = class AuthService {
         }
         return { message: 'Magic link sent to your email.' };
     }
-    async verifyMagicLink(dto, userAgent, ip) {
+    async verifyMagicLink({ dto, userAgent, ip, namespace }) {
         const otp = await this.otpRepo.findOne({
             where: { purpose: otp_token_entity_1.OtpPurpose.MAGIC_LINK, isUsed: false },
             order: { createdAt: 'DESC' },
@@ -602,7 +603,7 @@ let AuthService = AuthService_1 = class AuthService {
         const auth = await this.authRepo.findOne({ where: { id: otp.requestAuthId } });
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
-        const tokens = await this.createSession(auth.uid, userAgent, ip);
+        const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.IDENTITY_VERIFIED, { auth, tokens });
         }

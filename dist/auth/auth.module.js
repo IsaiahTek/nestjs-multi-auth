@@ -38,7 +38,7 @@ const google_strategy_1 = require("./strategies/oauth/google.strategy");
 const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
 const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
 const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
-const cookie_namespace_resolver_1 = require("./core/cookie-namespace.resolver");
+const auth_context_resolver_1 = require("./core/auth-context.resolver");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
@@ -103,7 +103,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             throttler_1.ThrottlerGuard,
             migration_service_1.AuthMigrationService,
             auth_schema_initializer_1.AuthSchemaInitializer,
-            cookie_namespace_resolver_1.AuthCookieService,
+            auth_context_resolver_1.AuthContextService,
         ];
     }
     static forRootAsync(options) {
