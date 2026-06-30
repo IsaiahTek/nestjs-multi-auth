@@ -18,11 +18,13 @@ import { UpdatePasswordDto } from './dto/requests/update-password.dto';
 import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
 import { AuthIdentifier } from './entities/auth-identify.entity';
+import { SessionLog } from './entities/session_log.entity';
 export declare class AuthService {
     private jwtService;
     private passwordStrategy;
     private oauthStrategy;
     private sessionRepository;
+    private sessionLogRepo;
     private authRepo;
     private otpRepo;
     private mfaRepo;
@@ -30,10 +32,14 @@ export declare class AuthService {
     private notificationProvider?;
     private readonly eventEmitter?;
     private readonly logger;
-    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, mfaRepo: Repository<MfaMethod>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider, eventEmitter?: EventEmitter2);
+    private readonly createSessionLog;
+    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, sessionLogRepo: Repository<SessionLog>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, mfaRepo: Repository<MfaMethod>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider, eventEmitter?: EventEmitter2);
     private generateTokens;
     private fingerprint;
     private createSession;
+    private createSessionLogFromSessionIfEnabled;
+    private invalidateSession;
+    private invalidateSessions;
     signup({ dto, uid, userAgent, ip, namespace }: {
         dto: SignupDto;
         uid?: string;
@@ -210,4 +216,12 @@ export declare class AuthService {
         uid: string;
         namespace?: string;
     }): Promise<Session[]>;
+    getSessionLogs({ uid, namespace }: {
+        uid: string;
+        namespace: string;
+    }): Promise<SessionLog[]>;
+    getSession(id: string): Promise<Session>;
+    revokeSession({ sessionId }: {
+        sessionId: string;
+    }): Promise<void>;
 }

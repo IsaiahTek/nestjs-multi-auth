@@ -12,6 +12,7 @@ import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface
 import { AuthStrategy } from '../enums/auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { SessionLog } from '../entities/session_log.entity';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -63,6 +64,14 @@ describe('AuthService', () => {
         delete: jest.fn(),
     };
 
+    const mockSessionLogRepo = {
+        create: jest.fn(),
+        save: jest.fn(),
+        update: jest.fn(),
+        findOne: jest.fn(),
+        delete: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -74,6 +83,7 @@ describe('AuthService', () => {
                 { provide: getRepositoryToken(Auth), useValue: mockAuthRepo },
                 { provide: getRepositoryToken(OtpToken), useValue: mockOtpRepo },
                 { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
+                { provide: getRepositoryToken(SessionLog), useValue: mockSessionLogRepo},
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
         }).compile();
@@ -97,6 +107,7 @@ describe('AuthService', () => {
                 mockPasswordStrategy as any,
                 mockOAuthStrategy as any,
                 mockSessionRepo as any,
+                mockSessionLogRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
                 mockMfaRepo as any,
@@ -114,6 +125,7 @@ describe('AuthService', () => {
                 mockPasswordStrategy as any,
                 null as any, // oauthStrategy missing
                 mockSessionRepo as any,
+                mockSessionLogRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
                 mockMfaRepo as any,
@@ -138,6 +150,7 @@ describe('AuthService', () => {
                 mockPasswordStrategy as any,
                 mockOAuthStrategy as any,
                 mockSessionRepo as any,
+                mockSessionLogRepo as any,
                 mockAuthRepo as any,
                 mockOtpRepo as any,
                 mockMfaRepo as any,

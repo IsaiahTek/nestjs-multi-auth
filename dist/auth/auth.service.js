@@ -34,12 +34,14 @@ const crypto = require("crypto");
 const duration_util_1 = require("./utils/duration.util");
 const auth_mapper_1 = require("./core/auth-mapper");
 const auth_events_1 = require("./enums/auth.events");
+const session_log_entity_1 = require("./entities/session_log.entity");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, authRepo, otpRepo, mfaRepo, options, notificationProvider, eventEmitter) {
+    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, sessionLogRepo, authRepo, otpRepo, mfaRepo, options, notificationProvider, eventEmitter) {
         this.jwtService = jwtService;
         this.passwordStrategy = passwordStrategy;
         this.oauthStrategy = oauthStrategy;
         this.sessionRepository = sessionRepository;
+        this.sessionLogRepo = sessionLogRepo;
         this.authRepo = authRepo;
         this.otpRepo = otpRepo;
         this.mfaRepo = mfaRepo;
@@ -47,6 +49,7 @@ let AuthService = AuthService_1 = class AuthService {
         this.notificationProvider = notificationProvider;
         this.eventEmitter = eventEmitter;
         this.logger = new common_1.Logger(AuthService_1.name);
+        this.createSessionLog = this.options.createSessionLogOnInvalid ?? true;
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
     async generateTokens(uid, sessionId, namespace) {
@@ -110,6 +113,53 @@ let AuthService = AuthService_1 = class AuthService {
         session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
         await this.sessionRepository.save(session);
         return tokens;
+    }
+    async createSessionLogFromSessionIfEnabled({ event, reason, session, }) {
+        if (!this.createSessionLog)
+            return;
+        const sessionLog = this.sessionLogRepo.create({
+            ...session,
+            sessionId: session.id,
+            event,
+            reason,
+        });
+        await this.sessionLogRepo.save(sessionLog);
+    }
+    async invalidateSession({ session, sessionId, event, reason, }) {
+        if (!session && !sessionId) {
+            throw new Error("Either session or sessionId must be provided.");
+        }
+        if (!session) {
+            session = await this.sessionRepository.findOneByOrFail({ id: sessionId });
+        }
+        await this.createSessionLogFromSessionIfEnabled({
+            session,
+            event,
+            reason,
+        });
+        await this.sessionRepository.delete(session.id);
+    }
+    async invalidateSessions({ uid, event, reason, }) {
+        await this.sessionRepository.manager.transaction(async (manager) => {
+            const sessions = await manager.find(session_entity_1.Session, {
+                where: { uid },
+            });
+            if (sessions.length === 0) {
+                return;
+            }
+            if (this.createSessionLog) {
+                const logs = sessions.map((session) => this.sessionLogRepo.create({
+                    ...session,
+                    sessionId: session.id,
+                    event,
+                    reason,
+                }));
+                await manager.save(logs);
+            }
+            await manager.delete(session_entity_1.Session, {
+                uid,
+            });
+        });
     }
     async signup({ dto, uid, userAgent, ip, namespace }) {
         if (!dto.method)
@@ -390,29 +440,33 @@ let AuthService = AuthService_1 = class AuthService {
                     'expiresAt',
                     'deviceFingerprint',
                     'ipAddress',
+                    'namespace',
                 ],
             });
+            if (this.options.debug) {
+                this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}, Where clause: ${JSON.stringify(whereClause)}`);
+            }
             if (!session)
                 throw new common_1.ForbiddenException('Session not found');
             const incomingFingerprint = this.fingerprint(currentUserAgent);
             if (session.deviceFingerprint !== incomingFingerprint) {
-                await this.sessionRepository.delete(session.id);
+                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Device mismatch during refresh' });
                 throw new common_1.ForbiddenException('Device mismatch');
             }
             if (session.namespace !== namespace && session.namespace !== resolvedNamespace) {
                 if (this.options.debug) {
                     this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`);
                 }
-                await this.sessionRepository.delete(session.id);
+                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' });
                 throw new common_1.ForbiddenException("Namespace mismatch");
             }
             if (new Date() > session.expiresAt) {
-                await this.sessionRepository.delete(session.id);
+                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.EXPIRE, reason: 'Session expired during refresh' });
                 throw new common_1.ForbiddenException('Session expired');
             }
             const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
             if (!isMatch) {
-                await this.sessionRepository.delete(session.id);
+                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' });
                 throw new common_1.ForbiddenException('Invalid refresh token');
             }
             const tokens = await this.generateTokens(session.uid, session.id, namespace);
@@ -444,7 +498,7 @@ let AuthService = AuthService_1 = class AuthService {
             const payload = this.jwtService.decode(refreshToken);
             if (payload?.sessionId) {
                 const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
-                await this.sessionRepository.delete(payload.sessionId);
+                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.LOGOUT, reason: 'User logout' });
                 if (session && this.eventEmitter) {
                     this.eventEmitter.emit(auth_events_1.AuthEvents.LOGOUT, { uid: session.uid });
                 }
@@ -517,7 +571,7 @@ let AuthService = AuthService_1 = class AuthService {
         otp.isUsed = true;
         await this.otpRepo.save(otp);
         // Security: Invalidate all sessions
-        await this.sessionRepository.delete({ uid: dto.uid });
+        await this.invalidateSessions({ uid: dto.uid, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User reset password' });
         if (this.eventEmitter) {
             const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
             this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_RESET, { auth });
@@ -584,7 +638,7 @@ let AuthService = AuthService_1 = class AuthService {
         // 1. Lock all auth methods
         await this.authRepo.update({ uid: dto.uid }, { isActive: false });
         // 2. Invalidate sessions
-        await this.sessionRepository.delete({ uid: dto.uid });
+        this.invalidateSessions({ uid: dto.uid, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' });
         // 3. Mark OTP as used
         otp.isUsed = true;
         await this.otpRepo.save(otp);
@@ -723,7 +777,7 @@ let AuthService = AuthService_1 = class AuthService {
     }
     async deleteAccount(uid) {
         // 1. Delete all sessions for this UID
-        await this.sessionRepository.delete({ uid });
+        await this.invalidateSessions({ uid, event: session_log_entity_1.SessionEvent.DELETE, reason: 'User deleted account' });
         // 2. Delete all MFA methods for this UID
         await this.mfaRepo.delete({ uid });
         // 3. Delete all OTP tokens requested by this UID
@@ -770,6 +824,20 @@ let AuthService = AuthService_1 = class AuthService {
         const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
         return (await sessions).map((d) => Object.assign(new session_entity_1.Session(), d.toMap()));
     }
+    async getSessionLogs({ uid, namespace }) {
+        const whereClause = { uid };
+        if (typeof namespace === "string") {
+            whereClause.namespace = namespace;
+        }
+        const sessions = this.sessionLogRepo.find({ where: whereClause, relations: [] });
+        return (await sessions).map((d) => Object.assign(new session_log_entity_1.SessionLog(), d.toMap()));
+    }
+    async getSession(id) {
+        return this.sessionRepository.findOne({ where: { id } });
+    }
+    async revokeSession({ sessionId }) {
+        await this.invalidateSession({ sessionId, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User requested session revoke' });
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
@@ -777,16 +845,18 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __param(1, (0, common_1.Optional)()),
     __param(2, (0, common_1.Optional)()),
     __param(3, (0, typeorm_1.InjectRepository)(session_entity_1.Session)),
-    __param(4, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
-    __param(5, (0, typeorm_1.InjectRepository)(otp_token_entity_1.OtpToken)),
-    __param(6, (0, typeorm_1.InjectRepository)(mfa_method_entity_1.MfaMethod)),
-    __param(7, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
-    __param(8, (0, common_1.Optional)()),
-    __param(8, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
+    __param(4, (0, typeorm_1.InjectRepository)(session_log_entity_1.SessionLog)),
+    __param(5, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
+    __param(6, (0, typeorm_1.InjectRepository)(otp_token_entity_1.OtpToken)),
+    __param(7, (0, typeorm_1.InjectRepository)(mfa_method_entity_1.MfaMethod)),
+    __param(8, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
     __param(9, (0, common_1.Optional)()),
+    __param(9, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
+    __param(10, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         local_auth_strategy_1.LocalAuthStrategy,
         oauth_strategy_1.OAuthAuthStrategy,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

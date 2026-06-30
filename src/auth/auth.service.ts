@@ -33,10 +33,12 @@ import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-li
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
 import { AuthIdentifier, IdentifierType } from './entities/auth-identify.entity';
 import { AuthEvents } from './enums/auth.events';
+import { SessionEvent, SessionLog } from './entities/session_log.entity';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly createSessionLog = this.options.createSessionLogOnInvalid ?? true
 
   constructor(
     private jwtService: JwtService,
@@ -44,6 +46,8 @@ export class AuthService {
     @Optional() private oauthStrategy: OAuthAuthStrategy,
     @InjectRepository(Session)
     private sessionRepository: Repository<Session>,
+    @InjectRepository(SessionLog)
+    private sessionLogRepo: Repository<SessionLog>,
     @InjectRepository(Auth)
     private authRepo: Repository<Auth>,
     @InjectRepository(OtpToken)
@@ -140,6 +144,92 @@ export class AuthService {
     await this.sessionRepository.save(session);
 
     return tokens;
+  }
+
+  private async createSessionLogFromSessionIfEnabled({
+    event,
+    reason,
+    session,
+  }: {
+    event: SessionEvent;
+    reason?: string;
+    session: Session;
+  }) {
+    if (!this.createSessionLog) return;
+
+    const sessionLog = this.sessionLogRepo.create({
+      ...session,
+      sessionId: session.id,
+      event,
+      reason,
+    });
+
+    await this.sessionLogRepo.save(sessionLog);
+  }
+
+  private async invalidateSession({
+    session,
+    sessionId,
+    event,
+    reason,
+  }: {
+    session?: Session;
+    sessionId?: string;
+    event: SessionEvent;
+    reason: string;
+  }) {
+    if (!session && !sessionId) {
+      throw new Error("Either session or sessionId must be provided.");
+    }
+
+    if (!session) {
+      session = await this.sessionRepository.findOneByOrFail({ id: sessionId! });
+    }
+
+    await this.createSessionLogFromSessionIfEnabled({
+      session,
+      event,
+      reason,
+    });
+
+    await this.sessionRepository.delete(session.id);
+  }
+
+  private async invalidateSessions({
+    uid,
+    event,
+    reason,
+  }: {
+    uid: string;
+    event: SessionEvent;
+    reason: string;
+  }) {
+    await this.sessionRepository.manager.transaction(async (manager) => {
+      const sessions = await manager.find(Session, {
+        where: { uid },
+      });
+
+      if (sessions.length === 0) {
+        return;
+      }
+
+      if (this.createSessionLog) {
+        const logs = sessions.map((session) =>
+          this.sessionLogRepo.create({
+            ...session,
+            sessionId: session.id,
+            event,
+            reason,
+          }),
+        );
+
+        await manager.save(logs);
+      }
+
+      await manager.delete(Session, {
+        uid,
+      });
+    });
   }
 
   async signup({ dto, uid, userAgent, ip, namespace }: { dto: SignupDto, uid?: string, userAgent?: string, ip?: string, namespace?: string }) {
@@ -476,6 +566,7 @@ export class AuthService {
         whereClause.namespace = resolvedNamespace;
       }
 
+
       const session = await this.sessionRepository.findOne({
         where: whereClause,
         select: [
@@ -485,14 +576,19 @@ export class AuthService {
           'expiresAt',
           'deviceFingerprint',
           'ipAddress',
+          'namespace',
         ],
       });
+
+      if (this.options.debug) {
+        this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}, Where clause: ${JSON.stringify(whereClause)}`)
+      }
 
       if (!session) throw new ForbiddenException('Session not found');
 
       const incomingFingerprint = this.fingerprint(currentUserAgent);
       if (session.deviceFingerprint !== incomingFingerprint) {
-        await this.sessionRepository.delete(session.id);
+        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Device mismatch during refresh' })
         throw new ForbiddenException('Device mismatch');
       }
 
@@ -500,12 +596,12 @@ export class AuthService {
         if (this.options.debug) {
           this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`)
         }
-        await this.sessionRepository.delete(session.id);
+        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' })
         throw new ForbiddenException("Namespace mismatch")
       }
 
       if (new Date() > session.expiresAt) {
-        await this.sessionRepository.delete(session.id);
+        this.invalidateSession({ session, event: SessionEvent.EXPIRE, reason: 'Session expired during refresh' })
         throw new ForbiddenException('Session expired');
       }
 
@@ -515,7 +611,7 @@ export class AuthService {
       );
 
       if (!isMatch) {
-        await this.sessionRepository.delete(session.id);
+        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' })
         throw new ForbiddenException('Invalid refresh token');
       }
 
@@ -554,7 +650,7 @@ export class AuthService {
       );
       if (payload?.sessionId) {
         const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
-        await this.sessionRepository.delete(payload.sessionId);
+        this.invalidateSession({ session, event: SessionEvent.LOGOUT, reason: 'User logout' })
         if (session && this.eventEmitter) {
           this.eventEmitter.emit(AuthEvents.LOGOUT, { uid: session.uid });
         }
@@ -644,7 +740,7 @@ export class AuthService {
     await this.otpRepo.save(otp);
 
     // Security: Invalidate all sessions
-    await this.sessionRepository.delete({ uid: dto.uid });
+    await this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User reset password' });
 
     if (this.eventEmitter) {
       const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
@@ -731,7 +827,7 @@ export class AuthService {
     await this.authRepo.update({ uid: dto.uid }, { isActive: false });
 
     // 2. Invalidate sessions
-    await this.sessionRepository.delete({ uid: dto.uid });
+    this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' })
 
     // 3. Mark OTP as used
     otp.isUsed = true;
@@ -911,7 +1007,7 @@ export class AuthService {
 
   async deleteAccount(uid: string) {
     // 1. Delete all sessions for this UID
-    await this.sessionRepository.delete({ uid });
+    await this.invalidateSessions({ uid, event: SessionEvent.DELETE, reason: 'User deleted account' });
 
     // 2. Delete all MFA methods for this UID
     await this.mfaRepo.delete({ uid });
@@ -966,5 +1062,22 @@ export class AuthService {
     }
     const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
     return (await sessions).map((d) => Object.assign(new Session(), d.toMap()));
+  }
+
+  async getSessionLogs({ uid, namespace }: { uid: string, namespace: string }): Promise<SessionLog[]> {
+    const whereClause: { uid: string, namespace?: string } = { uid };
+    if (typeof namespace === "string") {
+      whereClause.namespace = namespace;
+    }
+    const sessions = this.sessionLogRepo.find({ where: whereClause, relations: [] });
+    return (await sessions).map((d) => Object.assign(new SessionLog(), d.toMap()));
+  }
+
+  async getSession(id: string) {
+    return this.sessionRepository.findOne({ where: { id } });
+  }
+
+  async revokeSession({ sessionId }: { sessionId: string }) {
+    await this.invalidateSession({ sessionId, event: SessionEvent.REVOKE, reason: 'User requested session revoke' })
   }
 }

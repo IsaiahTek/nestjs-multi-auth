@@ -247,4 +247,10 @@ export interface AuthModuleOptions {
    * Default is `false`
    */
   debug?: boolean
+
+  /**
+   * Create session history on login, after logout, expired token, invalid token, etc.
+   * Defaults to `false`. But you can set it to true for audit and other need 
+   */
+  createSessionLogOnInvalid?: boolean
 }
