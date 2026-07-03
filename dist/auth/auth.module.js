@@ -39,6 +39,7 @@ const facebook_strategy_1 = require("./strategies/oauth/facebook.strategy");
 const apple_strategy_1 = require("./strategies/oauth/apple.strategy");
 const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
 const auth_context_resolver_1 = require("./core/auth-context.resolver");
+const session_log_entity_1 = require("./entities/session_log.entity");
 let AuthModule = AuthModule_1 = class AuthModule {
     static register(options) {
         const optionsProvider = {
@@ -73,6 +74,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
                     otp_token_entity_1.OtpToken,
                     mfa_method_entity_1.MfaMethod,
                     session_entity_1.Session,
+                    session_log_entity_1.SessionLog,
                 ]),
                 passport_1.PassportModule,
                 jwt_1.JwtModule.register({
@@ -123,6 +125,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
                     otp_token_entity_1.OtpToken,
                     mfa_method_entity_1.MfaMethod,
                     session_entity_1.Session,
+                    session_log_entity_1.SessionLog,
                 ]),
                 passport_1.PassportModule,
                 jwt_1.JwtModule.registerAsync({

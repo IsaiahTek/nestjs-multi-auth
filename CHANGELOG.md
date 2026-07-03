@@ -1,3 +1,11 @@
+# v0.3.2
+## Patch Session Logs Method Signature
+Made namespace optional
+
+# v0.3.1
+## Fixed Build Issue
+Added the missing `SessionLog` entity for successful build
+
 # v0.3.0
 ## Added Session Log (Optional)
 1. Added `createSessionLogOnInvalid` flag to the module config options to enable session logs

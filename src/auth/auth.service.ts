@@ -38,7 +38,7 @@ import { SessionEvent, SessionLog } from './entities/session_log.entity';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly createSessionLog = this.options.createSessionLogOnInvalid ?? true
+  private readonly createSessionLog = this.options.createSessionLogOnInvalid ?? false
 
   constructor(
     private jwtService: JwtService,
@@ -135,7 +135,6 @@ export class AuthService {
       }
     } else {
       session = _createSession();
-
     }
 
     const tokens = await this.generateTokens(uid, session.id, namespace);
@@ -1072,7 +1071,7 @@ export class AuthService {
     await this.invalidateSession({ sessionId, event: SessionEvent.REVOKE, reason: 'User requested session revoke' })
   }
 
-  async getSessionLogs({ uid, namespace }: { uid: string, namespace: string }): Promise<SessionLog[]> {
+  async getSessionLogs({ uid, namespace }: { uid: string, namespace?: string }): Promise<SessionLog[]> {
     const whereClause: { uid: string, namespace?: string } = { uid };
     if (typeof namespace === "string") {
       whereClause.namespace = namespace;

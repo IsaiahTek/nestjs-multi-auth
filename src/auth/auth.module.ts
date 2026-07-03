@@ -29,6 +29,7 @@ import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { AuthContextService } from './core/auth-context.resolver';
+import { SessionLog } from './entities/session_log.entity';
 
 
 
@@ -73,6 +74,7 @@ export class AuthModule {
           OtpToken,
           MfaMethod,
           Session,
+          SessionLog,
         ]),
         PassportModule,
         JwtModule.register({
@@ -126,6 +128,7 @@ export class AuthModule {
           OtpToken,
           MfaMethod,
           Session,
+          SessionLog,
         ]),
         PassportModule,
         JwtModule.registerAsync({

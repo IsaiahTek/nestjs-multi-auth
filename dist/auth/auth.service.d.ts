@@ -222,6 +222,6 @@ export declare class AuthService {
     }): Promise<void>;
     getSessionLogs({ uid, namespace }: {
         uid: string;
-        namespace: string;
+        namespace?: string;
     }): Promise<SessionLog[]>;
 }

@@ -49,7 +49,7 @@ let AuthService = AuthService_1 = class AuthService {
         this.notificationProvider = notificationProvider;
         this.eventEmitter = eventEmitter;
         this.logger = new common_1.Logger(AuthService_1.name);
-        this.createSessionLog = this.options.createSessionLogOnInvalid ?? true;
+        this.createSessionLog = this.options.createSessionLogOnInvalid ?? false;
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
     async generateTokens(uid, sessionId, namespace) {
