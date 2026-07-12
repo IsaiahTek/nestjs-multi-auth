@@ -89,7 +89,7 @@ describe('AuthService', () => {
                 { provide: AUTH_OTP_PROVIDER_EMAIL, useValue: mockOtpProvider },
                 { provide: AUTH_OTP_PROVIDER_PHONE, useValue: mockOtpProvider },
                 { provide: MFA_METHOD_REPOSITORY_TOKEN, useValue: mockMfaRepo },
-                { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockSessionLogRepo},
+                { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockSessionLogRepo },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
         }).compile();
@@ -121,7 +121,7 @@ describe('AuthService', () => {
                 mockOtpProvider as any, // phone otp provider
                 mockMfaRepo as any,
                 { enabledStrategies: [AuthStrategy.LOCAL] } as any,
-            
+
             );
 
             await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(BadRequestException);
@@ -184,7 +184,7 @@ describe('AuthService', () => {
             mockAuthRepo.findByUid.mockResolvedValue({ uid, isVerified: true });
             mockOtpProvider.verify.mockResolvedValue({ success: true, authId: 1 });
             mockSessionRepo.create.mockReturnValue({});
-            mockSessionRepo.save.mockImplementation(async (session) => {
+            mockSessionRepo.save.mockImplementation(async (session: { id: string; }) => {
                 session.id = 'session-id';
                 return session;
             });
