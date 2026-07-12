@@ -15,7 +15,7 @@ import { AuthRepository, AuthIdentifierRepository } from '../interfaces/reposito
 
 // Entities
 import { Auth, AuthIdentifier } from '../interfaces/models.interface';
-import { IdentifierType } from '../enums/identifier-type.enum';
+import { IdentifierType, IdentifierSource } from '../enums/identifier-type.enum';
 
 // Enums
 import { AuthStrategy } from '../enums/auth-type.enum';
@@ -130,7 +130,7 @@ export class LocalAuthStrategy {
         type: IdentifierType.EMAIL,
         value: dto.email.toLowerCase(),
         isVerified: false,
-        source: 'USER_INPUT' as any,
+        source: IdentifierSource.LOCAL,
       }));
     }
 
@@ -139,7 +139,7 @@ export class LocalAuthStrategy {
         type: IdentifierType.PHONE,
         value: dto.phone,
         isVerified: false,
-        source: 'USER_INPUT' as any,
+        source: IdentifierSource.LOCAL,
       }));
     }
 
@@ -148,7 +148,7 @@ export class LocalAuthStrategy {
         type: IdentifierType.USERNAME,
         value: dto.username.toLowerCase(),
         isVerified: false,
-        source: 'USER_INPUT' as any,
+        source: IdentifierSource.LOCAL,
       }));
     }
 

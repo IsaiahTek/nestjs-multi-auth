@@ -233,14 +233,14 @@ export class AuthService {
 
     if (this.createSessionLog) {
       const logs = sessions.map((session) =>
-        ({
-          ...session,
-          id: undefined as any,
-          sessionId: session.id,
-          event,
-          reason,
-          timestamp: new Date()
-        })
+      ({
+        ...session,
+        id: undefined as any,
+        sessionId: session.id,
+        event,
+        reason,
+        timestamp: new Date()
+      })
       );
       for (const log of logs) {
         await this.sessionLogRepo.save(log as any);
@@ -435,7 +435,7 @@ export class AuthService {
     }
 
     const purpose = primaryIdentifier.type === 'EMAIL' ? OtpPurpose.VERIFY_EMAIL : OtpPurpose.VERIFY_PHONE;
-    
+
     const idType: 'email' | 'phone' = primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone';
     const result = await this.resolveOtpProvider(idType).issue({
       uid: auth.uid,
