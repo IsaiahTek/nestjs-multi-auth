@@ -1,4 +1,4 @@
-import { Type } from '@nestjs/common';
+import { Type, DynamicModule } from '@nestjs/common';
 import { AuthTransport, AuthStrategy } from '../enums/auth-type.enum';
 import { AuthNotificationProvider } from './auth-notification-provider.interface';
 import { Request } from 'express';
@@ -24,6 +24,10 @@ export interface AuthContext {
 export declare enum SessionCreationPolicy {
     ALWAYS_NEW = 0,
     REUSE_DEVICE = 1
+}
+export interface TestAccount {
+    identifier: string;
+    otp: string;
 }
 export interface AuthModuleOptions {
     /**
@@ -209,4 +213,35 @@ export interface AuthModuleOptions {
      * Defaults to `false`. But you can set it to true for audit and other need
      */
     createSessionLogOnInvalid?: boolean;
+    /**
+     * Optional: Custom adapter for database operations.
+     * If not provided, TypeOrmAuthAdapter is used by default.
+     */
+    adapter?: Type<any> | DynamicModule;
+    /**
+     * Optional: Pluggable provider for managing OTP lifecycle.
+     * Defaults to DatabaseOtpProvider.
+     * This applies to all identifier types unless overridden by `otpProviders`.
+     */
+    otpProvider?: Type<any>;
+    /**
+     * Optional: Granular per-channel OTP provider map.
+     * Allows different OTP backends per identifier type.
+     * Any channel not specified here falls back to `otpProvider` (or `DatabaseOtpProvider`).
+     *
+     * @example
+     * otpProviders: {
+     *   phone: TwilioOtpProvider, // Twilio Verify for phone
+     *   email: DatabaseOtpProvider, // built-in database storage for email
+     * }
+     */
+    otpProviders?: {
+        email?: Type<any>;
+        phone?: Type<any>;
+    };
+    /**
+     * Optional: List of test accounts. If an OTP is requested for one of these identifiers,
+     * the configured static OTP is used and the notification provider is bypassed.
+     */
+    testAccounts?: TestAccount[];
 }

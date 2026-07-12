@@ -1,0 +1,80 @@
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { BaseEntity } from './base.entity';
+import { Auth } from './auth.entity';
+import { OAuthProviderType } from '../../../auth/enums/auth-type.enum';
+
+@Entity('oauth_providers')
+export class OAuthProvider extends BaseEntity {
+  @ManyToOne(() => Auth, (auth) => auth.oauthProviders, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'authId' })
+  auth: Auth;
+
+  @ApiProperty({ enum: OAuthProviderType, example: OAuthProviderType.GOOGLE })
+  @Column({ type: 'enum', enum: OAuthProviderType })
+  provider: OAuthProviderType;
+
+  // The ID returned by Google/Apple (e.g. "sub" claim)
+  @ApiProperty({ example: '1234567890' })
+  @Column()
+  providerUserId: string;
+
+  @ApiProperty({ example: 'ya29.a0ARrdaM...' })
+  @Column({ nullable: true, select: false })
+  accessToken?: string;
+
+  @ApiProperty({ example: '1//0gdf1234...' })
+  @Column({ nullable: true, select: false })
+  refreshToken?: string;
+
+  @ApiProperty({ example: '2025-10-01T12:00:00Z' })
+  @Column({ type: 'timestamp', nullable: true })
+  expiresAt?: Date;
+
+  /* ------------------------------------------------------------------
+   * Provider Profile Snapshot (NON-SENSITIVE)
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Display name from provider (e.g. "John Doe")
+   */
+  @ApiProperty({ example: 'John Doe', required: false })
+  @Column({ nullable: true })
+  displayName?: string;
+
+  /**
+   * Avatar/profile picture URL
+   */
+  @ApiProperty({ example: 'https://lh3.googleusercontent.com/...', required: false })
+  @Column({ nullable: true })
+  avatarUrl?: string;
+
+  /**
+   * Whether provider verified the email
+   */
+  @ApiProperty({ example: true, required: false })
+  @Column({ nullable: true })
+  emailVerified?: boolean;
+
+  /**
+   * Raw provider response (for debugging/future-proofing)
+   */
+  @ApiProperty({ required: false })
+  @Column({ type: 'jsonb', nullable: true })
+  rawProfile?: Record<string, any>;
+
+  toMap() {
+    return {
+      id: this.id,
+      provider: this.provider,
+      providerUserId: this.providerUserId,
+      accessToken: this.accessToken,
+      refreshToken: this.refreshToken,
+      expiresAt: this.expiresAt,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      deletedAt: this.deletedAt,
+      // auth: this.auth.toMap(),
+    };
+  }
+}

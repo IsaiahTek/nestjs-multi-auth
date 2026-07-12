@@ -1,15 +1,14 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
-import { Repository } from 'typeorm';
+import { AuthRepository, SessionRepository, SessionLogRepository, MfaMethodRepository, AuthIdentifierRepository } from './interfaces/repositories.interface';
+import { AuthOtpProvider } from './interfaces/auth-otp-provider.interface';
 import { SignupDto } from './dto/requests/signup.dto';
 import { LoginDto } from './dto/requests/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { AuthStrategy } from './enums/auth-type.enum';
-import { Auth } from './entities/auth.entity';
-import { Session } from './entities/session.entity';
-import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod, MfaType } from './entities/mfa-method.entity';
+import { Auth, Session } from './interfaces/models.interface';
+import { MfaType } from './enums/mfa-type.enum';
 import { AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
 import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
@@ -17,8 +16,8 @@ import { ResetPasswordDto } from './dto/requests/reset-password.dto';
 import { UpdatePasswordDto } from './dto/requests/update-password.dto';
 import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
-import { AuthIdentifier } from './entities/auth-identify.entity';
-import { SessionLog } from './entities/session_log.entity';
+import { AuthIdentifier } from './interfaces/models.interface';
+import { SessionLog } from './interfaces/models.interface';
 export declare class AuthService {
     private jwtService;
     private passwordStrategy;
@@ -26,14 +25,19 @@ export declare class AuthService {
     private sessionRepository;
     private sessionLogRepo;
     private authRepo;
-    private otpRepo;
+    private authIdentifierRepo;
+    private otpProvider;
+    private otpProviderEmail;
+    private otpProviderPhone;
     private mfaRepo;
     private options;
     private notificationProvider?;
     private readonly eventEmitter?;
     private readonly logger;
     private readonly createSessionLog;
-    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: Repository<Session>, sessionLogRepo: Repository<SessionLog>, authRepo: Repository<Auth>, otpRepo: Repository<OtpToken>, mfaRepo: Repository<MfaMethod>, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider, eventEmitter?: EventEmitter2);
+    constructor(jwtService: JwtService, passwordStrategy: LocalAuthStrategy, oauthStrategy: OAuthAuthStrategy, sessionRepository: SessionRepository, sessionLogRepo: SessionLogRepository, authRepo: AuthRepository, authIdentifierRepo: AuthIdentifierRepository, otpProvider: AuthOtpProvider, otpProviderEmail: AuthOtpProvider, otpProviderPhone: AuthOtpProvider, mfaRepo: MfaMethodRepository, options: AuthModuleOptions, notificationProvider?: AuthNotificationProvider, eventEmitter?: EventEmitter2);
+    /** Returns the correct OTP provider for the given identifier type. */
+    private resolveOtpProvider;
     private generateTokens;
     private fingerprint;
     private createSession;
@@ -51,34 +55,36 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProviders?: import("..").OAuthProvider[];
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date;
+            deletedAt?: Date;
         };
         verificationRequired: boolean;
     } | {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProviders?: import("..").OAuthProvider[];
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date;
+            deletedAt?: Date;
         };
         accessToken: string;
         refreshToken: string;
@@ -101,17 +107,18 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProviders?: import("..").OAuthProvider[];
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date;
+            deletedAt?: Date;
         };
         mfaRequired: boolean;
         tokens: any;
@@ -120,17 +127,18 @@ export declare class AuthService {
         auth: {
             uid: string;
             strategy: AuthStrategy;
-            identifiers: AuthIdentifier[];
             isPrimary: boolean;
             isVerified: boolean;
             isActive: boolean;
             meta?: Record<string, any>;
             lastUsedAt?: Date;
-            oauthProviders?: import("..").OAuthProvider[];
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date;
+            deletedAt?: Date;
         };
         accessToken: string;
         refreshToken: string;
@@ -147,10 +155,6 @@ export declare class AuthService {
         ip?: string;
         namespace?: string;
     }): Promise<{
-        message: string;
-        tokens?: undefined;
-        auth?: undefined;
-    } | {
         message: string;
         tokens: {
             accessToken: string;
@@ -206,6 +210,29 @@ export declare class AuthService {
     }>;
     activateMfa(uid: string, type: MfaType, code: string): Promise<{
         message: string;
+    }>;
+    mfaLogin(uid: string, code: string, userAgent?: string, ip?: string, namespace?: string): Promise<{
+        message: string;
+        tokens: {
+            accessToken: string;
+            refreshToken: string;
+        };
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt?: Date;
+        };
     }>;
     viewAll(): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
     me(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto>;

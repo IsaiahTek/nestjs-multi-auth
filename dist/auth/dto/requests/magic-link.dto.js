@@ -30,4 +30,10 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], MagicLinkVerifyDto.prototype, "token", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'john@example.com' }),
+    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], MagicLinkVerifyDto.prototype, "email", void 0);
 //# sourceMappingURL=magic-link.dto.js.map

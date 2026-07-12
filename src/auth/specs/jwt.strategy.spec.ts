@@ -1,3 +1,4 @@
+import { SESSION_LOG_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
 // src/auth/jwt.strategy.spec.ts
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -6,6 +7,30 @@ import { JwtStrategy } from '../core/jwt.strategy'
 import { UnauthorizedException } from '@nestjs/common';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { AuthContextService } from '../core/auth-context.resolver';
+
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn()
+});
+
+let mockRepo: any = createMockRepo();
 
 describe('JwtStrategy', () => {
     let strategy: JwtStrategy;
@@ -42,7 +67,8 @@ describe('JwtStrategy', () => {
                     provide: AuthContextService,
                     useValue: mockCookieService,
                 },
-            ],
+              { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
+      ],
         }).compile();
 
         strategy = module.get<JwtStrategy>(JwtStrategy);

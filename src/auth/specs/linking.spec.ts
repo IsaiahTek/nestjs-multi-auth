@@ -1,3 +1,6 @@
+import { IdentifierType } from '../enums/identifier-type.enum';
+import { AUTH_REPOSITORY_TOKEN, SESSION_REPOSITORY_TOKEN, MFA_METHOD_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN, OAUTH_PROVIDER_REPOSITORY_TOKEN, SESSION_LOG_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
+import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE } from '../interfaces/auth-otp-provider.interface';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service';
 import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
@@ -6,13 +9,12 @@ import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { DataSource } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Auth } from '../entities/auth.entity';
-import { AuthIdentifier, IdentifierType } from '../entities/auth-identify.entity';
-import { OAuthProvider } from '../entities/oauth-provider.entity';
-import { Session } from '../entities/session.entity';
-import { OtpToken } from '../entities/otp-token.entity';
-import { MfaMethod } from '../entities/mfa-method.entity';
+// removed entity import auth.entity';
+// removed entity import auth-identify.entity';
+// removed entity import oauth-provider.entity';
+// removed entity import session.entity';
+// removed entity import otp-token.entity';
+// removed entity import mfa-method.entity';
 import { JwtService } from '@nestjs/jwt';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
@@ -20,6 +22,32 @@ import { AuthController } from '../auth.controller';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthContextService } from '../core/auth-context.resolver';
+
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+        findByProviderUserId: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findByValue: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn()
+});
+
+let mockRepo: any = createMockRepo();
 
 describe('Account Linking Integration', () => {
     let authService: AuthService;
@@ -33,9 +61,9 @@ describe('Account Linking Integration', () => {
     const mockDataSource = {
         transaction: jest.fn().mockImplementation(async (cb) => cb({
             getRepository: (entity: any) => {
-                if (entity === Auth) return mockAuthRepo;
-                if (entity === AuthIdentifier) return mockIdentifierRepo;
-                if (entity === OAuthProvider) return mockOAuthProviderRepo;
+                if (entity === AUTH_REPOSITORY_TOKEN) return mockAuthRepo;
+                if (entity === AUTH_IDENTIFIER_REPOSITORY_TOKEN) return mockIdentifierRepo;
+                if (entity === OAUTH_PROVIDER_REPOSITORY_TOKEN) return mockOAuthProviderRepo;
                 return {};
             }
         })),
@@ -49,47 +77,26 @@ describe('Account Linking Integration', () => {
         getNamespace: jest.fn().mockReturnValue(undefined)
     };
 
-    const mockAuthRepo = {
-        create: jest.fn().mockImplementation((d) => ({ ...d })),
-        save: jest.fn().mockImplementation(async (d) => ({ id: d.id || 'new-auth-id', ...d })),
-        findOne: jest.fn(),
-        count: jest.fn(),
-        query: jest.fn(),
-        update: jest.fn(),
-    };
+    const mockAuthRepo: any = { ...createMockRepo(), create: jest.fn().mockImplementation(v => v || {}), save: jest.fn().mockImplementation(async v => v) };
 
-    const mockIdentifierRepo = {
-        create: jest.fn().mockImplementation((d) => ({ ...d })),
-        save: jest.fn().mockImplementation(async (d) => d),
-        findOne: jest.fn(),
-    };
+    const mockIdentifierRepo: any = { ...createMockRepo(), create: jest.fn().mockImplementation(v => v || {}), save: jest.fn().mockImplementation(async v => v) };
 
     const mockOAuthProviderRepo = {
         create: jest.fn().mockImplementation((d) => ({ ...d })),
         save: jest.fn().mockImplementation(async (d) => d),
         findOne: jest.fn(),
+        findByProviderUserId: jest.fn(),
     };
 
-    const mockSessionRepo = {
-        create: jest.fn().mockImplementation((d) => ({ ...d })),
-        save: jest.fn().mockImplementation(async (d) => {
-            if (!d.id) d.id = 'mock-session-id';
-            return d;
-        }),
-        update: jest.fn().mockResolvedValue({}),
-        findOne: jest.fn(),
-        delete: jest.fn(),
+    const mockSessionRepo: any = {
+        ...createMockRepo(),
+        create: jest.fn().mockImplementation((v) => ({ id: 'session-123', ...v })),
+        save: jest.fn().mockImplementation(async (v) => v),
     };
 
-    const mockOtpRepo = {
-        create: jest.fn().mockImplementation((d) => ({ ...d })),
-        save: jest.fn().mockImplementation(async (d) => d),
-        findOne: jest.fn(),
-    };
+    const mockOtpProvider: any = createMockRepo();
 
-    const mockMfaRepo = {
-        findOne: jest.fn(),
-    };
+    const mockMfaRepo: any = createMockRepo();
 
     const mockJwtService = {
         signAsync: jest.fn().mockResolvedValue('token'),
@@ -112,16 +119,19 @@ describe('Account Linking Integration', () => {
                 FacebookAuthStrategy,
                 AppleAuthStrategy,
                 { provide: DataSource, useValue: mockDataSource },
-                { provide: getRepositoryToken(Auth), useValue: mockAuthRepo },
-                { provide: getRepositoryToken(AuthIdentifier), useValue: mockIdentifierRepo },
-                { provide: getRepositoryToken(OAuthProvider), useValue: mockOAuthProviderRepo },
-                { provide: getRepositoryToken(Session), useValue: mockSessionRepo },
-                { provide: getRepositoryToken(OtpToken), useValue: mockOtpRepo },
-                { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
+                { provide: AUTH_REPOSITORY_TOKEN, useValue: mockAuthRepo },
+                { provide: AUTH_IDENTIFIER_REPOSITORY_TOKEN, useValue: mockIdentifierRepo },
+                { provide: OAUTH_PROVIDER_REPOSITORY_TOKEN, useValue: mockOAuthProviderRepo },
+                { provide: SESSION_REPOSITORY_TOKEN, useValue: mockSessionRepo },
+                { provide: AUTH_OTP_PROVIDER, useValue: mockOtpProvider },
+                { provide: AUTH_OTP_PROVIDER_EMAIL, useValue: mockOtpProvider },
+                { provide: AUTH_OTP_PROVIDER_PHONE, useValue: mockOtpProvider },
+                { provide: MFA_METHOD_REPOSITORY_TOKEN, useValue: mockMfaRepo },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
                 { provide: AuthContextService, useValue: mockCookieService },
-            ],
+              { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
+      ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
@@ -170,7 +180,7 @@ describe('Account Linking Integration', () => {
                 email: 'new-email@example.com',
                 password: 'password123'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -187,7 +197,7 @@ describe('Account Linking Integration', () => {
                 phone: '+1234567890',
                 password: 'password123'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -204,7 +214,7 @@ describe('Account Linking Integration', () => {
                 username: 'newuser',
                 password: 'password123'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -221,8 +231,8 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.GOOGLE,
                 token: 'mock-google-token'
             };
-            mockOAuthProviderRepo.findOne.mockResolvedValue(null);
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -239,8 +249,8 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.FACEBOOK,
                 token: 'mock-fb-token'
             };
-            mockOAuthProviderRepo.findOne.mockResolvedValue(null);
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -257,8 +267,8 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.APPLE,
                 token: 'mock-apple-token'
             };
-            mockOAuthProviderRepo.findOne.mockResolvedValue(null);
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
+            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
 
             const result = await authService.signup({ dto, uid: existingUid });
 
@@ -279,7 +289,7 @@ describe('Account Linking Integration', () => {
                 email: 'already@taken.com',
                 password: 'password123'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue({
+            mockIdentifierRepo.findByValue.mockResolvedValue({
                 id: 'existing-id',
                 value: 'already@taken.com',
                 type: IdentifierType.EMAIL
@@ -294,7 +304,7 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.GOOGLE,
                 token: 'mock-google-token'
             };
-            mockOAuthProviderRepo.findOne.mockResolvedValue({ id: 'existing-provider-id', providerUserId: 'google-uid-123' });
+            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue({ id: 'existing-provider-id', providerUserId: 'google-uid-123' });
 
             await expect(authService.signup({ dto, uid: existingUid })).rejects.toThrow(/already linked/);
         });
@@ -318,8 +328,8 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.GOOGLE,
                 token: 'token'
             };
-            mockIdentifierRepo.findOne.mockResolvedValue(null);
-            mockOAuthProviderRepo.findOne.mockResolvedValue(null);
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
+            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue(null);
 
             const result = await controller.link(dto as any, mockRequest, mockResponse);
 

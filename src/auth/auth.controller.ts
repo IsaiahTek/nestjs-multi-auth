@@ -18,7 +18,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/requests/login.dto';
 import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
-import { EnrollMfaDto, ActivateMfaDto } from './dto/requests/mfa.dto';
+import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
 import { ResetPasswordDto } from './dto/requests/reset-password.dto';
@@ -32,7 +32,7 @@ import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module
 import { AuthTransport } from './enums/auth-type.enum';
 import type { Response, Request } from 'express';
 import { parseDuration } from './utils/duration.util';
-import { Auth } from './entities/auth.entity';
+import { Auth } from './interfaces/models.interface';
 import { AuthContextService } from './core/auth-context.resolver';
 
 @Controller('auth')
@@ -226,11 +226,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify magic link and login' })
   async verifyMagicLink(
     @Query('token') token: string,
+    @Query('email') email: string,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request
   ) {
     const namespace = this.authContext.getNamespace(req);
-    const result = await this.authService.verifyMagicLink({ dto: { token }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
+    const result = await this.authService.verifyMagicLink({ dto: { token, email }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
     const transports = this.getTransports();
 
     if (result.tokens) {
@@ -326,6 +327,28 @@ export class AuthController {
   @ApiOperation({ summary: 'Activate MFA after enrollment' })
   async activateMfa(@Req() req: any, @Body() dto: ActivateMfaDto) {
     return this.authService.activateMfa(req.user.uid, dto.type, dto.code);
+  }
+
+  @Post('mfa/verify')
+  @Public()
+  @ApiOperation({ summary: 'Verify MFA code to complete login' })
+  async verifyMfa(@Body() dto: VerifyMfaLoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const namespace = this.authContext.getNamespace(req);
+    const result = await this.authService.mfaLogin(dto.uid, dto.code, req.headers['user-agent'], req.ip, namespace);
+    const transports = this.getTransports();
+
+    if (result.tokens) {
+      if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
+        this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+      }
+    }
+
+    const response: any = { message: result.message, auth: result.auth };
+    if (result.tokens && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
+      response.tokens = result.tokens;
+    }
+
+    return response;
   }
 
   @Post('logout')

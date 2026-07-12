@@ -13,4 +13,9 @@ export class MagicLinkVerifyDto {
   @IsString()
   @IsNotEmpty()
   token: string;
+
+  @ApiProperty({ example: 'john@example.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }

@@ -150,9 +150,9 @@ let AuthController = class AuthController {
     async requestMagicLink(dto) {
         return this.authService.requestMagicLink(dto);
     }
-    async verifyMagicLink(token, res, req) {
+    async verifyMagicLink(token, email, res, req) {
         const namespace = this.authContext.getNamespace(req);
-        const result = await this.authService.verifyMagicLink({ dto: { token }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
+        const result = await this.authService.verifyMagicLink({ dto: { token, email }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
         const transports = this.getTransports();
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
@@ -223,6 +223,21 @@ let AuthController = class AuthController {
     }
     async activateMfa(req, dto) {
         return this.authService.activateMfa(req.user.uid, dto.type, dto.code);
+    }
+    async verifyMfa(dto, res, req) {
+        const namespace = this.authContext.getNamespace(req);
+        const result = await this.authService.mfaLogin(dto.uid, dto.code, req.headers['user-agent'], req.ip, namespace);
+        const transports = this.getTransports();
+        if (result.tokens) {
+            if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
+                this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
+            }
+        }
+        const response = { message: result.message, auth: result.auth };
+        if (result.tokens && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
+            response.tokens = result.tokens;
+        }
+        return response;
     }
     async logout(req, res, dto) {
         const cookies = this.authContext.get(req);
@@ -355,10 +370,11 @@ __decorate([
     (0, public_decorator_1.Public)(),
     (0, swagger_1.ApiOperation)({ summary: 'Verify magic link and login' }),
     __param(0, (0, common_2.Query)('token')),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
-    __param(2, (0, common_1.Req)()),
+    __param(1, (0, common_2.Query)('email')),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
+    __param(3, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "verifyMagicLink", null);
 __decorate([
@@ -400,6 +416,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, mfa_dto_1.ActivateMfaDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "activateMfa", null);
+__decorate([
+    (0, common_1.Post)('mfa/verify'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify MFA code to complete login' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [mfa_dto_1.VerifyMfaLoginDto, Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyMfa", null);
 __decorate([
     (0, common_1.Post)('logout'),
     (0, swagger_1.ApiOperation)({ summary: 'User logout' }),

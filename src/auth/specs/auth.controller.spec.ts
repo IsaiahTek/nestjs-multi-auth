@@ -1,3 +1,4 @@
+import { SESSION_LOG_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
@@ -7,6 +8,30 @@ import { AuthTransport } from '../enums/auth-type.enum';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 import { AuthContextService } from '../core/auth-context.resolver';
+
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn()
+});
+
+let mockRepo: any = createMockRepo();
 
 describe('AuthController', () => {
     let controller: AuthController;
@@ -42,7 +67,8 @@ describe('AuthController', () => {
                 { provide: AuthService, useValue: mockAuthService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
                 { provide: AuthContextService, useValue: mockCookieService },
-            ],
+              { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
+      ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();

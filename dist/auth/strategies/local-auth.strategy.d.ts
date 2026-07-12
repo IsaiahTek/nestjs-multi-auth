@@ -1,15 +1,13 @@
-import { DataSource, Repository } from 'typeorm';
 import { LoginDto } from '../dto/requests/login.dto';
 import { SignupDto } from '../dto/requests/signup.dto';
 import { AuthModuleOptions } from '../interfaces/auth-module-options.interface';
-import { Auth } from '../entities/auth.entity';
-import { AuthIdentifier } from '../entities/auth-identify.entity';
+import { AuthRepository, AuthIdentifierRepository } from '../interfaces/repositories.interface';
+import { Auth, AuthIdentifier } from '../interfaces/models.interface';
 export declare class LocalAuthStrategy {
-    private readonly dataSource;
     private authRepo;
     private identifierRepo;
     private options;
-    constructor(dataSource: DataSource, authRepo: Repository<Auth>, identifierRepo: Repository<AuthIdentifier>, options: AuthModuleOptions);
+    constructor(authRepo: AuthRepository, identifierRepo: AuthIdentifierRepository, options: AuthModuleOptions);
     private readonly logger;
     private validatePhoneFormat;
     private requiresPassword;

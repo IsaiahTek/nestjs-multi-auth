@@ -1,6 +1,6 @@
 import { plainToInstance } from "class-transformer";
 import { AuthResponseDto } from "../dto/responses/auth-response.dto";
-import { Auth } from "../entities/auth.entity";
+import { Auth } from '../interfaces/models.interface';
 
 
 export class AuthMapper {

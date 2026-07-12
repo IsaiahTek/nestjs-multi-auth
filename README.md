@@ -71,7 +71,12 @@ npm install nestjs-multi-auth
 Ensure you have the required peer dependencies installed in your NestJS project:
 
 ```bash
-npm install @nestjs/passport @nestjs/jwt passport passport-jwt class-validator bcrypt typeorm
+npm install @nestjs/passport @nestjs/jwt passport passport-jwt class-validator bcrypt
+```
+
+If you are using the default **TypeORM** adapter, also install:
+```bash
+npm install typeorm @nestjs/typeorm
 ```
 
 #### Optional Dependencies
@@ -82,11 +87,13 @@ npm install @nestjs/event-emitter
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { AuthModule, AuthStrategy } from 'nestjs-multi-auth';
+import { AuthModule, AuthStrategy, TypeOrmAuthAdapter } from 'nestjs-multi-auth';
 
 @Module({
   imports: [
+    // Register the AuthModule with your chosen adapter
     AuthModule.register({
+      adapter: TypeOrmAuthAdapter,
       jwtSecret: process.env.JWT_SECRET,
       jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
     }),
@@ -114,7 +121,7 @@ Use `AuthModule.forRootAsync()` when your configuration depends on other provide
 ```typescript
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthModule } from 'nestjs-multi-auth';
+import { AuthModule, TypeOrmAuthAdapter } from 'nestjs-multi-auth';
 
 @Module({
   imports: [
@@ -123,6 +130,7 @@ import { AuthModule } from 'nestjs-multi-auth';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
+        adapter: TypeOrmAuthAdapter,
         jwtSecret: config.get('JWT_SECRET'),
         jwtRefreshSecret: config.get('JWT_REFRESH_SECRET'),
         appName: config.get('APP_NAME'),
@@ -181,8 +189,6 @@ import type { AuthCredential } from 'nestjs-multi-auth';
 // AuthCredential = { uid: string; sessionId: string }
 ```
 
----
-
 ## Identity Verification (OTPs) & MFA
 
 The library includes a pluggable verification system to confirm identities via Email or Phone. OTPs are triggered in the following scenarios:
@@ -199,24 +205,259 @@ If a user authenticates via a non-verifiable method (like a **USERNAME**), the s
 - Prioritizes verified **EMAIL** or **PHONE** numbers for delivery.
 - Marks all identifiers for the current auth method as verified once the OTP is confirmed.
 
+### OTP Providers
+
+The library uses a two-layer system to manage OTPs:
+
+| Layer | Responsibility |
+|---|---|
+| **OTP Provider** (`otpProvider`) | Generates, stores, and verifies OTP codes. |
+| **Notification Provider** (`notificationProvider`) | Delivers OTP codes to the user (SMS, email, etc.). |
+
+#### Built-in: `DatabaseOtpProvider` (Default)
+
+By default, the library uses the `DatabaseOtpProvider`, which stores hashed OTP codes in your database. You do **not** need to configure anything to use it — it works out of the box with whichever database adapter you register.
+
+It supports two special bypass modes that are useful during development and testing:
+
+**Debug Mode** — Use a static OTP for all identifiers. Useful during local development to avoid sending real notifications.
+
+```typescript
+AuthModule.register({
+  adapter: TypeOrmAuthAdapter,
+  debugMode: true,
+  defaultOtp: '111111', // Every OTP request will use this code
+  // ...
+})
+```
+
+> [!WARNING]
+> Never enable `debugMode` in production. It disables real OTP generation for all users.
+
+**Test Accounts** — Assign static OTPs to specific identifiers. Ideal for app store review automation or E2E tests, without affecting real users.
+
+```typescript
+AuthModule.register({
+  adapter: TypeOrmAuthAdapter,
+  testAccounts: [
+    { identifier: '+15550000000', otp: '000000' },
+    { identifier: 'reviewer@apple.com', otp: '123456' },
+  ],
+  // ...
+})
+```
+
+When a test account identifier requests an OTP, the static code is used and the notification provider is **skipped entirely** (no SMS or email is sent).
+
+#### Custom OTP Provider
+
+If you need to integrate a third-party OTP service (e.g. Twilio Verify, Firebase Phone Auth, Vonage), implement the `AuthOtpProvider` interface and register it via the `otpProvider` option.
+
+**Step 1: Implement `AuthOtpProvider`**
+
+```typescript
+import {
+  AuthOtpProvider,
+  IssueOtpRequest,
+  IssueOtpResult,
+  VerifyOtpRequest,
+  VerifyOtpResult,
+  ResendOtpRequest,
+  ResendOtpResult,
+} from 'nestjs-multi-auth';
+
+@Injectable()
+export class TwilioOtpProvider implements AuthOtpProvider {
+  constructor(private readonly twilioClient: TwilioClient) {}
+
+  async issue(request: IssueOtpRequest): Promise<IssueOtpResult> {
+    await this.twilioClient.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID)
+      .verifications.create({ to: request.identifier, channel: request.identifierType });
+
+    // Return handledDelivery: true to tell the library NOT to call
+    // notificationProvider.sendVerificationCode() — Twilio already sent it.
+    return { handledDelivery: true };
+  }
+
+  async verify(request: VerifyOtpRequest): Promise<VerifyOtpResult> {
+    const check = await this.twilioClient.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID)
+      .verificationChecks.create({ to: request.uid, code: request.code });
+
+    return { success: check.status === 'approved' };
+  }
+
+  // Optional — implement only if you want to support /auth/resend-verification
+  async resend(request: ResendOtpRequest): Promise<ResendOtpResult> {
+    await this.twilioClient.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID)
+      .verifications.create({ to: request.uid, channel: 'sms' });
+
+    return { handledDelivery: true };
+  }
+}
+```
+
+> [!NOTE]
+> When `handledDelivery` is `true`, the library will skip calling `notificationProvider.sendVerificationCode()`. Return `handledDelivery: false` (and include `code`) if you still want the library to dispatch the notification.
+
+**Step 2: Register in `AuthModule`**
+
+Pass your custom class to the `otpProvider` option. Also ensure the module that provides your service (e.g. `TwilioModule`) is listed in `imports`:
+
+```typescript
+AuthModule.register({
+  adapter: TypeOrmAuthAdapter,
+  otpProvider: TwilioOtpProvider,
+  imports: [TwilioModule], // provides TwilioClient
+  // notificationProvider is optional when handledDelivery is always true
+})
+```
+
+#### Routing by Identifier Type (Email + Phone)
+
+There are two strategies depending on how much control you need. Choose the one that fits your stack:
+
+---
+
+**Option A — Recommended for most cases: Keep `DatabaseOtpProvider`, route delivery in `notificationProvider`**
+
+When your app uses both email and phone auth, the simplest approach is to keep the built-in `DatabaseOtpProvider` (which handles generation, storage, and verification for you) and only implement routing logic in your `notificationProvider`. The `sendVerificationCode` method always receives a `type: 'email' | 'phone'` field you can use to dispatch via the right channel:
+
+```typescript
+@Injectable()
+export class MyNotificationProvider implements AuthNotificationProvider {
+  constructor(
+    private readonly mailer: MailerService,
+    private readonly sms: SmsService,
+  ) {}
+
+  async sendVerificationCode(request: { to: string; code: string; type: 'email' | 'phone' }) {
+    if (request.type === 'phone') {
+      await this.sms.send(request.to, `Your code: ${request.code}`);
+    } else {
+      await this.mailer.send({ to: request.to, subject: 'Your Code', text: `Code: ${request.code}` });
+    }
+  }
+}
+```
+
+```typescript
+// No otpProvider needed — DatabaseOtpProvider is the default
+AuthModule.register({
+  adapter: TypeOrmAuthAdapter,
+  notificationProvider: MyNotificationProvider,
+  imports: [MailerModule, SmsModule],
+})
+```
+
+This is the recommended approach when you manage delivery yourself (e.g. Twilio Programmable SMS + SendGrid) but don't need an external service to own the verification lifecycle.
+
+---
+
+**Option B — Fully custom: Use an external verification service per channel**
+
+Some services like **Twilio Verify** or **Firebase Phone Auth** own the entire OTP lifecycle (they generate, store, and verify the code on their servers). If you want to use such a service for phone auth, you can split your OTP providers using the `otpProviders` configuration map.
+
+With this approach, you create a focused `TwilioOtpProvider` that only handles phone, and let the library fall back to the built-in `DatabaseOtpProvider` for email.
+
+```typescript
+@Injectable()
+export class TwilioOtpProvider implements AuthOtpProvider {
+  constructor(private readonly twilioClient: TwilioClient) {}
+
+  async issue(request: IssueOtpRequest): Promise<IssueOtpResult> {
+    await this.twilioClient.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID)
+      .verifications.create({ to: request.identifier, channel: 'sms' });
+    
+    return { handledDelivery: true }; // Twilio handles the SMS delivery
+  }
+
+  async verify(request: VerifyOtpRequest): Promise<VerifyOtpResult> {
+    const check = await this.twilioClient.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID)
+      .verificationChecks.create({ to: request.uid, code: request.code });
+      
+    if (check.status === 'approved') return { success: true };
+    return { success: false };
+  }
+}
+```
+
+#### Responsibility Split: `otpProviders` vs `notificationProvider`
+
+These two providers have **distinct, non-overlapping responsibilities**. A service like Twilio Verify only replaces the OTP lifecycle — it does **not** handle magic links or security alerts:
+
+| Notification | Handled by |
+|---|---|
+| OTP issue / verify / resend (login, signup, verification) | `otpProviders.phone` or `otpProviders.email` |
+| OTP code delivery (when `handledDelivery: false`) | `notificationProvider.sendVerificationCode()` |
+| Magic link emails | `notificationProvider.sendMagicLink()` |
+| Password-changed security alerts | `notificationProvider.sendPasswordChangedNotification()` |
+
+You will almost always configure the **granular `otpProviders` map** alongside your `notificationProvider`:
+
+```typescript
+AuthModule.register({
+  adapter: TypeOrmAuthAdapter,
+  
+  // Route OTP lifecycle dynamically per channel
+  otpProviders: {
+    phone: TwilioOtpProvider,   // Twilio Verify owns phone auth
+    email: DatabaseOtpProvider, // Built-in database owns email auth
+  },
+
+  // Owns magic links & security alerts
+  notificationProvider: MyNotificationProvider,  
+  
+  imports: [TwilioModule, MailerModule],
+})
+```
+
+#### `AuthOtpProvider` Interface Reference
+
+| Method | Required | Description |
+|---|:---:|---|
+| `issue(request)` | ✅ | Generate and dispatch a new OTP. `request.identifierType` is `'email'` or `'phone'`. |
+| `verify(request)` | ✅ | Validate a submitted OTP code. |
+| `resend(request)` | - | Re-send an OTP (powers `POST /auth/resend-verification`). |
+
 ### 1. Implement `AuthNotificationProvider`
 
-Create a service to deliver the verification codes (SMS or Email). You can use any service, such as [notifyc-nestjs](https://github.com/IsaiahTek/notifyc-nestjs):
+Create a service to deliver verification codes and other security notifications. The `type` field in `sendVerificationCode` is always `'email'` or `'phone'`, allowing you to route to the correct transport:
 
 ```typescript
 import { AuthNotificationProvider } from 'nestjs-multi-auth';
-import { NotifycService } from 'notifyc-nestjs';
 
 @Injectable()
 export class MyNotificationProvider implements AuthNotificationProvider {
-  constructor(private notifyc: NotifycService) {}
+  constructor(
+    private readonly mailer: MailerService,
+    private readonly sms: SmsService,
+  ) {}
 
-  async sendVerificationCode(to: string, code: string, type: 'email' | 'phone') {
-    await this.notifyc.send({
+  // Called when otpProvider returns handledDelivery: false
+  async sendVerificationCode(request: { to: string; code: string; type: 'email' | 'phone'; purpose?: string; expiresAt?: Date }) {
+    if (request.type === 'phone') {
+      await this.sms.send(request.to, `Your code: ${request.code}`);
+    } else {
+      await this.mailer.send({ to: request.to, subject: 'Your Code', text: `Code: ${request.code}` });
+    }
+  }
+
+  // Optional — powers Magic Link login
+  async sendMagicLink(to: string, link: string) {
+    await this.mailer.send({ to, subject: 'Your login link', html: `<a href="${link}">Log in</a>` });
+  }
+
+  // Optional — triggers on PATCH /auth/password
+  async sendPasswordChangedNotification(to: string, context: { ip: string; userAgent: string; secureAccountLink: string }) {
+    await this.mailer.send({
       to,
-      subject: 'Your Verification Code',
-      message: `Your code is: ${code}`,
-      transport: type === 'email' ? 'SMTP' : 'SMS',
+      subject: 'Your password was changed',
+      html: `<p>Changed from IP <strong>${context.ip}</strong>. <a href="${context.secureAccountLink}">Secure account</a>.</p>`,
     });
   }
 }
@@ -230,8 +471,8 @@ AuthModule.register({
   notificationProvider: MyNotificationProvider,
   verificationRequired: true, // If true, login is blocked until verified
   
-  // Pass the module that provides NotifycService
-  imports: [NotifycModule], 
+  // Pass the modules that provide your services
+  imports: [MailerModule, SmsModule], 
 })
 ```
 
@@ -527,6 +768,7 @@ The library automatically mounts the following endpoints under the `/auth` prefi
 | `POST` | `/auth/link` | ✅ | `SignupDto` | Link a new auth method to the current account. |
 | `POST` | `/auth/mfa/enroll` | ✅ | `EnrollMfaDto` | Begin TOTP MFA enrollment. |
 | `POST` | `/auth/mfa/activate` | ✅ | `ActivateMfaDto` | Confirm TOTP setup with a live code. |
+| `POST` | `/auth/mfa/verify` | - | `VerifyMfaLoginDto` | Submit TOTP code to complete MFA login and receive session tokens. |
 | `GET` | `/auth` | Optional | — | List all auth identities (admin/debug). |
 | `GET` | `/auth/me` | ✅ | — | View current identity details. |
 | `GET` | `/auth/me/methods` | ✅ | — | View all auth methods for the current user. |
@@ -629,6 +871,14 @@ Used to finalize MFA activation (`/auth/mfa/activate`).
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `type` | `MfaType` | ✅ | The type of MFA to activate. |
+| `code` | `string` | ✅ | The 6-digit code from the authenticator app. |
+
+### `VerifyMfaLoginDto`
+Used to submit an MFA code during login (`/auth/mfa/verify`).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `uid` | `string` | ✅ | The unique identity ID. |
 | `code` | `string` | ✅ | The 6-digit code from the authenticator app. |
 
 ---
@@ -775,6 +1025,7 @@ All options for `AuthModule.register()` / `AuthModule.forRootAsync()`:
 | `defaultOtp` | `string` | — | A static OTP value to use when `debugMode` is enabled. |
 | `forceVerificationOnGoogleSignup` | `boolean` | `false` | Force OTP validation for Google OAuth during signup, bypassing Google's `email_verified`. |
 | `forceVerificationOnGoogleLogin` | `boolean` | `false` | Force OTP validation for Google OAuth during login if not already verified. |
+| `testAccounts` | `TestAccount[]` | — | Array of `{ identifier: string, otp: string }` to bypass OTP delivery for app review/testing. |
 
 ---
 ## Advanced Config
@@ -863,11 +1114,51 @@ If you are getting 401 errors on routes marked with `@Public()`, ensure that the
 
 ---
 
-## Entity Requirements
+## Database Adapters
 
-Because this library is decoupled, it manages its own tracking entities (`Auth`, `Session`, `MfaMethod`, `OtpToken`, `OAuthProvider`, `AuthIdentifier`). These entities use an opaque `uid: string` to identify users.
+Because this library is completely decoupled from your user schema, it manages its own internal tables (`Auth`, `Session`, `MfaMethod`, `OtpToken`, `OAuthProvider`, `AuthIdentifier`). These entities use an opaque `uid: string` to identify users.
 
-To use the Auth functionality, ensure `TypeOrmModule.forRoot()` is initialized in your consuming app.
+You can use the provided **TypeORM** or **Prisma** adapters, or build your own **custom adapter** to manage these tables.
+
+### TypeORM (Default)
+The library provides the `TypeOrmAuthAdapter` which automatically registers the necessary entities. 
+
+1. Register `TypeOrmAuthAdapter` inside the `AuthModule`:
+```typescript
+import { TypeOrmAuthAdapter, AuthModule } from 'nestjs-multi-auth';
+
+@Module({
+  imports: [
+    AuthModule.register({
+      adapter: TypeOrmAuthAdapter,
+      /* options */ 
+    })
+  ]
+})
+export class AppModule {}
+```
+2. You must have `@nestjs/typeorm` and `TypeOrmModule.forRoot()` configured in your application. Ensure that `autoLoadEntities: true` is enabled so the adapter's entities are automatically picked up.
+
+### Prisma
+The library provides full "Bring Your Own Prisma" support.
+
+1. **Copy the Schema**: First, copy the library's required [schema.prisma models](https://github.com/IsaiahTek/nestjs-multi-auth/blob/main/src/database/prisma/schema.prisma) into your own `schema.prisma` file and run `npx prisma generate` & `npx prisma db push` (or `migrate dev`).
+2. **Register the Adapter**: Import the `PrismaAuthAdapter` and pass it to the `adapter` option.
+
+```typescript
+import { PrismaAuthAdapter, AuthModule } from 'nestjs-multi-auth';
+import { PrismaService } from './prisma.service'; // Your custom Prisma client wrapper
+
+@Module({
+  imports: [
+    AuthModule.register({ 
+      adapter: PrismaAuthAdapter.register({ prismaServiceToken: PrismaService }),
+      /* options */ 
+    })
+  ]
+})
+export class AppModule {}
+```
 
 ---
 

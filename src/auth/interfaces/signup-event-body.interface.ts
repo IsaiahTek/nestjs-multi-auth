@@ -1,5 +1,5 @@
 import { AuthStrategy } from "../enums/auth-type.enum";
-import { AuthIdentifier } from "../entities/auth-identify.entity";
+import { AuthIdentifier } from '../interfaces/models.interface';
 
 
 export interface Identifier {

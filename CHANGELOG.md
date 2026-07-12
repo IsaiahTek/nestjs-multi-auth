@@ -1,3 +1,13 @@
+# v1.0.0
+## Features & Testing Enhancements
+1. **Granular OTP Providers Map**: Introduced `otpProviders` in `AuthModuleOptions` to allow specifying different OTP backend implementations per identifier type (e.g., Twilio Verify for phone and `DatabaseOtpProvider` for email), eliminating the need for custom routing classes.
+2. **MFA Complete Flow**: Added `POST /auth/mfa/verify` endpoint to allow users to submit TOTP codes and receive session tokens after an `mfaRequired` login response.
+3. **Test Accounts**: Added granular `testAccounts` configuration for OTPs to facilitate secure, targeted app store reviews and automated E2E testing without triggering notifications.
+4. **Debug Mode OTP**: Enhanced `debugMode` in `AuthModuleOptions` to support a static `defaultOtp` for bypassing delivery logic during local development.
+
+## Breaking Changes
+1. **Database Adapters**: Added support for TypeORM, Prisma, and Custom Adapters.
+
 # v0.3.2
 ## Patch Session Logs Method Signature
 Made namespace optional

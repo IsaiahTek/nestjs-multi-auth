@@ -8,7 +8,13 @@ export interface AuthNotificationProvider {
      * @param code The numeric or alphanumeric verification code
      * @param type The type of identifier ('email' | 'phone')
      */
-    sendVerificationCode(to: string, code: string, type: 'email' | 'phone'): Promise<void>;
+    sendVerificationCode(request: {
+        to: string;
+        code: string;
+        type: 'email' | 'phone';
+        purpose?: string;
+        expiresAt?: Date;
+    }): Promise<void>;
 
     /**
      * Sends a notification when a password is changed, including security context.

@@ -17,16 +17,14 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const jwt_1 = require("@nestjs/jwt");
-const typeorm_1 = require("@nestjs/typeorm");
-const typeorm_2 = require("typeorm");
+const repository_tokens_1 = require("./interfaces/repository-tokens");
+const auth_otp_provider_interface_1 = require("./interfaces/auth-otp-provider.interface");
 const bcrypt = require("bcrypt");
 const local_auth_strategy_1 = require("./strategies/local-auth.strategy");
 const oauth_strategy_1 = require("./strategies/oauth/oauth.strategy");
 const auth_type_enum_1 = require("./enums/auth-type.enum");
-const auth_entity_1 = require("./entities/auth.entity");
-const session_entity_1 = require("./entities/session.entity");
-const otp_token_entity_1 = require("./entities/otp-token.entity");
-const mfa_method_entity_1 = require("./entities/mfa-method.entity");
+const otp_purpose_enum_1 = require("./enums/otp-purpose.enum");
+const mfa_type_enum_1 = require("./enums/mfa-type.enum");
 const otplib_1 = require("otplib");
 const auth_module_options_interface_1 = require("./interfaces/auth-module-options.interface");
 const auth_notification_provider_interface_1 = require("./interfaces/auth-notification-provider.interface");
@@ -34,22 +32,33 @@ const crypto = require("crypto");
 const duration_util_1 = require("./utils/duration.util");
 const auth_mapper_1 = require("./core/auth-mapper");
 const auth_events_1 = require("./enums/auth.events");
-const session_log_entity_1 = require("./entities/session_log.entity");
+const session_event_enum_1 = require("./enums/session-event.enum");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, sessionLogRepo, authRepo, otpRepo, mfaRepo, options, notificationProvider, eventEmitter) {
+    constructor(jwtService, passwordStrategy, oauthStrategy, sessionRepository, sessionLogRepo, authRepo, authIdentifierRepo, otpProvider, otpProviderEmail, otpProviderPhone, mfaRepo, options, notificationProvider, eventEmitter) {
         this.jwtService = jwtService;
         this.passwordStrategy = passwordStrategy;
         this.oauthStrategy = oauthStrategy;
         this.sessionRepository = sessionRepository;
         this.sessionLogRepo = sessionLogRepo;
         this.authRepo = authRepo;
-        this.otpRepo = otpRepo;
+        this.authIdentifierRepo = authIdentifierRepo;
+        this.otpProvider = otpProvider;
+        this.otpProviderEmail = otpProviderEmail;
+        this.otpProviderPhone = otpProviderPhone;
         this.mfaRepo = mfaRepo;
         this.options = options;
         this.notificationProvider = notificationProvider;
         this.eventEmitter = eventEmitter;
         this.logger = new common_1.Logger(AuthService_1.name);
         this.createSessionLog = this.options.createSessionLogOnInvalid ?? false;
+    }
+    /** Returns the correct OTP provider for the given identifier type. */
+    resolveOtpProvider(identifierType) {
+        if (identifierType === 'email')
+            return this.otpProviderEmail;
+        if (identifierType === 'phone')
+            return this.otpProviderPhone;
+        return this.otpProvider;
     }
     // --- INTERNAL HELPER: Generate Token Pair ---
     async generateTokens(uid, sessionId, namespace) {
@@ -76,7 +85,7 @@ let AuthService = AuthService_1 = class AuthService {
         expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds);
         const deviceFingerprint = this.fingerprint(userAgent);
         let session;
-        const _createSession = () => {
+        const _createSession = async () => {
             return this.sessionRepository.create({
                 id: crypto.randomUUID(),
                 uid,
@@ -89,13 +98,7 @@ let AuthService = AuthService_1 = class AuthService {
             });
         };
         if (this.options.sessionCreationPolicy === auth_module_options_interface_1.SessionCreationPolicy.REUSE_DEVICE) {
-            session = await this.sessionRepository.findOne({
-                where: {
-                    uid,
-                    namespace,
-                    deviceFingerprint,
-                },
-            });
+            session = await this.sessionRepository.findDeviceSession(uid, namespace, deviceFingerprint);
             if (session) {
                 session.expiresAt = expiresAt;
                 session.ipAddress = ip;
@@ -103,11 +106,11 @@ let AuthService = AuthService_1 = class AuthService {
                 session.deviceFingerprint = deviceFingerprint;
             }
             else {
-                session = _createSession();
+                session = await _createSession();
             }
         }
         else {
-            session = _createSession();
+            session = await _createSession();
         }
         const tokens = await this.generateTokens(uid, session.id, namespace);
         session.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 10);
@@ -117,7 +120,7 @@ let AuthService = AuthService_1 = class AuthService {
     async createSessionLogFromSessionIfEnabled({ event, reason, session, }) {
         if (!this.createSessionLog)
             return;
-        const sessionLog = this.sessionLogRepo.create({
+        const sessionLog = await this.sessionLogRepo.create({
             ...session,
             sessionId: session.id,
             event,
@@ -130,7 +133,10 @@ let AuthService = AuthService_1 = class AuthService {
             throw new Error("Either session or sessionId must be provided.");
         }
         if (!session) {
-            session = await this.sessionRepository.findOneByOrFail({ id: sessionId });
+            const foundSession = await this.sessionRepository.findById(sessionId);
+            if (!foundSession)
+                throw new Error("Session not found");
+            session = foundSession;
         }
         await this.createSessionLogFromSessionIfEnabled({
             session,
@@ -140,26 +146,24 @@ let AuthService = AuthService_1 = class AuthService {
         await this.sessionRepository.delete(session.id);
     }
     async invalidateSessions({ uid, event, reason, }) {
-        await this.sessionRepository.manager.transaction(async (manager) => {
-            const sessions = await manager.find(session_entity_1.Session, {
-                where: { uid },
-            });
-            if (sessions.length === 0) {
-                return;
+        const sessions = await this.sessionRepository.findByUid(uid);
+        if (sessions.length === 0) {
+            return;
+        }
+        if (this.createSessionLog) {
+            const logs = sessions.map((session) => ({
+                ...session,
+                id: undefined,
+                sessionId: session.id,
+                event,
+                reason,
+                timestamp: new Date()
+            }));
+            for (const log of logs) {
+                await this.sessionLogRepo.save(log);
             }
-            if (this.createSessionLog) {
-                const logs = sessions.map((session) => this.sessionLogRepo.create({
-                    ...session,
-                    sessionId: session.id,
-                    event,
-                    reason,
-                }));
-                await manager.save(logs);
-            }
-            await manager.delete(session_entity_1.Session, {
-                uid,
-            });
-        });
+        }
+        await this.sessionRepository.deleteByUid(uid);
     }
     async signup({ dto, uid, userAgent, ip, namespace }) {
         if (!dto.method)
@@ -197,7 +201,7 @@ let AuthService = AuthService_1 = class AuthService {
         // Force verification if no password was provided for local strategies (passwordless signup)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
         // Check if user has 2FA enabled
-        const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+        const mfaMethod = await this.mfaRepo.findByUidAndEnabled(auth.uid);
         const has2FA = !!mfaMethod;
         const triggerVerification = isPasswordless ||
             (this.options.verificationRequired && !identifier?.isVerified) ||
@@ -266,7 +270,7 @@ let AuthService = AuthService_1 = class AuthService {
         // Force verification if no password was provided for local strategies (passwordless login)
         const isPasswordless = [auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME, auth_type_enum_1.AuthStrategy.LOCAL].includes(dto.method) && !dto.password;
         // Check if user has 2FA enabled
-        const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+        const mfaMethod = await this.mfaRepo.findByUidAndEnabled(auth.uid);
         const has2FA = !!mfaMethod;
         // Trigger email/phone verification only if required and identifier not verified.
         // MFA (2FA) is handled separately via dedicated endpoints.
@@ -307,26 +311,14 @@ let AuthService = AuthService_1 = class AuthService {
     }
     // --- VERIFICATION LOGIC ---
     async sendVerification(auth, currentIdentifier) {
-        if (!this.notificationProvider)
+        if (!this.notificationProvider && !this.otpProvider && !this.otpProviderEmail && !this.otpProviderPhone)
             return;
-        // 1. Determine primary identifier (email or phone) to send the code to
-        // If we have a verified email/phone on the same UID, use that.
-        // Otherwise use the current identifier if it's verifiable.
         let primaryIdentifier = currentIdentifier?.type !== 'USERNAME' ? currentIdentifier : null;
         if (!primaryIdentifier) {
-            // Look for any EMAIL or PHONE linked to this UID
-            const allIdentifiers = await this.authRepo.query(`SELECT ai.* FROM auth_identifiers ai 
-         JOIN auth a ON ai."authId" = a.id 
-         WHERE a.uid = $1 AND ai.type IN ('EMAIL', 'PHONE')
-         ORDER BY ai."isVerified" DESC, ai."createdAt" ASC LIMIT 1`, [auth.uid]);
-            primaryIdentifier = allIdentifiers[0];
+            primaryIdentifier = await this.authIdentifierRepo.findByUidAndTypes(auth.uid, ['EMAIL', 'PHONE']);
         }
         if (!primaryIdentifier) {
-            // As a last resort, reload auth with identifiers and find first EMAIL/PHONE
-            const fullAuth = await this.authRepo.findOne({
-                where: { id: auth.id },
-                relations: ['identifiers']
-            });
+            const fullAuth = await this.authRepo.findWithIdentifiers(auth.id);
             primaryIdentifier = fullAuth?.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
         }
         if (!primaryIdentifier) {
@@ -335,64 +327,45 @@ let AuthService = AuthService_1 = class AuthService {
             }
             return;
         }
-        // 2. Generate 6-digit code
-        const code = (this.options.debugMode && this.options.defaultOtp)
-            ? this.options.defaultOtp
-            : Math.floor(100000 + Math.random() * 900000).toString();
-        const hash = await bcrypt.hash(code, 10);
-        // 3. Save OTP Token
-        const expiresAt = new Date();
-        const otpExpMins = this.options.otpExpiresIn || 15;
-        expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
-        const otpToken = this.otpRepo.create({
+        const purpose = primaryIdentifier.type === 'EMAIL' ? otp_purpose_enum_1.OtpPurpose.VERIFY_EMAIL : otp_purpose_enum_1.OtpPurpose.VERIFY_PHONE;
+        const idType = primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone';
+        const result = await this.resolveOtpProvider(idType).issue({
+            uid: auth.uid,
+            authId: auth.id,
             identifier: primaryIdentifier.value,
-            purpose: primaryIdentifier.type === 'EMAIL' ? otp_token_entity_1.OtpPurpose.VERIFY_EMAIL : otp_token_entity_1.OtpPurpose.VERIFY_PHONE,
-            codeHash: hash,
-            expiresAt,
-            requestUserId: auth.uid,
-            requestAuthId: auth.id,
+            identifierType: idType,
+            purpose,
+            expiresIn: this.options.otpExpiresIn,
         });
-        await this.otpRepo.save(otpToken);
-        // 4. Send via Provider
-        try {
-            await this.notificationProvider.sendVerificationCode(primaryIdentifier.value, code, primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone');
-        }
-        catch (e) {
-            this.logger.error(`Failed to send verification code to ${primaryIdentifier.value}`, e);
-            throw new common_1.BadRequestException('Failed to send verification code');
+        if (!result.handledDelivery && this.notificationProvider && result.code) {
+            try {
+                await this.notificationProvider.sendVerificationCode({
+                    to: primaryIdentifier.value,
+                    code: result.code,
+                    type: primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone',
+                    purpose,
+                    expiresAt: result.expiresAt
+                });
+            }
+            catch (e) {
+                this.logger.error(`Failed to send verification code to ${primaryIdentifier.value}`, e);
+                throw new common_1.BadRequestException('Failed to send verification code');
+            }
         }
     }
     async verifyCode({ uid, code, userAgent, ip, namespace }) {
-        const auth = await this.authRepo.findOne({ where: { uid } });
+        const auth = await this.authRepo.findByUid(uid);
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
-        // Find the latest unused OTP for this UID
-        const otp = await this.otpRepo.findOne({
-            where: { requestUserId: uid, isUsed: false },
-            order: { createdAt: 'DESC' },
-        });
-        if (!otp) {
-            if (auth.isVerified)
-                return { message: 'Identity already verified' };
-            throw new common_1.BadRequestException('No verification code found');
-        }
-        if (new Date() > otp.expiresAt) {
-            throw new common_1.BadRequestException('Verification code expired');
-        }
-        const isMatch = await bcrypt.compare(code, otp.codeHash);
-        if (!isMatch)
-            throw new common_1.BadRequestException('Invalid verification code');
-        // Success!
-        otp.isUsed = true;
-        await this.otpRepo.save(otp);
-        auth.isVerified = true;
-        await this.authRepo.save(auth);
-        // Also mark all identifiers for this Auth as verified
-        await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [auth.id]);
-        // If there's a requestAuthId on the OTP (which there should be), update that one too if different
-        if (otp.requestAuthId && otp.requestAuthId !== auth.id) {
-            await this.authRepo.update(otp.requestAuthId, { isVerified: true });
-            await this.authRepo.query(`UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`, [otp.requestAuthId]);
+        const result = await this.resolveOtpProvider().verify({ uid, code });
+        if (result.success) {
+            auth.isVerified = true;
+            await this.authRepo.save(auth);
+            await this.authIdentifierRepo.markVerifiedByAuthId(auth.id);
+            if (result.authId && result.authId !== auth.id) {
+                await this.authRepo.update(result.authId, { isVerified: true });
+                await this.authIdentifierRepo.markVerifiedByAuthId(result.authId);
+            }
         }
         const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
         if (this.eventEmitter) {
@@ -401,72 +374,54 @@ let AuthService = AuthService_1 = class AuthService {
         return { message: 'Identity verified successfully', tokens, auth };
     }
     async resendVerification(uid) {
-        const auth = await this.authRepo.findOne({ where: { uid } });
+        const auth = await this.authRepo.findByUid(uid);
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
-        if (!this.notificationProvider) {
-            throw new common_1.BadRequestException('Verification is not configured');
+        if (!this.resolveOtpProvider().resend) {
+            await this.sendVerification(auth);
+            return { message: 'Verification code resent' };
         }
-        // Check resend interval
-        const latestOtp = await this.otpRepo.findOne({
-            where: { requestUserId: uid },
-            order: { createdAt: 'DESC' },
-        });
-        if (latestOtp) {
-            const intervalSeconds = this.options.otpResendInterval || 60;
-            const diffMs = Date.now() - latestOtp.createdAt.getTime();
-            if (diffMs < intervalSeconds * 1000) {
-                const wait = Math.ceil(intervalSeconds - diffMs / 1000);
-                throw new common_1.BadRequestException(`Please wait ${wait} seconds before requesting a new code.`);
-            }
+        const result = await this.resolveOtpProvider().resend({ uid });
+        if (!result.handledDelivery && this.notificationProvider && result.code && result.metadata) {
+            await this.notificationProvider.sendVerificationCode({
+                to: result.metadata.identifier,
+                code: result.code,
+                type: result.metadata.identifierType,
+                purpose: result.metadata.purpose,
+                expiresAt: result.expiresAt
+            });
         }
-        await this.sendVerification(auth);
         return { message: 'Verification code resent' };
     }
     async refreshTokens({ refreshToken, currentUserAgent, currentIp, namespace }) {
         try {
             const payload = await this.jwtService.verifyAsync(refreshToken, { secret: this.options.jwtRefreshSecret || process.env.JWT_REFRESH_SECRET });
             const resolvedNamespace = namespace ?? payload.namespace;
-            const whereClause = { id: payload.sessionId };
-            if (resolvedNamespace) {
-                whereClause.namespace = resolvedNamespace;
-            }
-            const session = await this.sessionRepository.findOne({
-                where: whereClause,
-                select: [
-                    'id',
-                    'uid',
-                    'refreshTokenHash',
-                    'expiresAt',
-                    'deviceFingerprint',
-                    'ipAddress',
-                    'namespace',
-                ],
-            });
+            const session = await this.sessionRepository.findByIdWithDetails(payload.sessionId, resolvedNamespace);
             if (this.options.debug) {
-                this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}, Where clause: ${JSON.stringify(whereClause)}`);
+                this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}`);
             }
             if (!session)
                 throw new common_1.ForbiddenException('Session not found');
             const incomingFingerprint = this.fingerprint(currentUserAgent);
             if (session.deviceFingerprint !== incomingFingerprint) {
-                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Device mismatch during refresh' });
+                this.invalidateSession({ session, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'Device mismatch during refresh' });
                 throw new common_1.ForbiddenException('Device mismatch');
             }
             if (session.namespace !== namespace && session.namespace !== resolvedNamespace) {
                 if (this.options.debug) {
                     this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`);
                 }
-                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' });
+                this.invalidateSession({ session, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' });
                 throw new common_1.ForbiddenException("Namespace mismatch");
             }
             if (new Date() > session.expiresAt) {
-                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.EXPIRE, reason: 'Session expired during refresh' });
+                this.invalidateSession({ session, event: session_event_enum_1.SessionEvent.EXPIRE, reason: 'Session expired during refresh' });
                 throw new common_1.ForbiddenException('Session expired');
             }
             const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
             if (!isMatch) {
-                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' });
+                this.invalidateSession({ session, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' });
                 throw new common_1.ForbiddenException('Invalid refresh token');
             }
             const tokens = await this.generateTokens(session.uid, session.id, namespace);
@@ -497,8 +452,8 @@ let AuthService = AuthService_1 = class AuthService {
         try {
             const payload = this.jwtService.decode(refreshToken);
             if (payload?.sessionId) {
-                const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
-                this.invalidateSession({ session, event: session_log_entity_1.SessionEvent.LOGOUT, reason: 'User logout' });
+                const session = await this.sessionRepository.findById(payload.sessionId);
+                this.invalidateSession({ session, event: session_event_enum_1.SessionEvent.LOGOUT, reason: 'User logout' });
                 if (session && this.eventEmitter) {
                     this.eventEmitter.emit(auth_events_1.AuthEvents.LOGOUT, { uid: session.uid });
                 }
@@ -515,35 +470,28 @@ let AuthService = AuthService_1 = class AuthService {
         const value = dto.email || dto.phone || dto.username;
         if (!value)
             throw new common_1.BadRequestException('Identifier is required');
-        // 1. Find identifier
-        const identifier = await this.authRepo.query(`SELECT ai.*, a.uid, a.id as "authId" FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`, [value.toLowerCase()]);
-        if (!identifier[0]) {
-            // Security: Don't reveal if user exists. 
-            // But typically for forgot-password, users expect an error if email is wrong.
-            // We'll return success anyway to prevent enumeration.
+        const result = await this.authIdentifierRepo.findWithAuthByValue(value);
+        if (!result) {
             return { message: 'If an account exists, a reset code has been sent.' };
         }
-        const primaryAuth = identifier[0];
-        // 2. Generate OTP
-        const code = (this.options.debugMode && this.options.defaultOtp)
-            ? this.options.defaultOtp
-            : Math.floor(100000 + Math.random() * 900000).toString();
-        const hash = await bcrypt.hash(code, 10);
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + (this.options.otpExpiresIn || 15));
-        await this.otpRepo.save(this.otpRepo.create({
+        const { identifier: primaryAuth, auth: primaryAuthObj } = result;
+        const resetIdType = primaryAuth.type === 'PHONE' ? 'phone' : 'email';
+        const issueResult = await this.resolveOtpProvider(resetIdType).issue({
+            uid: primaryAuthObj.uid,
+            authId: primaryAuthObj.id,
             identifier: primaryAuth.value,
-            purpose: otp_token_entity_1.OtpPurpose.PASSWORD_RESET,
-            codeHash: hash,
-            expiresAt,
-            requestUserId: primaryAuth.uid,
-            requestAuthId: primaryAuth.authId,
-        }));
-        // 3. Send notification
-        if (this.notificationProvider) {
-            await this.notificationProvider.sendVerificationCode(primaryAuth.value, code, 'email');
+            identifierType: resetIdType,
+            purpose: otp_purpose_enum_1.OtpPurpose.PASSWORD_RESET,
+            expiresIn: this.options.otpExpiresIn || 15
+        });
+        if (!issueResult.handledDelivery && this.notificationProvider && issueResult.code) {
+            await this.notificationProvider.sendVerificationCode({
+                to: primaryAuth.value,
+                code: issueResult.code,
+                type: primaryAuth.type === 'PHONE' ? 'phone' : 'email',
+                purpose: otp_purpose_enum_1.OtpPurpose.PASSWORD_RESET,
+                expiresAt: issueResult.expiresAt
+            });
         }
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_RESET, { auth: primaryAuth });
@@ -551,39 +499,26 @@ let AuthService = AuthService_1 = class AuthService {
         return { message: 'If an account exists, a reset code has been sent.' };
     }
     async resetPassword(dto) {
-        const otp = await this.otpRepo.findOne({
-            where: { requestUserId: dto.uid, purpose: otp_token_entity_1.OtpPurpose.PASSWORD_RESET, isUsed: false },
-            order: { createdAt: 'DESC' },
-        });
-        if (!otp || new Date() > otp.expiresAt) {
+        const result = await this.resolveOtpProvider().verify({ uid: dto.uid, code: dto.code, purpose: otp_purpose_enum_1.OtpPurpose.PASSWORD_RESET });
+        if (!result.success || !result.authId) {
             throw new common_1.BadRequestException('Invalid or expired reset code');
         }
-        const isMatch = await bcrypt.compare(dto.code, otp.codeHash);
-        if (!isMatch)
-            throw new common_1.BadRequestException('Invalid reset code');
-        // Update password
         const hash = await bcrypt.hash(dto.newPassword, 10);
-        await this.authRepo.update(otp.requestAuthId, {
+        await this.authRepo.update(result.authId, {
             secretHash: hash,
             isActive: true // Unlock account on successful reset
         });
-        // Mark OTP as used
-        otp.isUsed = true;
-        await this.otpRepo.save(otp);
         // Security: Invalidate all sessions
-        await this.invalidateSessions({ uid: dto.uid, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User reset password' });
+        await this.invalidateSessions({ uid: dto.uid, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'User reset password' });
         if (this.eventEmitter) {
-            const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
+            const auth = await this.authRepo.findByUid(dto.uid);
             this.eventEmitter.emit(auth_events_1.AuthEvents.PASSWORD_RESET, { auth });
         }
         return { message: 'Password reset successful. All active sessions have been logged out.' };
     }
     async updatePassword(uid, dto, userAgent, ip) {
         // 1. Get primary LOCAL auth
-        const auth = await this.authRepo.findOne({
-            where: { uid, strategy: (0, typeorm_2.In)([auth_type_enum_1.AuthStrategy.LOCAL, auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME]) },
-            select: ['id', 'secretHash', 'uid']
-        });
+        const auth = await this.authRepo.findByUidAndStrategies(uid, [auth_type_enum_1.AuthStrategy.LOCAL, auth_type_enum_1.AuthStrategy.EMAIL, auth_type_enum_1.AuthStrategy.PHONE, auth_type_enum_1.AuthStrategy.USERNAME]);
         if (!auth || !auth.secretHash) {
             throw new common_1.BadRequestException('Password update only available for local accounts');
         }
@@ -596,27 +531,24 @@ let AuthService = AuthService_1 = class AuthService {
         await this.authRepo.save(auth);
         // 4. Notification with Security Link
         if (this.notificationProvider?.sendPasswordChangedNotification) {
-            const secureToken = crypto.randomBytes(32).toString('hex');
-            const tokenHash = await bcrypt.hash(secureToken, 10);
-            const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + 24);
-            // Get user email
-            const identifier = await this.authRepo.query(`SELECT value FROM auth_identifiers WHERE "authId" = $1 AND type = 'EMAIL' LIMIT 1`, [auth.id]);
-            if (identifier[0]) {
-                await this.otpRepo.save(this.otpRepo.create({
-                    identifier: identifier[0].value,
-                    purpose: otp_token_entity_1.OtpPurpose.SECURE_ACCOUNT,
-                    codeHash: tokenHash,
-                    expiresAt,
-                    requestUserId: auth.uid,
-                    requestAuthId: auth.id,
-                }));
-                const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${secureToken}&uid=${auth.uid}`;
-                await this.notificationProvider.sendPasswordChangedNotification(identifier[0].value, {
-                    ip: ip || 'Unknown',
-                    userAgent: userAgent || 'Unknown',
-                    secureAccountLink: secureLink,
+            const identifier = await this.authIdentifierRepo.findByUidAndTypes(auth.uid, ['EMAIL']);
+            if (identifier) {
+                const issueResult = await this.resolveOtpProvider('email').issue({
+                    uid: auth.uid,
+                    authId: auth.id,
+                    identifier: identifier.value,
+                    identifierType: 'email',
+                    purpose: otp_purpose_enum_1.OtpPurpose.SECURE_ACCOUNT,
+                    expiresIn: 24 * 60
                 });
+                if (issueResult.code) {
+                    const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${issueResult.code}&uid=${auth.uid}`;
+                    await this.notificationProvider.sendPasswordChangedNotification(identifier.value, {
+                        ip: ip || 'Unknown',
+                        userAgent: userAgent || 'Unknown',
+                        secureAccountLink: secureLink,
+                    });
+                }
             }
         }
         if (this.eventEmitter) {
@@ -625,23 +557,21 @@ let AuthService = AuthService_1 = class AuthService {
         return { message: 'Password updated successfully' };
     }
     async secureAccount(dto) {
-        const otp = await this.otpRepo.findOne({
-            where: { requestUserId: dto.uid, purpose: otp_token_entity_1.OtpPurpose.SECURE_ACCOUNT, isUsed: false },
-            order: { createdAt: 'DESC' },
+        const result = await this.resolveOtpProvider('email').verify({
+            uid: dto.uid,
+            code: dto.token,
+            purpose: otp_purpose_enum_1.OtpPurpose.SECURE_ACCOUNT,
         });
-        if (!otp || new Date() > otp.expiresAt) {
+        if (!result.success) {
             throw new common_1.BadRequestException('Invalid or expired security token');
         }
-        const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
-        if (!isMatch)
-            throw new common_1.BadRequestException('Invalid security token');
         // 1. Lock all auth methods
-        await this.authRepo.update({ uid: dto.uid }, { isActive: false });
+        const auths = await this.authRepo.findAllByUid(dto.uid);
+        for (const auth of auths) {
+            await this.authRepo.update(auth.id, { isActive: false });
+        }
         // 2. Invalidate sessions
-        this.invalidateSessions({ uid: dto.uid, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' });
-        // 3. Mark OTP as used
-        otp.isUsed = true;
-        await this.otpRepo.save(otp);
+        this.invalidateSessions({ uid: dto.uid, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' });
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.ACCOUNT_SECURED, { uid: dto.uid });
         }
@@ -649,33 +579,22 @@ let AuthService = AuthService_1 = class AuthService {
     }
     // --- MAGIC LINK ---
     async requestMagicLink(dto) {
-        const identifier = await this.authRepo.query(`SELECT ai.*, a.id as "authId", a.uid FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`, [dto.email.toLowerCase()]);
-        let authId;
-        let uid;
-        if (!identifier[0]) {
+        const result = await this.authIdentifierRepo.findWithAuthByValue(dto.email.toLowerCase());
+        if (!result) {
             // Optional: Auto-signup if not exists, but let's stick to existing for now
             throw new common_1.BadRequestException('No account found with this email');
         }
-        else {
-            authId = identifier[0].authId;
-            uid = identifier[0].uid;
-        }
-        const token = crypto.randomBytes(32).toString('hex');
-        const hash = await bcrypt.hash(token, 10);
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + 15);
-        await this.otpRepo.save(this.otpRepo.create({
+        const { auth: primaryAuthObj } = result;
+        const issueResult = await this.resolveOtpProvider('email').issue({
+            uid: primaryAuthObj.uid,
+            authId: primaryAuthObj.id,
             identifier: dto.email.toLowerCase(),
-            purpose: otp_token_entity_1.OtpPurpose.MAGIC_LINK,
-            codeHash: hash,
-            expiresAt,
-            requestUserId: uid,
-            requestAuthId: authId,
-        }));
-        if (this.notificationProvider?.sendMagicLink) {
-            const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${token}&email=${dto.email}`;
+            identifierType: 'email',
+            purpose: otp_purpose_enum_1.OtpPurpose.MAGIC_LINK,
+            expiresIn: 15
+        });
+        if (this.notificationProvider?.sendMagicLink && issueResult.code) {
+            const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${issueResult.code}&email=${dto.email}`;
             await this.notificationProvider.sendMagicLink(dto.email, link);
         }
         if (this.eventEmitter) {
@@ -684,19 +603,18 @@ let AuthService = AuthService_1 = class AuthService {
         return { message: 'Magic link sent to your email.' };
     }
     async verifyMagicLink({ dto, userAgent, ip, namespace }) {
-        const otp = await this.otpRepo.findOne({
-            where: { purpose: otp_token_entity_1.OtpPurpose.MAGIC_LINK, isUsed: false },
-            order: { createdAt: 'DESC' },
+        const identifier = await this.authIdentifierRepo.findWithAuthByValue(dto.email.toLowerCase());
+        if (!identifier)
+            throw new common_1.BadRequestException('Identity not found');
+        const result = await this.resolveOtpProvider('email').verify({
+            uid: identifier.auth.uid,
+            code: dto.token,
+            purpose: otp_purpose_enum_1.OtpPurpose.MAGIC_LINK
         });
-        if (!otp || new Date() > otp.expiresAt) {
+        if (!result.success || !result.authId) {
             throw new common_1.BadRequestException('Invalid or expired magic link');
         }
-        const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
-        if (!isMatch)
-            throw new common_1.BadRequestException('Invalid magic link');
-        otp.isUsed = true;
-        await this.otpRepo.save(otp);
-        const auth = await this.authRepo.findOne({ where: { id: otp.requestAuthId } });
+        const auth = await this.authRepo.findById(result.authId);
         if (!auth)
             throw new common_1.BadRequestException('Identity not found');
         const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
@@ -707,10 +625,10 @@ let AuthService = AuthService_1 = class AuthService {
     }
     // --- MFA (2FA) LOGIC ---
     async enrollMfa(uid, type) {
-        if (type !== mfa_method_entity_1.MfaType.TOTP) {
+        if (type !== mfa_type_enum_1.MfaType.TOTP) {
             throw new common_1.BadRequestException('Currently only TOTP MFA is supported');
         }
-        let mfa = await this.mfaRepo.findOne({ where: { uid, type }, select: ['id', 'secret', 'isEnabled', 'type'] });
+        let mfa = await this.mfaRepo.findByUidAndType(uid, type);
         if (mfa?.isEnabled) {
             throw new common_1.BadRequestException('MFA is already enabled for this account');
         }
@@ -718,7 +636,7 @@ let AuthService = AuthService_1 = class AuthService {
         const appName = this.options.appName || 'NestJS Auth';
         const otpauth = otplib_1.authenticator.keyuri(uid, appName, secret);
         if (!mfa) {
-            mfa = this.mfaRepo.create({
+            mfa = await this.mfaRepo.create({
                 uid,
                 type,
                 secret,
@@ -732,16 +650,10 @@ let AuthService = AuthService_1 = class AuthService {
         if (this.eventEmitter) {
             this.eventEmitter.emit(auth_events_1.AuthEvents.MFA_ENROLLED, { uid, type });
         }
-        return {
-            secret,
-            otpauth,
-        };
+        return { secret, otpauth };
     }
     async activateMfa(uid, type, code) {
-        const mfa = await this.mfaRepo.findOne({
-            where: { uid, type },
-            select: ['id', 'secret', 'isEnabled']
-        });
+        const mfa = await this.mfaRepo.findByUidAndType(uid, type);
         if (!mfa) {
             throw new common_1.BadRequestException('No MFA enrollment found');
         }
@@ -763,80 +675,81 @@ let AuthService = AuthService_1 = class AuthService {
         }
         return { message: 'MFA activated successfully' };
     }
+    async mfaLogin(uid, code, userAgent, ip, namespace) {
+        const auth = await this.authRepo.findByUid(uid);
+        if (!auth)
+            throw new common_1.BadRequestException('Identity not found');
+        const mfa = await this.mfaRepo.findByUidAndEnabled(uid);
+        if (!mfa)
+            throw new common_1.BadRequestException('MFA is not enabled for this account');
+        const isValid = otplib_1.authenticator.verify({
+            token: code,
+            secret: mfa.secret,
+        });
+        if (!isValid)
+            throw new common_1.BadRequestException('Invalid MFA code');
+        const { secretHash, ...filteredAuth } = auth;
+        const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.LOGIN, { auth: filteredAuth, tokens });
+        }
+        return { message: 'Login successful', tokens, auth: filteredAuth };
+    }
     async viewAll() {
-        const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProviders'] });
+        const auths = await this.authRepo.findAll();
         return auth_mapper_1.AuthMapper.toDtoList(auths);
     }
     async me(uid) {
-        const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
-        return auth_mapper_1.AuthMapper.toDto(auth);
+        const auths = await this.authRepo.findAllByUid(uid);
+        return auth_mapper_1.AuthMapper.toDto(auths[0]);
     }
     async viewAllMyAuthMethods(uid) {
-        const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
+        const auths = await this.authRepo.findAllByUid(uid);
         return auth_mapper_1.AuthMapper.toDtoList(auths);
     }
     async deleteAccount(uid) {
         // 1. Delete all sessions for this UID
-        await this.invalidateSessions({ uid, event: session_log_entity_1.SessionEvent.DELETE, reason: 'User deleted account' });
+        await this.invalidateSessions({ uid, event: session_event_enum_1.SessionEvent.DELETE, reason: 'User deleted account' });
         // 2. Delete all MFA methods for this UID
-        await this.mfaRepo.delete({ uid });
-        // 3. Delete all OTP tokens requested by this UID
-        await this.otpRepo.delete({ requestUserId: uid });
-        // 4. Delete all Auth methods for this UID. 
-        // TypeORM should handle cascading deletion of AuthIdentifier and OAuthProvider if configured.
-        // However, if not configured with ON DELETE CASCADE in the DB, it's safer to use repo.remove or repo.delete.
-        // Using repo.delete with uid will delete all matching Auth records.
-        await this.authRepo.delete({ uid });
+        await this.mfaRepo.deleteByUid(uid);
+        // 3. Delete all Auth methods for this UID. 
+        await this.authRepo.deleteByUid(uid);
     }
     async deleteAuthMethod(uid, authId) {
-        const auth = await this.authRepo.findOne({ where: { id: authId, uid } });
-        if (!auth) {
+        const auth = await this.authRepo.findById(authId);
+        if (!auth || auth.uid !== uid) {
             throw new common_1.BadRequestException('Authentication method not found or does not belong to user');
         }
         // Check if this is the last auth method
-        const count = await this.authRepo.count({ where: { uid } });
-        if (count <= 1) {
+        const allAuths = await this.authRepo.findAllByUid(uid);
+        if (allAuths.length <= 1) {
             throw new common_1.BadRequestException('Cannot delete the last authentication method. Delete account instead.');
         }
-        // If deleting the primary auth method, we might need to assign a new one
-        if (auth.isPrimary) {
-            const nextAuth = await this.authRepo.findOne({ where: { uid, id: authId } }); // This is wrong, should be NOT authId
-        }
-        // Actually, let's keep it simple for now: just delete it.
-        // If it was primary, the next available one should ideally become primary.
         await this.authRepo.delete(authId);
         // After deletion, find if there's any primary left. 
         // If not, assign the first available one as primary.
-        const hasPrimary = await this.authRepo.findOne({ where: { uid, isPrimary: true } });
-        if (!hasPrimary) {
-            const remainingAuth = await this.authRepo.findOne({ where: { uid } });
-            if (remainingAuth) {
-                remainingAuth.isPrimary = true;
-                await this.authRepo.save(remainingAuth);
-            }
+        const remainingAuths = await this.authRepo.findAllByUid(uid);
+        if (remainingAuths.length > 0 && !remainingAuths.some(a => a.isPrimary)) {
+            const remainingAuth = remainingAuths[0];
+            remainingAuth.isPrimary = true;
+            await this.authRepo.save(remainingAuth);
         }
     }
     async getSessions({ uid, namespace }) {
-        const whereClause = { uid };
-        if (typeof namespace === "string") {
-            whereClause.namespace = namespace;
+        const sessions = await this.sessionRepository.findByUid(uid);
+        if (namespace !== undefined) {
+            return sessions.filter(s => s.namespace === namespace);
         }
-        const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
-        return (await sessions).map((d) => Object.assign(new session_entity_1.Session(), d.toMap()));
+        return sessions;
     }
     async getSession(id) {
-        return this.sessionRepository.findOne({ where: { id } });
+        return this.sessionRepository.findById(id);
     }
     async revokeSession({ sessionId }) {
-        await this.invalidateSession({ sessionId, event: session_log_entity_1.SessionEvent.REVOKE, reason: 'User requested session revoke' });
+        await this.invalidateSession({ sessionId, event: session_event_enum_1.SessionEvent.REVOKE, reason: 'User requested session revoke' });
     }
     async getSessionLogs({ uid, namespace }) {
-        const whereClause = { uid };
-        if (typeof namespace === "string") {
-            whereClause.namespace = namespace;
-        }
-        const sessions = this.sessionLogRepo.find({ where: whereClause, relations: [] });
-        return (await sessions).map((d) => Object.assign(new session_log_entity_1.SessionLog(), d.toMap()));
+        return this.sessionLogRepo.findByUidAndNamespace(uid, namespace);
     }
 };
 exports.AuthService = AuthService;
@@ -844,22 +757,20 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, common_1.Optional)()),
     __param(2, (0, common_1.Optional)()),
-    __param(3, (0, typeorm_1.InjectRepository)(session_entity_1.Session)),
-    __param(4, (0, typeorm_1.InjectRepository)(session_log_entity_1.SessionLog)),
-    __param(5, (0, typeorm_1.InjectRepository)(auth_entity_1.Auth)),
-    __param(6, (0, typeorm_1.InjectRepository)(otp_token_entity_1.OtpToken)),
-    __param(7, (0, typeorm_1.InjectRepository)(mfa_method_entity_1.MfaMethod)),
-    __param(8, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
-    __param(9, (0, common_1.Optional)()),
-    __param(9, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
-    __param(10, (0, common_1.Optional)()),
+    __param(3, (0, common_1.Inject)(repository_tokens_1.SESSION_REPOSITORY_TOKEN)),
+    __param(4, (0, common_1.Inject)(repository_tokens_1.SESSION_LOG_REPOSITORY_TOKEN)),
+    __param(5, (0, common_1.Inject)(repository_tokens_1.AUTH_REPOSITORY_TOKEN)),
+    __param(6, (0, common_1.Inject)(repository_tokens_1.AUTH_IDENTIFIER_REPOSITORY_TOKEN)),
+    __param(7, (0, common_1.Inject)(auth_otp_provider_interface_1.AUTH_OTP_PROVIDER)),
+    __param(8, (0, common_1.Inject)(auth_otp_provider_interface_1.AUTH_OTP_PROVIDER_EMAIL)),
+    __param(9, (0, common_1.Inject)(auth_otp_provider_interface_1.AUTH_OTP_PROVIDER_PHONE)),
+    __param(10, (0, common_1.Inject)(repository_tokens_1.MFA_METHOD_REPOSITORY_TOKEN)),
+    __param(11, (0, common_1.Inject)(auth_module_options_interface_1.AUTH_MODULE_OPTIONS)),
+    __param(12, (0, common_1.Optional)()),
+    __param(12, (0, common_1.Inject)(auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER)),
+    __param(13, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         local_auth_strategy_1.LocalAuthStrategy,
-        oauth_strategy_1.OAuthAuthStrategy,
-        typeorm_2.Repository,
-        typeorm_2.Repository,
-        typeorm_2.Repository,
-        typeorm_2.Repository,
-        typeorm_2.Repository, Object, Object, event_emitter_1.EventEmitter2])
+        oauth_strategy_1.OAuthAuthStrategy, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, event_emitter_1.EventEmitter2])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

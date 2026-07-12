@@ -1,0 +1,41 @@
+import { Entity, Column, Index } from 'typeorm';
+import { BaseEntity } from './base.entity';
+
+import { OtpPurpose } from '../../../auth/enums/otp-purpose.enum';
+
+@Entity('otp_tokens')
+// Index makes lookup fast: "Find latest unused OTP for john@gmail.com"
+@Index(['identifier', 'purpose', 'isUsed'])
+export class OtpToken extends BaseEntity {
+  // 1. NO Foreign Key to Auth.
+  // We store the string directly so this works for users who don't exist yet.
+  @Column()
+  identifier: string; // "john@gmail.com" or "+1234567890"
+
+  // 2. Purpose is crucial
+  @Column({ type: 'enum', enum: OtpPurpose })
+  purpose: OtpPurpose;
+
+  // 3. SECURITY: NEVER store plain text codes.
+  // Store: bcrypt.hash(code)
+  @Column()
+  codeHash: string;
+
+  @Column({ type: 'timestamp' })
+  expiresAt: Date;
+
+  @Column({ default: false })
+  isUsed: boolean;
+
+  // Optional: If you want to track which user requested it (if they are logged in)
+  // But make it nullable!
+  @Column({ nullable: true })
+  requestUserId?: string;
+
+  /**
+   * The ID of the primary Auth record that triggered this verification.
+   * This is used to mark the specific Auth method as verified upon success.
+   */
+  @Column({ nullable: true })
+  requestAuthId?: string;
+}

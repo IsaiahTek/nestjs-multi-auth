@@ -3,4 +3,5 @@ export declare class MagicLinkRequestDto {
 }
 export declare class MagicLinkVerifyDto {
     token: string;
+    email: string;
 }

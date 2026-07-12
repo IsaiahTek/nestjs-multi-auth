@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Auth {
+  id          String   @id @default(uuid())
+  uid         String   @unique
+  strategy    String   // Enum: 'LOCAL', 'GOOGLE', 'FACEBOOK', 'APPLE'
+  secretHash  String?
+  isVerified  Boolean  @default(false)
+  roles       String[] @default(["user"])
+  
+  // Relations
+  identifiers   AuthIdentifier[]
+  mfaMethods    MfaMethod[]
+  sessions      Session[]
+  oauthProvider OAuthProvider?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model AuthIdentifier {
+  id          String   @id @default(uuid())
+  authId      String
+  type        String   // Enum: 'EMAIL', 'PHONE', 'USERNAME'
+  value       String   @unique
+  isVerified  Boolean  @default(false)
+
+  auth        Auth     @relation(fields: [authId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model MfaMethod {
+  id          String   @id @default(uuid())
+  authId      String
+  type        String   // Enum: 'TOTP', 'SMS', 'EMAIL'
+  secret      String
+  isPrimary   Boolean  @default(false)
+  isEnabled   Boolean  @default(false)
+
+  auth        Auth     @relation(fields: [authId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model Session {
+  id              String   @id @default(uuid())
+  authId          String
+  uid             String
+  accessTokenHash String?
+  refreshTokenHash String?
+  deviceInfo      Json?
+  ipAddress       String?
+  isActive        Boolean  @default(true)
+  expiresAt       DateTime
+  lastActiveAt    DateTime @default(now())
+
+  auth            Auth     @relation(fields: [authId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+}
+
+model SessionLog {
+  id          String   @id @default(uuid())
+  uid         String
+  event       String   // Enum: 'LOGIN', 'LOGOUT', 'REFRESH', 'REVOKE'
+  deviceInfo  Json?
+  ipAddress   String?
+  status      String   // Enum: 'SUCCESS', 'FAILED'
+  namespace   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model OAuthProvider {
+  id              String   @id @default(uuid())
+  authId          String   @unique
+  provider        String   // Enum: 'GOOGLE', 'FACEBOOK', 'APPLE'
+  providerUserId  String   @unique
+  accessToken     String?
+  refreshToken    String?
+  profile         Json?
+
+  auth            Auth     @relation(fields: [authId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+}
+
+model OtpToken {
+  id              String   @id @default(uuid())
+  uid             String?
+  identifier      String
+  codeHash        String
+  purpose         String   // Enum: 'VERIFY_EMAIL', 'VERIFY_PHONE', 'MAGIC_LINK', 'MFA_LOGIN', 'RESET_PASSWORD'
+  expiresAt       DateTime
+  isUsed          Boolean  @default(false)
+  requestIp       String?
+  requestUserAgent String?
+  requestUserId   String?
+  requestAuthId   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+}

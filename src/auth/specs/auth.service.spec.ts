@@ -1,18 +1,44 @@
+import { AUTH_REPOSITORY_TOKEN, SESSION_REPOSITORY_TOKEN, MFA_METHOD_REPOSITORY_TOKEN, SESSION_LOG_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
+import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE } from '../interfaces/auth-otp-provider.interface';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from '../strategies/oauth/oauth.strategy';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Session } from '../entities/session.entity';
-import { Auth } from '../entities/auth.entity';
-import { OtpToken } from '../entities/otp-token.entity';
-import { MfaMethod } from '../entities/mfa-method.entity';
+// removed entity import session.entity';
+// removed entity import auth.entity';
+// removed entity import otp-token.entity';
+// removed entity import mfa-method.entity';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { AuthStrategy } from '../enums/auth-type.enum';
 import { BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { SessionLog } from '../entities/session_log.entity';
+// removed entity import session_log.entity';
+
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn(),
+    markVerifiedByAuthId: jest.fn(),
+});
+
+let mockRepo: any = createMockRepo();
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -33,44 +59,21 @@ describe('AuthService', () => {
         registerCredentials: jest.fn(),
     };
 
-    const mockAuthRepo = {
-        findOne: jest.fn(),
-        save: jest.fn(),
-        query: jest.fn(),
-        update: jest.fn(),
-    };
+    const mockIdentifierRepo: any = createMockRepo();
 
-    const mockOtpRepo = {
-        findOne: jest.fn(),
-        save: jest.fn(),
-        create: jest.fn(),
-    };
+    const mockAuthRepo: any = createMockRepo();
 
-    const mockMfaRepo = {
-        findOne: jest.fn(),
-        save: jest.fn(),
-        create: jest.fn(),
-    };
+    const mockOtpProvider: any = createMockRepo();
+
+    const mockMfaRepo: any = createMockRepo();
 
     const mockOptions = {
         jwtSecret: 'test-secret',
     };
 
-    const mockSessionRepo = {
-        create: jest.fn(),
-        save: jest.fn(),
-        update: jest.fn(),
-        findOne: jest.fn(),
-        delete: jest.fn(),
-    };
+    const mockSessionRepo: any = createMockRepo();
 
-    const mockSessionLogRepo = {
-        create: jest.fn(),
-        save: jest.fn(),
-        update: jest.fn(),
-        findOne: jest.fn(),
-        delete: jest.fn(),
-    };
+    const mockSessionLogRepo: any = createMockRepo();
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -79,11 +82,14 @@ describe('AuthService', () => {
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: LocalAuthStrategy, useValue: mockPasswordStrategy },
                 { provide: OAuthAuthStrategy, useValue: mockOAuthStrategy },
-                { provide: getRepositoryToken(Session), useValue: mockSessionRepo },
-                { provide: getRepositoryToken(Auth), useValue: mockAuthRepo },
-                { provide: getRepositoryToken(OtpToken), useValue: mockOtpRepo },
-                { provide: getRepositoryToken(MfaMethod), useValue: mockMfaRepo },
-                { provide: getRepositoryToken(SessionLog), useValue: mockSessionLogRepo},
+                { provide: SESSION_REPOSITORY_TOKEN, useValue: mockSessionRepo },
+                { provide: AUTH_REPOSITORY_TOKEN, useValue: mockAuthRepo },
+                { provide: AUTH_IDENTIFIER_REPOSITORY_TOKEN, useValue: mockIdentifierRepo },
+                { provide: AUTH_OTP_PROVIDER, useValue: mockOtpProvider },
+                { provide: AUTH_OTP_PROVIDER_EMAIL, useValue: mockOtpProvider },
+                { provide: AUTH_OTP_PROVIDER_PHONE, useValue: mockOtpProvider },
+                { provide: MFA_METHOD_REPOSITORY_TOKEN, useValue: mockMfaRepo },
+                { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockSessionLogRepo},
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
             ],
         }).compile();
@@ -109,9 +115,13 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockSessionLogRepo as any,
                 mockAuthRepo as any,
-                mockOtpRepo as any,
+                mockIdentifierRepo as any,
+                mockOtpProvider as any,
+                mockOtpProvider as any, // email otp provider
+                mockOtpProvider as any, // phone otp provider
                 mockMfaRepo as any,
                 { enabledStrategies: [AuthStrategy.LOCAL] } as any,
+            
             );
 
             await expect(restrictedService.signup({ dto: signupDto })).rejects.toThrow(BadRequestException);
@@ -127,7 +137,10 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockSessionLogRepo as any,
                 mockAuthRepo as any,
-                mockOtpRepo as any,
+                mockIdentifierRepo as any,
+                mockOtpProvider as any,
+                mockOtpProvider as any, // email otp provider
+                mockOtpProvider as any, // phone otp provider
                 mockMfaRepo as any,
                 { enabledStrategies: [AuthStrategy.APPLE] } as any,
             );
@@ -140,10 +153,8 @@ describe('AuthService', () => {
     describe('resendVerification', () => {
         it('should throw BadRequestException if called within resend interval', async () => {
             const authId = 'auth-uid';
-            mockAuthRepo.findOne.mockResolvedValue({ id: 1, uid: authId, isVerified: false });
-            mockOtpRepo.findOne.mockResolvedValue({
-                createdAt: new Date(Date.now() - 30 * 1000), // 30 seconds ago
-            });
+            mockAuthRepo.findByUid.mockResolvedValue({ id: 1, uid: authId, isVerified: false });
+            mockOtpProvider.resend.mockRejectedValue(new BadRequestException('Please wait before requesting another code'));
 
             const serviceWithInterval = new AuthService(
                 mockJwtService as any,
@@ -152,7 +163,10 @@ describe('AuthService', () => {
                 mockSessionRepo as any,
                 mockSessionLogRepo as any,
                 mockAuthRepo as any,
-                mockOtpRepo as any,
+                mockIdentifierRepo as any,
+                mockOtpProvider as any,
+                mockOtpProvider as any, // email otp provider
+                mockOtpProvider as any, // phone otp provider
                 mockMfaRepo as any,
                 { otpResendInterval: 60 } as any, // 60 second interval
                 { sendVerificationCode: jest.fn() } as any,
@@ -167,13 +181,8 @@ describe('AuthService', () => {
             const code = '123456';
             const hash = await bcrypt.hash(code, 10);
 
-            mockAuthRepo.findOne.mockResolvedValue({ uid, isVerified: true });
-            mockOtpRepo.findOne.mockResolvedValue({
-                codeHash: hash,
-                expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 mins from now
-                isUsed: false,
-                requestUserId: uid,
-            });
+            mockAuthRepo.findByUid.mockResolvedValue({ uid, isVerified: true });
+            mockOtpProvider.verify.mockResolvedValue({ success: true, authId: 1 });
             mockSessionRepo.create.mockReturnValue({});
             mockSessionRepo.save.mockImplementation(async (session) => {
                 session.id = 'session-id';

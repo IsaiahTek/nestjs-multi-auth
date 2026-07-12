@@ -1,0 +1,60 @@
+src/auth/auth.controller.ts(35,22): error TS2307: Cannot find module './entities/auth.entity' or its corresponding type declarations.
+src/auth/auth.controller.ts(233,61): error TS2741: Property 'email' is missing in type '{ token: string; }' but required in type 'MagicLinkVerifyDto'.
+src/auth/auth.module.ts(18,39): error TS2307: Cannot find module '../migrations/auth-schema.initializer' or its corresponding type declarations.
+src/auth/auth.module.ts(19,38): error TS2307: Cannot find module '../migrations/migration.service' or its corresponding type declarations.
+src/auth/auth.module.ts(80,39): error TS2339: Property 'register' does not exist on type 'typeof TypeOrmAuthAdapter'.
+src/auth/auth.service.ts(32,22): error TS2307: Cannot find module './entities/auth.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(33,25): error TS2307: Cannot find module './entities/session.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(34,38): error TS2307: Cannot find module './entities/otp-token.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(35,36): error TS2307: Cannot find module './entities/mfa-method.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(47,48): error TS2307: Cannot find module './entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(49,42): error TS2307: Cannot find module './entities/session_log.entity' or its corresponding type declarations.
+src/auth/auth.service.ts(175,36): error TS2345: Argument of type 'Promise<SessionLog>' is not assignable to parameter of type 'SessionLog'.
+  Type 'Promise<SessionLog>' is missing the following properties from type 'SessionLog': id, sessionId, uid, event, and 2 more.
+src/auth/auth.service.ts(279,42): error TS2339: Property 'findOne' does not exist on type 'MfaMethodRepository'.
+src/auth/auth.service.ts(356,42): error TS2339: Property 'findOne' does not exist on type 'MfaMethodRepository'.
+src/auth/auth.service.ts(714,28): error TS2339: Property 'otpRepo' does not exist on type 'AuthService'.
+src/auth/auth.service.ts(727,32): error TS2345: Argument of type '{ uid: string; }' is not assignable to parameter of type 'string'.
+src/auth/auth.service.ts(734,16): error TS2339: Property 'otpRepo' does not exist on type 'AuthService'.
+src/auth/auth.service.ts(893,16): error TS2339: Property 'otpRepo' does not exist on type 'AuthService'.
+src/auth/core/auth-mapper.ts(3,22): error TS2307: Cannot find module '../entities/auth.entity' or its corresponding type declarations.
+src/auth/dto/requests/mfa.dto.ts(3,25): error TS2307: Cannot find module '../../entities/mfa-method.entity' or its corresponding type declarations.
+src/auth/interfaces/oauth-strategy.interface.ts(3,22): error TS2307: Cannot find module '../entities/auth.entity' or its corresponding type declarations.
+src/auth/interfaces/oauth-strategy.interface.ts(4,32): error TS2307: Cannot find module '../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/interfaces/signup-event-body.interface.ts(2,32): error TS2307: Cannot find module '../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/strategies/local-auth.strategy.ts(17,22): error TS2307: Cannot find module '../entities/auth.entity' or its corresponding type declarations.
+src/auth/strategies/local-auth.strategy.ts(21,8): error TS2307: Cannot find module '../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/apple.strategy.ts(6,22): error TS2307: Cannot find module '../../entities/auth.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/apple.strategy.ts(7,31): error TS2307: Cannot find module '../../entities/oauth-provider.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/apple.strategy.ts(8,66): error TS2307: Cannot find module '../../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/facebook.strategy.ts(6,22): error TS2307: Cannot find module '../../entities/auth.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/facebook.strategy.ts(7,31): error TS2307: Cannot find module '../../entities/oauth-provider.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/facebook.strategy.ts(8,66): error TS2307: Cannot find module '../../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/google.strategy.ts(6,22): error TS2307: Cannot find module '../../entities/auth.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/google.strategy.ts(7,31): error TS2307: Cannot find module '../../entities/oauth-provider.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/google.strategy.ts(8,66): error TS2307: Cannot find module '../../entities/auth-identify.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/oauth.strategy.ts(4,22): error TS2307: Cannot find module '../../entities/auth.entity' or its corresponding type declarations.
+src/auth/strategies/oauth/oauth.strategy.ts(5,32): error TS2307: Cannot find module '../../entities/auth-identify.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(1,22): error TS2307: Cannot find module '../auth/entities/auth.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(2,32): error TS2307: Cannot find module '../auth/entities/auth-identify.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(3,31): error TS2307: Cannot find module '../auth/entities/oauth-provider.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(4,27): error TS2307: Cannot find module '../auth/entities/mfa-method.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(5,26): error TS2307: Cannot find module '../auth/entities/otp-token.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-entities.ts(6,25): error TS2307: Cannot find module '../auth/entities/session.entity' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-schema.initializer.ts(3,37): error TS2307: Cannot find module '../auth/auth.module' or its corresponding type declarations.
+src/database/typeorm/migrations/auth-schema.initializer.ts(4,35): error TS2307: Cannot find module '../auth/interfaces/auth-module-options.interface' or its corresponding type declarations.
+src/database/typeorm/repositories/mfa-method.repository.ts(16,5): error TS2741: Property 'updatedAt' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/mfa-method.entity").MfaMethod' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").MfaMethod'.
+src/database/typeorm/repositories/mfa-method.repository.ts(20,5): error TS2741: Property 'updatedAt' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/mfa-method.entity").MfaMethod' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").MfaMethod'.
+src/database/typeorm/repositories/mfa-method.repository.ts(24,5): error TS2741: Property 'updatedAt' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/mfa-method.entity").MfaMethod' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").MfaMethod'.
+src/database/typeorm/repositories/otp-token.repository.ts(16,5): error TS2741: Property 'toMap' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/otp-token.entity").OtpToken' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").OtpToken'.
+src/database/typeorm/repositories/otp-token.repository.ts(20,5): error TS2741: Property 'toMap' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/otp-token.entity").OtpToken' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").OtpToken'.
+src/database/typeorm/repositories/otp-token.repository.ts(27,5): error TS2741: Property 'toMap' is missing in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/database/typeorm/entities/otp-token.entity").OtpToken' but required in type 'import("/home/isaiah/devspace/my-open-source-projects/nestjs-multi-auth/src/auth/interfaces/models.interface").OtpToken'.
+src/index.ts(9,15): error TS2307: Cannot find module './auth/entities/auth.entity' or its corresponding type declarations.
+src/index.ts(10,15): error TS2307: Cannot find module './auth/entities/session.entity' or its corresponding type declarations.
+src/index.ts(11,15): error TS2307: Cannot find module './auth/entities/mfa-method.entity' or its corresponding type declarations.
+src/index.ts(12,15): error TS2307: Cannot find module './auth/entities/oauth-provider.entity' or its corresponding type declarations.
+src/index.ts(13,15): error TS2307: Cannot find module './auth/entities/otp-token.entity' or its corresponding type declarations.
+src/index.ts(14,15): error TS2307: Cannot find module './auth/entities/base.entity' or its corresponding type declarations.
+src/index.ts(20,15): error TS2307: Cannot find module './migrations/auth-schema.initializer' or its corresponding type declarations.
+src/index.ts(21,15): error TS2307: Cannot find module './migrations/migration.service' or its corresponding type declarations.
+src/index.ts(23,15): error TS2307: Cannot find module './auth/entities/entities' or its corresponding type declarations.

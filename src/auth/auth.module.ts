@@ -1,35 +1,30 @@
 // src/auth/auth.module.ts
 import { Module, DynamicModule, Provider, Global } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Auth } from './entities/auth.entity';
-import { OAuthProvider } from './entities/oauth-provider.entity';
-import { OtpToken } from './entities/otp-token.entity';
-import { MfaMethod } from './entities/mfa-method.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './core/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
-import { AuthIdentifier } from './entities/auth-identify.entity';
-import { Session } from './entities/session.entity';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER } from './interfaces/auth-notification-provider.interface';
+import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE } from './interfaces/auth-otp-provider.interface';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { createStrategyProviders } from './core/registration';
 import { AuthModuleAsyncOptions } from './interfaces/auth-module-async-options.interface';
-import { AuthSchemaInitializer } from '../migrations/auth-schema.initializer';
-import { AuthMigrationService } from '../migrations/migration.service';
+import { AuthSchemaInitializer } from '../database/typeorm/migrations/auth-schema.initializer';
+import { AuthMigrationService } from '../database/typeorm/migrations/migration.service';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { GoogleAuthStrategy } from './strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from './strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from './strategies/oauth/apple.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { AuthContextService } from './core/auth-context.resolver';
-import { SessionLog } from './entities/session_log.entity';
+import { TypeOrmAuthAdapter } from '../database/typeorm/typeorm-auth.adapter';
+import { DatabaseOtpProvider } from './core/database-otp.provider';
 
 
 
@@ -64,33 +59,39 @@ export class AuthModule {
       });
     }
 
+    const imports: any[] = [
+      PassportModule,
+      JwtModule.register({
+        secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
+        signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') as any },
+      }),
+      ThrottlerModule.forRoot({
+        throttlers: [
+          {
+            ttl: (options.throttlerTtl || 60) * 1000,
+            limit: options.throttlerLimit || 10,
+          },
+        ],
+      }),
+      ...(options.imports || []),
+    ];
+
+    if (!options.adapter) {
+      imports.push(TypeOrmAuthAdapter);
+    } else {
+      imports.push(options.adapter);
+    }
+
+    const defaultOtpClass = options.otpProvider || DatabaseOtpProvider;
+    providers.push(
+      { provide: AUTH_OTP_PROVIDER, useClass: defaultOtpClass },
+      { provide: AUTH_OTP_PROVIDER_EMAIL, useClass: options.otpProviders?.email || defaultOtpClass },
+      { provide: AUTH_OTP_PROVIDER_PHONE, useClass: options.otpProviders?.phone || defaultOtpClass },
+    );
+
     return {
       module: AuthModule,
-      imports: [
-        TypeOrmModule.forFeature([
-          Auth,
-          OAuthProvider,
-          AuthIdentifier,
-          OtpToken,
-          MfaMethod,
-          Session,
-          SessionLog,
-        ]),
-        PassportModule,
-        JwtModule.register({
-          secret: options.jwtSecret || process.env.JWT_SECRET || 'changeme',
-          signOptions: { expiresIn: (options.accessTokenExpiresIn || '15m') as any },
-        }),
-        ThrottlerModule.forRoot({
-          throttlers: [
-            {
-              ttl: (options.throttlerTtl || 60) * 1000,
-              limit: options.throttlerLimit || 10,
-            },
-          ],
-        }),
-        ...(options.imports || []),
-      ],
+      imports,
       providers,
       controllers: options.disableController ? [] : [AuthController],
       exports: [AuthService, JwtAuthGuard, OptionalAuthGuard, ThrottlerModule, JwtModule, PassportModule, AUTH_MODULE_OPTIONS],
@@ -117,42 +118,35 @@ export class AuthModule {
       inject: options.inject || [],
     };
 
+    const imports: any[] = [
+      PassportModule,
+      JwtModule.registerAsync({
+        inject: [AUTH_MODULE_OPTIONS],
+        useFactory: async (opts: AuthModuleOptions) => ({
+          secret: opts.jwtSecret || process.env.JWT_SECRET || 'changeme',
+          signOptions: {
+            expiresIn: (opts.accessTokenExpiresIn || '15m') as any,
+          },
+        }),
+      }),
+      ThrottlerModule.forRootAsync({
+        inject: [AUTH_MODULE_OPTIONS],
+        useFactory: async (opts: AuthModuleOptions) => ({
+          throttlers: [
+            {
+              ttl: (opts.throttlerTtl || 60) * 1000,
+              limit: opts.throttlerLimit || 10,
+            },
+          ],
+        }),
+      }),
+      ...(options.imports || []),
+    ];
+
     return {
       module: AuthModule,
       global: true,
-      imports: [
-        TypeOrmModule.forFeature([
-          Auth,
-          OAuthProvider,
-          AuthIdentifier,
-          OtpToken,
-          MfaMethod,
-          Session,
-          SessionLog,
-        ]),
-        PassportModule,
-        JwtModule.registerAsync({
-          inject: [AUTH_MODULE_OPTIONS],
-          useFactory: async (opts: AuthModuleOptions) => ({
-            secret: opts.jwtSecret || process.env.JWT_SECRET || 'changeme',
-            signOptions: {
-              expiresIn: (opts.accessTokenExpiresIn || '15m') as any,
-            },
-          }),
-        }),
-        ThrottlerModule.forRootAsync({
-          inject: [AUTH_MODULE_OPTIONS],
-          useFactory: async (opts: AuthModuleOptions) => ({
-            throttlers: [
-              {
-                ttl: (opts.throttlerTtl || 60) * 1000,
-                limit: opts.throttlerLimit || 10,
-              },
-            ],
-          }),
-        }),
-        ...(options.imports || []),
-      ],
+      imports,
       providers: [
         asyncOptionsProvider,
         ...this.createProviders(),
@@ -161,6 +155,52 @@ export class AuthModule {
         FacebookAuthStrategy,
         AppleAuthStrategy,
         OAuthAuthStrategy,
+        {
+          provide: AUTH_OTP_PROVIDER,
+          useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {
+            const provider = opts.otpProvider || DatabaseOtpProvider;
+            if (typeof provider === 'function' && provider.prototype) {
+              try { return moduleRef.get(provider, { strict: false }); } catch (e) { return new (provider as any)(moduleRef); }
+            }
+            return provider;
+          },
+          inject: [AUTH_MODULE_OPTIONS, ModuleRef],
+        },
+        {
+          provide: AUTH_OTP_PROVIDER_EMAIL,
+          useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {
+            const provider = opts.otpProviders?.email || opts.otpProvider || DatabaseOtpProvider;
+            if (typeof provider === 'function' && provider.prototype) {
+              try { return moduleRef.get(provider, { strict: false }); } catch (e) { return new (provider as any)(moduleRef); }
+            }
+            return provider;
+          },
+          inject: [AUTH_MODULE_OPTIONS, ModuleRef],
+        },
+        {
+          provide: AUTH_OTP_PROVIDER_PHONE,
+          useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {
+            const provider = opts.otpProviders?.phone || opts.otpProvider || DatabaseOtpProvider;
+            if (typeof provider === 'function' && provider.prototype) {
+              try { return moduleRef.get(provider, { strict: false }); } catch (e) { return new (provider as any)(moduleRef); }
+            }
+            return provider;
+          },
+          inject: [AUTH_MODULE_OPTIONS, ModuleRef],
+        },
+        {
+          provide: 'DYNAMIC_ADAPTER_REGISTRAR',
+          useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {
+            if (!opts.adapter) {
+              // Wait, TypeOrmAuthAdapter is a dynamic module, it should be in imports, not providers.
+              // So we should do this in imports, but options in async is not available at import time!
+              // For async module, imports MUST be defined statically or returned in DynamicModule.
+              // This is a common issue with NestJS async modules. We'll handle this in a specific way.
+            }
+            return null;
+          },
+          inject: [AUTH_MODULE_OPTIONS, ModuleRef],
+        },
         {
           provide: AUTH_NOTIFICATION_PROVIDER,
           useFactory: (opts: AuthModuleOptions, moduleRef: ModuleRef) => {

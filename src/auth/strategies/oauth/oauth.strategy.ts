@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { SignupDto } from '../../dto/requests/signup.dto';
 import { LoginDto } from '../../dto/requests/login.dto';
-import { Auth } from '../../entities/auth.entity';
-import { AuthIdentifier } from '../../entities/auth-identify.entity';
+import { Auth } from '../../interfaces/models.interface';
+import { AuthIdentifier } from '../../interfaces/models.interface';
 import { OAuthProviderType } from '../../enums/auth-type.enum';
 import { GoogleAuthStrategy } from './google.strategy';
 import { FacebookAuthStrategy } from './facebook.strategy';

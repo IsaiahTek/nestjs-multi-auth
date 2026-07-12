@@ -1,32 +1,49 @@
+import { AUTH_REPOSITORY_TOKEN, SESSION_REPOSITORY_TOKEN, MFA_METHOD_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN, SESSION_LOG_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
+import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE } from '../interfaces/auth-otp-provider.interface';
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitterModule, EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthService } from '../auth.service';
 import { AuthEvents } from '../enums/auth.events';
 import { SignupDto } from '../dto/requests/signup.dto';
 import { AuthStrategy } from '../enums/auth-type.enum';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Session } from '../entities/session.entity';
-import { Auth } from '../entities/auth.entity';
-import { OtpToken } from '../entities/otp-token.entity';
-import { MfaMethod } from '../entities/mfa-method.entity';
+// removed entity import session.entity';
+// removed entity import auth.entity';
+// removed entity import otp-token.entity';
+// removed entity import mfa-method.entity';
 import { JwtService } from '@nestjs/jwt';
 import { LocalAuthStrategy } from '../strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from '../strategies/oauth/oauth.strategy';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+    create: jest.fn().mockImplementation(dto => dto),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn()
+});
+
+let mockRepo: any = createMockRepo();
+
 describe('AuthService Events', () => {
   let service: AuthService;
   let eventEmitter: EventEmitter2;
 
-  const mockRepo = {
-    create: jest.fn().mockImplementation(dto => dto),
-    save: jest.fn().mockImplementation(dto => Promise.resolve({ ...dto, id: 'uuid' })),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    query: jest.fn(),
-  };
-
+  
   const mockPasswordStrategy = {
     registerCredentials: jest.fn().mockResolvedValue({
       auth: { uid: 'user-1', id: 'auth-1' },
@@ -49,10 +66,12 @@ describe('AuthService Events', () => {
             signAsync: jest.fn().mockResolvedValue('token'),
           },
         },
-        { provide: getRepositoryToken(Session), useValue: mockRepo },
-        { provide: getRepositoryToken(Auth), useValue: mockRepo },
-        { provide: getRepositoryToken(OtpToken), useValue: mockRepo },
-        { provide: getRepositoryToken(MfaMethod), useValue: mockRepo },
+        { provide: SESSION_REPOSITORY_TOKEN, useValue: mockRepo },
+        { provide: AUTH_REPOSITORY_TOKEN, useValue: mockRepo }, { provide: AUTH_IDENTIFIER_REPOSITORY_TOKEN, useValue: { findWithAuthByValue: jest.fn(), save: jest.fn() } },
+        { provide: AUTH_OTP_PROVIDER, useValue: mockRepo },
+                { provide: AUTH_OTP_PROVIDER_EMAIL, useValue: mockRepo },
+                { provide: AUTH_OTP_PROVIDER_PHONE, useValue: mockRepo },
+        { provide: MFA_METHOD_REPOSITORY_TOKEN, useValue: mockRepo },
         { provide: LocalAuthStrategy, useValue: mockPasswordStrategy },
         { provide: OAuthAuthStrategy, useValue: {} },
         {
@@ -62,6 +81,7 @@ describe('AuthService Events', () => {
             jwtSecret: 'secret',
           },
         },
+        { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
       ],
     }).compile();
 

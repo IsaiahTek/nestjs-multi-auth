@@ -1,26 +1,24 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, BadRequestException, Inject } from '@nestjs/common';
-import { DataSource, In, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { OAuth2Client } from 'google-auth-library';
-import { Auth } from '../../entities/auth.entity';
-import { OAuthProvider } from '../../entities/oauth-provider.entity';
-import { AuthIdentifier, IdentifierSource, IdentifierType } from '../../entities/auth-identify.entity';
+import { Auth, OAuthProvider, AuthIdentifier } from '../../interfaces/models.interface';
+import { IdentifierSource, IdentifierType } from '../../enums/identifier-type.enum';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions } from '../../interfaces/auth-module-options.interface';
 import { IOAuthStrategy } from '../../interfaces/oauth-strategy.interface';
 import { randomUUID } from 'crypto';
 import { LoginDto } from '../../dto/requests/login.dto';
 import { SignupDto } from '../../dto/requests/signup.dto';
 import { OAuthProviderType, AuthStrategy } from '../../enums/auth-type.enum';
+import { AUTH_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN, OAUTH_PROVIDER_REPOSITORY_TOKEN } from '../../interfaces/repository-tokens';
+import { AuthRepository, AuthIdentifierRepository, OAuthProviderRepository } from '../../interfaces/repositories.interface';
 
 @Injectable()
 export class GoogleAuthStrategy implements IOAuthStrategy {
   private client: OAuth2Client;
 
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Auth) private authRepo: Repository<Auth>,
-    @InjectRepository(OAuthProvider) private oauthProviderRepo: Repository<OAuthProvider>,
+    @Inject(AUTH_REPOSITORY_TOKEN) private authRepo: AuthRepository,
+    @Inject(AUTH_IDENTIFIER_REPOSITORY_TOKEN) private identifierRepo: AuthIdentifierRepository,
+    @Inject(OAUTH_PROVIDER_REPOSITORY_TOKEN) private oauthProviderRepo: OAuthProviderRepository,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
   ) {
     this.client = new OAuth2Client(this.options.googleClientId);
@@ -51,99 +49,62 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     const googleId = payload.sub;
     const email = payload.email?.toLowerCase();
 
-    return this.dataSource.transaction(async (manager) => {
-      const authRepo = manager.getRepository(Auth);
-      const oauthProviderRepo = manager.getRepository(OAuthProvider);
-      const identifierRepo = manager.getRepository(AuthIdentifier);
+    const existingProvider = await this.oauthProviderRepo.findByProviderUserId(OAuthProviderType.GOOGLE, googleId);
 
-      // Check if this Google account is already linked
-      const existingProvider = await oauthProviderRepo.findOne({
-        where: { provider: OAuthProviderType.GOOGLE, providerUserId: googleId },
-        relations: ['auth'],
-      });
+    if (existingProvider) {
+      throw new BadRequestException('This Google account is already linked to a user');
+    }
 
-      if (existingProvider) {
-        throw new BadRequestException('This Google account is already linked to a user');
+    if (email) {
+      const existingIdentifier = await this.identifierRepo.findByValue(email);
+      if (existingIdentifier) {
+        throw new BadRequestException('A user with this email already exists. Please login instead.');
       }
+    }
 
-      // Check if email identifier is already taken
-      if (email) {
-        const existingIdentifier = await identifierRepo.findOne({
-          where: { value: email, type: IdentifierType.EMAIL },
-        });
-        if (existingIdentifier) {
-          throw new BadRequestException('A user with this email already exists. Please login instead.');
-        }
-      }
+    const identityUid = uid || randomUUID();
 
-      const identityUid = uid || randomUUID();
-
-      const newAuth = authRepo.create({
-        uid: identityUid,
-        strategy: AuthStrategy.OAUTH,
-        isActive: true,
-        isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
-        isPrimary: true,
-      });
-
-      const identifiers: AuthIdentifier[] = [];
-      if (email) {
-        identifiers.push(
-          identifierRepo.create({
-            type: IdentifierType.EMAIL,
-            value: email,
-            isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
-            source: IdentifierSource.GOOGLE,
-            verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
-          })
-        );
-      }
-
-      newAuth.identifiers = identifiers;
-
-      const oauthProvider = oauthProviderRepo.create({
-        provider: OAuthProviderType.GOOGLE,
-        providerUserId: googleId,
-        rawProfile: payload,
-        displayName: payload.name,
-        avatarUrl: payload.picture,
-        emailVerified: payload.email_verified,
-        expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
-      });
-
-      newAuth.oauthProviders = [...(newAuth.oauthProviders || []), oauthProvider];
-
-      return { auth: await authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
+    const newAuth = await this.authRepo.create({
+      uid: identityUid,
+      strategy: AuthStrategy.OAUTH,
+      isActive: true,
+      isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
+      isPrimary: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
+
+    const identifiers: AuthIdentifier[] = [];
+    if (email) {
+      identifiers.push(
+        await this.identifierRepo.create({
+          auth: newAuth,
+          type: IdentifierType.EMAIL,
+          value: email,
+          isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
+          source: IdentifierSource.GOOGLE,
+          verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
+        })
+      );
+    }
+
+    newAuth.identifiers = identifiers;
+
+    const oauthProvider = await this.oauthProviderRepo.create({
+      auth: newAuth,
+      provider: OAuthProviderType.GOOGLE,
+      providerUserId: googleId,
+      rawProfile: payload,
+      displayName: payload.name,
+      avatarUrl: payload.picture,
+      emailVerified: payload.email_verified,
+      expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
+    });
+
+    newAuth.oauthProviders = [oauthProvider];
+
+    return { auth: await this.authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
   }
-
-  // async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
-  //   if (!dto.token) {
-  //     throw new BadRequestException('Google ID token is required');
-  //   }
-
-  //   const payload = await this.verifyToken(dto.token);
-  //   const googleId = payload.sub;
-
-  //   const oauthProvider = await this.oauthProviderRepo.findOne({
-  //     where: { provider: OAuthProviderType.GOOGLE, providerUserId: googleId },
-  //     relations: ['auth', 'auth.identifiers'],
-  //   });
-
-  //   if (!oauthProvider || !oauthProvider.auth) {
-  //     throw new BadRequestException('No account found linked to this Google account. Please sign up.');
-  //   }
-
-  //   const auth = oauthProvider.auth;
-  //   auth.lastUsedAt = new Date();
-  //   await this.authRepo.save(auth);
-
-  //   // Find the identifier that matches the email from Google
-  //   const email = payload.email?.toLowerCase();
-  //   const identifier = auth.identifiers?.find(id => id.value === email);
-
-  //   return { auth, identifier };
-  // }
 
   async login(
     dto: LoginDto,
@@ -157,100 +118,60 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     const googleId = payload.sub;
     const email = payload.email?.toLowerCase();
 
-    const result = await this.dataSource.transaction(async (manager) => {
-      const oauthRepo = manager.getRepository(OAuthProvider);
-      const authRepo = manager.getRepository(Auth);
-      const identifierRepo = manager.getRepository(AuthIdentifier);
+    const result = await this.oauthProviderRepo.findWithAuthByProviderUserId(OAuthProviderType.GOOGLE, googleId);
 
-      // -------------------------
-      // 1. Load OAuth Provider INSIDE transaction
-      // -------------------------
-      const oauthProvider = await oauthRepo.findOne({
-        where: {
-          provider: OAuthProviderType.GOOGLE,
-          providerUserId: googleId,
-        },
-        relations: ['auth', 'auth.identifiers'],
-      });
+    if (!result || !result.auth) {
+      throw new BadRequestException(
+        'No account found linked to this Google account. Please sign up.',
+      );
+    }
 
-      if (!oauthProvider || !oauthProvider.auth) {
-        throw new BadRequestException(
-          'No account found linked to this Google account. Please sign up.',
-        );
-      }
+    const oauthProvider = result.provider;
+    const auth = result.auth;
 
-      const auth = oauthProvider.auth;
+    oauthProvider.rawProfile = payload;
+    oauthProvider.displayName = payload.name ?? null;
+    oauthProvider.avatarUrl = payload.picture ?? null;
+    oauthProvider.emailVerified = payload.email_verified ?? false;
 
-      // -------------------------
-      // 2. Update OAuth Provider
-      // -------------------------
-      oauthProvider.rawProfile = payload;
-      oauthProvider.displayName = payload.name ?? null;
-      oauthProvider.avatarUrl = payload.picture ?? null;
-      oauthProvider.emailVerified = payload.email_verified ?? false;
+    auth.lastUsedAt = new Date();
 
-      // -------------------------
-      // 3. Update Auth
-      // -------------------------
-      auth.lastUsedAt = new Date();
+    let identifier: AuthIdentifier | null = null;
 
-      // -------------------------
-      // 4. Handle Identifier (EMAIL)
-      // -------------------------
-      let identifier: AuthIdentifier | null = null;
+    if (email) {
+      const idResult = await this.identifierRepo.findWithAuthByValue(email);
+      identifier = idResult?.identifier || null;
 
-      if (email) {
-        identifier = await identifierRepo.findOne({
-          where: {
-            auth: { id: auth.id },
-            type: IdentifierType.EMAIL,
-          },
+      if (!identifier || identifier.auth?.id !== auth.id) {
+        identifier = await this.identifierRepo.create({
+          auth,
+          type: IdentifierType.EMAIL,
+          value: email,
+          isVerified: false,
         });
-
-        if (!identifier) {
-          identifier = identifierRepo.create({
-            auth,
-            type: IdentifierType.EMAIL,
-            value: email,
-            isVerified: false,
-          });
-        }
-
-        // always normalize + update
-        identifier.value = email;
-        if (!this.options.forceVerificationOnGoogleLogin) {
-          identifier.isVerified = payload.email_verified ?? false;
-        }
-        identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
-        identifier.source = IdentifierSource.GOOGLE;
-
-        await identifierRepo.save(identifier);
       }
 
-      // -------------------------
-      // 5. Save core entities
-      // -------------------------
-      await oauthRepo.save(oauthProvider);
-      await authRepo.save(auth);
+      identifier.value = email;
+      if (!this.options.forceVerificationOnGoogleLogin) {
+        identifier.isVerified = payload.email_verified ?? false;
+      }
+      identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
+      identifier.source = IdentifierSource.GOOGLE;
 
-      return { auth, identifier };
-    });
+      await this.identifierRepo.save(identifier);
+    }
 
-    // -------------------------
-    // 6. Reload fresh state (important for consistency)
-    // -------------------------
-    const updatedAuth = await this.authRepo.findOne({
-      where: { id: result.auth.id },
-      relations: ['identifiers', 'oauthProviders'],
-    });
+    await this.oauthProviderRepo.save(oauthProvider);
+    await this.authRepo.save(auth);
 
-    const identifier = updatedAuth?.identifiers?.find(
+    const updatedAuth = await this.authRepo.findWithIdentifiers(auth.id);
+    const updatedIdentifier = updatedAuth?.identifiers?.find(
       (i) => i.type === IdentifierType.EMAIL && i.value === email,
-    );
+    ) || identifier;
 
     return {
-      auth: updatedAuth!,
-      identifier,
+      auth: updatedAuth || auth,
+      identifier: updatedIdentifier || undefined,
     };
   }
 }

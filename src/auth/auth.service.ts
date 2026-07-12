@@ -8,18 +8,30 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import {
+  AUTH_REPOSITORY_TOKEN,
+  SESSION_REPOSITORY_TOKEN,
+  SESSION_LOG_REPOSITORY_TOKEN,
+  MFA_METHOD_REPOSITORY_TOKEN,
+  AUTH_IDENTIFIER_REPOSITORY_TOKEN,
+} from './interfaces/repository-tokens';
+import {
+  AuthRepository,
+  SessionRepository,
+  SessionLogRepository,
+  MfaMethodRepository,
+  AuthIdentifierRepository,
+} from './interfaces/repositories.interface';
+import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE, AuthOtpProvider } from './interfaces/auth-otp-provider.interface';
 import * as bcrypt from 'bcrypt';
 import { SignupDto } from './dto/requests/signup.dto';
 import { LoginDto } from './dto/requests/login.dto';
 import { LocalAuthStrategy } from './strategies/local-auth.strategy';
 import { OAuthAuthStrategy } from './strategies/oauth/oauth.strategy';
 import { AuthStrategy } from './enums/auth-type.enum';
-import { Auth } from './entities/auth.entity';
-import { Session } from './entities/session.entity';
-import { OtpToken, OtpPurpose } from './entities/otp-token.entity';
-import { MfaMethod, MfaType } from './entities/mfa-method.entity';
+import { Auth, Session, OtpToken, MfaMethod } from './interfaces/models.interface';
+import { OtpPurpose } from './enums/otp-purpose.enum';
+import { MfaType } from './enums/mfa-type.enum';
 import { authenticator } from 'otplib';
 import { AUTH_MODULE_OPTIONS, AuthModuleOptions, SessionCreationPolicy } from './interfaces/auth-module-options.interface';
 import { AUTH_NOTIFICATION_PROVIDER, AuthNotificationProvider } from './interfaces/auth-notification-provider.interface';
@@ -31,9 +43,11 @@ import { ResetPasswordDto } from './dto/requests/reset-password.dto';
 import { UpdatePasswordDto } from './dto/requests/update-password.dto';
 import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto/requests/magic-link.dto';
 import { SecureAccountDto } from './dto/requests/secure-account.dto';
-import { AuthIdentifier, IdentifierType } from './entities/auth-identify.entity';
+import { AuthIdentifier } from './interfaces/models.interface';
+import { IdentifierType } from './enums/identifier-type.enum';
 import { AuthEvents } from './enums/auth.events';
-import { SessionEvent, SessionLog } from './entities/session_log.entity';
+import { SessionLog } from './interfaces/models.interface';
+import { SessionEvent } from './enums/session-event.enum';
 
 @Injectable()
 export class AuthService {
@@ -44,22 +58,35 @@ export class AuthService {
     private jwtService: JwtService,
     @Optional() private passwordStrategy: LocalAuthStrategy,
     @Optional() private oauthStrategy: OAuthAuthStrategy,
-    @InjectRepository(Session)
-    private sessionRepository: Repository<Session>,
-    @InjectRepository(SessionLog)
-    private sessionLogRepo: Repository<SessionLog>,
-    @InjectRepository(Auth)
-    private authRepo: Repository<Auth>,
-    @InjectRepository(OtpToken)
-    private otpRepo: Repository<OtpToken>,
-    @InjectRepository(MfaMethod)
-    private mfaRepo: Repository<MfaMethod>,
+    @Inject(SESSION_REPOSITORY_TOKEN)
+    private sessionRepository: SessionRepository,
+    @Inject(SESSION_LOG_REPOSITORY_TOKEN)
+    private sessionLogRepo: SessionLogRepository,
+    @Inject(AUTH_REPOSITORY_TOKEN)
+    private authRepo: AuthRepository,
+    @Inject(AUTH_IDENTIFIER_REPOSITORY_TOKEN)
+    private authIdentifierRepo: AuthIdentifierRepository,
+    @Inject(AUTH_OTP_PROVIDER)
+    private otpProvider: AuthOtpProvider,
+    @Inject(AUTH_OTP_PROVIDER_EMAIL)
+    private otpProviderEmail: AuthOtpProvider,
+    @Inject(AUTH_OTP_PROVIDER_PHONE)
+    private otpProviderPhone: AuthOtpProvider,
+    @Inject(MFA_METHOD_REPOSITORY_TOKEN)
+    private mfaRepo: MfaMethodRepository,
     @Inject(AUTH_MODULE_OPTIONS) private options: AuthModuleOptions,
     @Optional()
     @Inject(AUTH_NOTIFICATION_PROVIDER)
     private notificationProvider?: AuthNotificationProvider,
     @Optional() private readonly eventEmitter?: EventEmitter2,
   ) { }
+
+  /** Returns the correct OTP provider for the given identifier type. */
+  private resolveOtpProvider(identifierType?: 'email' | 'phone'): AuthOtpProvider {
+    if (identifierType === 'email') return this.otpProviderEmail;
+    if (identifierType === 'phone') return this.otpProviderPhone;
+    return this.otpProvider;
+  }
 
   // --- INTERNAL HELPER: Generate Token Pair ---
   private async generateTokens(uid: string, sessionId: string, namespace?: string) {
@@ -104,7 +131,7 @@ export class AuthService {
     const deviceFingerprint = this.fingerprint(userAgent);
     let session: Session;
 
-    const _createSession = (): Session => {
+    const _createSession = async (): Promise<Session> => {
       return this.sessionRepository.create({
         id: crypto.randomUUID(),
         uid,
@@ -114,27 +141,21 @@ export class AuthService {
         expiresAt,
         refreshTokenHash: '',
         userAgent,
-      })
+      });
     }
 
     if (this.options.sessionCreationPolicy === SessionCreationPolicy.REUSE_DEVICE) {
-      session = await this.sessionRepository.findOne({
-        where: {
-          uid,
-          namespace,
-          deviceFingerprint,
-        },
-      });
+      session = await this.sessionRepository.findDeviceSession(uid, namespace, deviceFingerprint) as any;
       if (session) {
         session.expiresAt = expiresAt;
         session.ipAddress = ip;
         session.userAgent = userAgent;
         session.deviceFingerprint = deviceFingerprint;
       } else {
-        session = _createSession();
+        session = await _createSession();
       }
     } else {
-      session = _createSession();
+      session = await _createSession();
     }
 
     const tokens = await this.generateTokens(uid, session.id, namespace);
@@ -156,7 +177,7 @@ export class AuthService {
   }) {
     if (!this.createSessionLog) return;
 
-    const sessionLog = this.sessionLogRepo.create({
+    const sessionLog = await this.sessionLogRepo.create({
       ...session,
       sessionId: session.id,
       event,
@@ -182,7 +203,9 @@ export class AuthService {
     }
 
     if (!session) {
-      session = await this.sessionRepository.findOneByOrFail({ id: sessionId! });
+      const foundSession = await this.sessionRepository.findById(sessionId!);
+      if (!foundSession) throw new Error("Session not found");
+      session = foundSession as any;
     }
 
     await this.createSessionLogFromSessionIfEnabled({
@@ -203,32 +226,28 @@ export class AuthService {
     event: SessionEvent;
     reason: string;
   }) {
-    await this.sessionRepository.manager.transaction(async (manager) => {
-      const sessions = await manager.find(Session, {
-        where: { uid },
-      });
+    const sessions = await this.sessionRepository.findByUid(uid);
+    if (sessions.length === 0) {
+      return;
+    }
 
-      if (sessions.length === 0) {
-        return;
+    if (this.createSessionLog) {
+      const logs = sessions.map((session) =>
+        ({
+          ...session,
+          id: undefined as any,
+          sessionId: session.id,
+          event,
+          reason,
+          timestamp: new Date()
+        })
+      );
+      for (const log of logs) {
+        await this.sessionLogRepo.save(log as any);
       }
+    }
 
-      if (this.createSessionLog) {
-        const logs = sessions.map((session) =>
-          this.sessionLogRepo.create({
-            ...session,
-            sessionId: session.id,
-            event,
-            reason,
-          }),
-        );
-
-        await manager.save(logs);
-      }
-
-      await manager.delete(Session, {
-        uid,
-      });
-    });
+    await this.sessionRepository.deleteByUid(uid);
   }
 
   async signup({ dto, uid, userAgent, ip, namespace }: { dto: SignupDto, uid?: string, userAgent?: string, ip?: string, namespace?: string }) {
@@ -269,7 +288,7 @@ export class AuthService {
     const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
 
     // Check if user has 2FA enabled
-    const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+    const mfaMethod = await this.mfaRepo.findByUidAndEnabled(auth.uid);
     const has2FA = !!mfaMethod;
 
     const triggerVerification = isPasswordless ||
@@ -346,7 +365,7 @@ export class AuthService {
     const isPasswordless = [AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME, AuthStrategy.LOCAL].includes(dto.method as any) && !dto.password;
 
     // Check if user has 2FA enabled
-    const mfaMethod = await this.mfaRepo.findOne({ where: { uid: auth.uid, isEnabled: true } });
+    const mfaMethod = await this.mfaRepo.findByUidAndEnabled(auth.uid);
     const has2FA = !!mfaMethod;
 
     // Trigger email/phone verification only if required and identifier not verified.
@@ -394,33 +413,17 @@ export class AuthService {
 
   // --- VERIFICATION LOGIC ---
 
-  private async sendVerification(auth: Auth, currentIdentifier?: any) {
-    if (!this.notificationProvider) return;
-
-    // 1. Determine primary identifier (email or phone) to send the code to
-    // If we have a verified email/phone on the same UID, use that.
-    // Otherwise use the current identifier if it's verifiable.
+  private async sendVerification(auth: any, currentIdentifier?: any) {
+    if (!this.notificationProvider && !this.otpProvider && !this.otpProviderEmail && !this.otpProviderPhone) return;
 
     let primaryIdentifier = currentIdentifier?.type !== 'USERNAME' ? currentIdentifier : null;
 
     if (!primaryIdentifier) {
-      // Look for any EMAIL or PHONE linked to this UID
-      const allIdentifiers = await this.authRepo.query(
-        `SELECT ai.* FROM auth_identifiers ai 
-         JOIN auth a ON ai."authId" = a.id 
-         WHERE a.uid = $1 AND ai.type IN ('EMAIL', 'PHONE')
-         ORDER BY ai."isVerified" DESC, ai."createdAt" ASC LIMIT 1`,
-        [auth.uid]
-      );
-      primaryIdentifier = allIdentifiers[0];
+      primaryIdentifier = await this.authIdentifierRepo.findByUidAndTypes(auth.uid, ['EMAIL', 'PHONE']);
     }
 
     if (!primaryIdentifier) {
-      // As a last resort, reload auth with identifiers and find first EMAIL/PHONE
-      const fullAuth = await this.authRepo.findOne({
-        where: { id: auth.id },
-        relations: ['identifiers']
-      });
+      const fullAuth = await this.authRepo.findWithIdentifiers(auth.id);
       primaryIdentifier = fullAuth?.identifiers?.find(id => id.type === 'EMAIL' || id.type === 'PHONE');
     }
 
@@ -431,83 +434,50 @@ export class AuthService {
       return;
     }
 
-    // 2. Generate 6-digit code
-    const code = (this.options.debugMode && this.options.defaultOtp)
-      ? this.options.defaultOtp
-      : Math.floor(100000 + Math.random() * 900000).toString();
-    const hash = await bcrypt.hash(code, 10);
-
-    // 3. Save OTP Token
-    const expiresAt = new Date();
-    const otpExpMins = this.options.otpExpiresIn || 15;
-    expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
-
-    const otpToken = this.otpRepo.create({
+    const purpose = primaryIdentifier.type === 'EMAIL' ? OtpPurpose.VERIFY_EMAIL : OtpPurpose.VERIFY_PHONE;
+    
+    const idType: 'email' | 'phone' = primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone';
+    const result = await this.resolveOtpProvider(idType).issue({
+      uid: auth.uid,
+      authId: auth.id,
       identifier: primaryIdentifier.value,
-      purpose: primaryIdentifier.type === 'EMAIL' ? OtpPurpose.VERIFY_EMAIL : OtpPurpose.VERIFY_PHONE,
-      codeHash: hash,
-      expiresAt,
-      requestUserId: auth.uid,
-      requestAuthId: auth.id,
+      identifierType: idType,
+      purpose,
+      expiresIn: this.options.otpExpiresIn,
     });
 
-    await this.otpRepo.save(otpToken);
-
-    // 4. Send via Provider
-    try {
-      await this.notificationProvider.sendVerificationCode(
-        primaryIdentifier.value,
-        code,
-        primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone'
-      );
-    } catch (e) {
-      this.logger.error(`Failed to send verification code to ${primaryIdentifier.value}`, e);
-      throw new BadRequestException('Failed to send verification code');
+    if (!result.handledDelivery && this.notificationProvider && result.code) {
+      try {
+        await this.notificationProvider.sendVerificationCode({
+          to: primaryIdentifier.value,
+          code: result.code,
+          type: primaryIdentifier.type === 'EMAIL' ? 'email' : 'phone',
+          purpose,
+          expiresAt: result.expiresAt
+        });
+      } catch (e) {
+        this.logger.error(`Failed to send verification code to ${primaryIdentifier.value}`, e);
+        throw new BadRequestException('Failed to send verification code');
+      }
     }
   }
 
   async verifyCode({ uid, code, userAgent, ip, namespace }: { uid: string, code: string, userAgent?: string, ip?: string, namespace?: string }) {
-    const auth = await this.authRepo.findOne({ where: { uid } });
+    const auth = await this.authRepo.findByUid(uid);
     if (!auth) throw new BadRequestException('Identity not found');
 
-    // Find the latest unused OTP for this UID
-    const otp = await this.otpRepo.findOne({
-      where: { requestUserId: uid, isUsed: false },
-      order: { createdAt: 'DESC' },
-    });
+    const result = await this.resolveOtpProvider().verify({ uid, code });
 
-    if (!otp) {
-      if (auth.isVerified) return { message: 'Identity already verified' };
-      throw new BadRequestException('No verification code found');
-    }
+    if (result.success) {
+      auth.isVerified = true;
+      await this.authRepo.save(auth);
 
-    if (new Date() > otp.expiresAt) {
-      throw new BadRequestException('Verification code expired');
-    }
+      await this.authIdentifierRepo.markVerifiedByAuthId(auth.id);
 
-    const isMatch = await bcrypt.compare(code, otp.codeHash);
-    if (!isMatch) throw new BadRequestException('Invalid verification code');
-
-    // Success!
-    otp.isUsed = true;
-    await this.otpRepo.save(otp);
-
-    auth.isVerified = true;
-    await this.authRepo.save(auth);
-
-    // Also mark all identifiers for this Auth as verified
-    await this.authRepo.query(
-      `UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`,
-      [auth.id]
-    );
-
-    // If there's a requestAuthId on the OTP (which there should be), update that one too if different
-    if (otp.requestAuthId && otp.requestAuthId !== auth.id) {
-      await this.authRepo.update(otp.requestAuthId, { isVerified: true });
-      await this.authRepo.query(
-        `UPDATE auth_identifiers SET "isVerified" = true WHERE "authId" = $1`,
-        [otp.requestAuthId]
-      );
+      if (result.authId && result.authId !== auth.id) {
+        await this.authRepo.update(result.authId, { isVerified: true });
+        await this.authIdentifierRepo.markVerifiedByAuthId(result.authId);
+      }
     }
 
     const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
@@ -520,29 +490,25 @@ export class AuthService {
   }
 
   async resendVerification(uid: string) {
-    const auth = await this.authRepo.findOne({ where: { uid } });
+    const auth = await this.authRepo.findByUid(uid);
     if (!auth) throw new BadRequestException('Identity not found');
 
-    if (!this.notificationProvider) {
-      throw new BadRequestException('Verification is not configured');
+    if (!this.resolveOtpProvider().resend) {
+      await this.sendVerification(auth);
+      return { message: 'Verification code resent' };
     }
 
-    // Check resend interval
-    const latestOtp = await this.otpRepo.findOne({
-      where: { requestUserId: uid },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (latestOtp) {
-      const intervalSeconds = this.options.otpResendInterval || 60;
-      const diffMs = Date.now() - latestOtp.createdAt.getTime();
-      if (diffMs < intervalSeconds * 1000) {
-        const wait = Math.ceil(intervalSeconds - diffMs / 1000);
-        throw new BadRequestException(`Please wait ${wait} seconds before requesting a new code.`);
-      }
+    const result = await this.resolveOtpProvider().resend!({ uid });
+    if (!result.handledDelivery && this.notificationProvider && result.code && result.metadata) {
+      await this.notificationProvider.sendVerificationCode({
+        to: result.metadata.identifier,
+        code: result.code,
+        type: result.metadata.identifierType,
+        purpose: result.metadata.purpose,
+        expiresAt: result.expiresAt
+      });
     }
 
-    await this.sendVerification(auth);
     return { message: 'Verification code resent' };
   }
 
@@ -560,27 +526,10 @@ export class AuthService {
 
       const resolvedNamespace = namespace ?? payload.namespace
 
-      const whereClause: { id: string, namespace?: string } = { id: payload.sessionId }
-      if (resolvedNamespace) {
-        whereClause.namespace = resolvedNamespace;
-      }
-
-
-      const session = await this.sessionRepository.findOne({
-        where: whereClause,
-        select: [
-          'id',
-          'uid',
-          'refreshTokenHash',
-          'expiresAt',
-          'deviceFingerprint',
-          'ipAddress',
-          'namespace',
-        ],
-      });
+      const session = await this.sessionRepository.findByIdWithDetails(payload.sessionId, resolvedNamespace);
 
       if (this.options.debug) {
-        this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}, Where clause: ${JSON.stringify(whereClause)}`)
+        this.logger.debug(`Namespace from JWT: ${payload.namespace}, Namespace passed to refresh method: ${namespace}`)
       }
 
       if (!session) throw new ForbiddenException('Session not found');
@@ -648,7 +597,7 @@ export class AuthService {
         refreshToken,
       );
       if (payload?.sessionId) {
-        const session = await this.sessionRepository.findOne({ where: { id: payload.sessionId } });
+        const session = await this.sessionRepository.findById(payload.sessionId);
         this.invalidateSession({ session, event: SessionEvent.LOGOUT, reason: 'User logout' })
         if (session && this.eventEmitter) {
           this.eventEmitter.emit(AuthEvents.LOGOUT, { uid: session.uid });
@@ -667,44 +616,32 @@ export class AuthService {
     const value = dto.email || dto.phone || dto.username;
     if (!value) throw new BadRequestException('Identifier is required');
 
-    // 1. Find identifier
-    const identifier = await this.authRepo.query(
-      `SELECT ai.*, a.uid, a.id as "authId" FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`,
-      [value.toLowerCase()]
-    );
+    const result = await this.authIdentifierRepo.findWithAuthByValue(value);
 
-    if (!identifier[0]) {
-      // Security: Don't reveal if user exists. 
-      // But typically for forgot-password, users expect an error if email is wrong.
-      // We'll return success anyway to prevent enumeration.
+    if (!result) {
       return { message: 'If an account exists, a reset code has been sent.' };
     }
 
-    const primaryAuth = identifier[0];
+    const { identifier: primaryAuth, auth: primaryAuthObj } = result;
 
-    // 2. Generate OTP
-    const code = (this.options.debugMode && this.options.defaultOtp)
-      ? this.options.defaultOtp
-      : Math.floor(100000 + Math.random() * 900000).toString();
-    const hash = await bcrypt.hash(code, 10);
-
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + (this.options.otpExpiresIn || 15));
-
-    await this.otpRepo.save(this.otpRepo.create({
+    const resetIdType: 'email' | 'phone' = primaryAuth.type === 'PHONE' ? 'phone' : 'email';
+    const issueResult = await this.resolveOtpProvider(resetIdType).issue({
+      uid: primaryAuthObj.uid,
+      authId: primaryAuthObj.id,
       identifier: primaryAuth.value,
+      identifierType: resetIdType,
       purpose: OtpPurpose.PASSWORD_RESET,
-      codeHash: hash,
-      expiresAt,
-      requestUserId: primaryAuth.uid,
-      requestAuthId: primaryAuth.authId,
-    }));
+      expiresIn: this.options.otpExpiresIn || 15
+    });
 
-    // 3. Send notification
-    if (this.notificationProvider) {
-      await this.notificationProvider.sendVerificationCode(primaryAuth.value, code, 'email');
+    if (!issueResult.handledDelivery && this.notificationProvider && issueResult.code) {
+      await this.notificationProvider.sendVerificationCode({
+        to: primaryAuth.value,
+        code: issueResult.code,
+        type: primaryAuth.type === 'PHONE' ? 'phone' : 'email',
+        purpose: OtpPurpose.PASSWORD_RESET,
+        expiresAt: issueResult.expiresAt
+      });
     }
 
     if (this.eventEmitter) {
@@ -715,34 +652,23 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const otp = await this.otpRepo.findOne({
-      where: { requestUserId: dto.uid, purpose: OtpPurpose.PASSWORD_RESET, isUsed: false },
-      order: { createdAt: 'DESC' },
-    });
+    const result = await this.resolveOtpProvider().verify({ uid: dto.uid, code: dto.code, purpose: OtpPurpose.PASSWORD_RESET });
 
-    if (!otp || new Date() > otp.expiresAt) {
+    if (!result.success || !result.authId) {
       throw new BadRequestException('Invalid or expired reset code');
     }
 
-    const isMatch = await bcrypt.compare(dto.code, otp.codeHash);
-    if (!isMatch) throw new BadRequestException('Invalid reset code');
-
-    // Update password
     const hash = await bcrypt.hash(dto.newPassword, 10);
-    await this.authRepo.update(otp.requestAuthId, {
+    await this.authRepo.update(result.authId, {
       secretHash: hash,
       isActive: true // Unlock account on successful reset
     });
-
-    // Mark OTP as used
-    otp.isUsed = true;
-    await this.otpRepo.save(otp);
 
     // Security: Invalidate all sessions
     await this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User reset password' });
 
     if (this.eventEmitter) {
-      const auth = await this.authRepo.findOne({ where: { uid: dto.uid } });
+      const auth = await this.authRepo.findByUid(dto.uid);
       this.eventEmitter.emit(AuthEvents.PASSWORD_RESET, { auth });
     }
 
@@ -751,10 +677,7 @@ export class AuthService {
 
   async updatePassword(uid: string, dto: UpdatePasswordDto, userAgent?: string, ip?: string) {
     // 1. Get primary LOCAL auth
-    const auth = await this.authRepo.findOne({
-      where: { uid, strategy: In([AuthStrategy.LOCAL, AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME]) as any },
-      select: ['id', 'secretHash', 'uid']
-    });
+    const auth = await this.authRepo.findByUidAndStrategies(uid, [AuthStrategy.LOCAL, AuthStrategy.EMAIL, AuthStrategy.PHONE, AuthStrategy.USERNAME] as any[]);
 
     if (!auth || !auth.secretHash) {
       throw new BadRequestException('Password update only available for local accounts');
@@ -770,35 +693,27 @@ export class AuthService {
 
     // 4. Notification with Security Link
     if (this.notificationProvider?.sendPasswordChangedNotification) {
-      const secureToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = await bcrypt.hash(secureToken, 10);
+      const identifier = await this.authIdentifierRepo.findByUidAndTypes(auth.uid, ['EMAIL']);
 
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
-      // Get user email
-      const identifier = await this.authRepo.query(
-        `SELECT value FROM auth_identifiers WHERE "authId" = $1 AND type = 'EMAIL' LIMIT 1`,
-        [auth.id]
-      );
-
-      if (identifier[0]) {
-        await this.otpRepo.save(this.otpRepo.create({
-          identifier: identifier[0].value,
+      if (identifier) {
+        const issueResult = await this.resolveOtpProvider('email').issue({
+          uid: auth.uid,
+          authId: auth.id,
+          identifier: identifier.value,
+          identifierType: 'email',
           purpose: OtpPurpose.SECURE_ACCOUNT,
-          codeHash: tokenHash,
-          expiresAt,
-          requestUserId: auth.uid,
-          requestAuthId: auth.id,
-        }));
-
-        const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${secureToken}&uid=${auth.uid}`;
-
-        await this.notificationProvider.sendPasswordChangedNotification(identifier[0].value, {
-          ip: ip || 'Unknown',
-          userAgent: userAgent || 'Unknown',
-          secureAccountLink: secureLink,
+          expiresIn: 24 * 60
         });
+
+        if (issueResult.code) {
+          const secureLink = `${this.options.frontendUrl || ''}/auth/secure?token=${issueResult.code}&uid=${auth.uid}`;
+
+          await this.notificationProvider.sendPasswordChangedNotification(identifier.value, {
+            ip: ip || 'Unknown',
+            userAgent: userAgent || 'Unknown',
+            secureAccountLink: secureLink,
+          });
+        }
       }
     }
 
@@ -810,27 +725,24 @@ export class AuthService {
   }
 
   async secureAccount(dto: SecureAccountDto & { uid: string }) {
-    const otp = await this.otpRepo.findOne({
-      where: { requestUserId: dto.uid, purpose: OtpPurpose.SECURE_ACCOUNT, isUsed: false },
-      order: { createdAt: 'DESC' },
+    const result = await this.resolveOtpProvider('email').verify({
+      uid: dto.uid,
+      code: dto.token,
+      purpose: OtpPurpose.SECURE_ACCOUNT,
     });
 
-    if (!otp || new Date() > otp.expiresAt) {
+    if (!result.success) {
       throw new BadRequestException('Invalid or expired security token');
     }
 
-    const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
-    if (!isMatch) throw new BadRequestException('Invalid security token');
-
     // 1. Lock all auth methods
-    await this.authRepo.update({ uid: dto.uid }, { isActive: false });
+    const auths = await this.authRepo.findAllByUid(dto.uid);
+    for (const auth of auths) {
+      await this.authRepo.update(auth.id, { isActive: false });
+    }
 
     // 2. Invalidate sessions
     this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' })
-
-    // 3. Mark OTP as used
-    otp.isUsed = true;
-    await this.otpRepo.save(otp);
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.ACCOUNT_SECURED, { uid: dto.uid });
@@ -842,41 +754,26 @@ export class AuthService {
   // --- MAGIC LINK ---
 
   async requestMagicLink(dto: MagicLinkRequestDto) {
-    const identifier = await this.authRepo.query(
-      `SELECT ai.*, a.id as "authId", a.uid FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`,
-      [dto.email.toLowerCase()]
-    );
+    const result = await this.authIdentifierRepo.findWithAuthByValue(dto.email.toLowerCase());
 
-    let authId: string;
-    let uid: string;
-
-    if (!identifier[0]) {
+    if (!result) {
       // Optional: Auto-signup if not exists, but let's stick to existing for now
       throw new BadRequestException('No account found with this email');
-    } else {
-      authId = identifier[0].authId;
-      uid = identifier[0].uid;
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const hash = await bcrypt.hash(token, 10);
+    const { auth: primaryAuthObj } = result;
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
-
-    await this.otpRepo.save(this.otpRepo.create({
+    const issueResult = await this.resolveOtpProvider('email').issue({
+      uid: primaryAuthObj.uid,
+      authId: primaryAuthObj.id,
       identifier: dto.email.toLowerCase(),
+      identifierType: 'email',
       purpose: OtpPurpose.MAGIC_LINK,
-      codeHash: hash,
-      expiresAt,
-      requestUserId: uid,
-      requestAuthId: authId,
-    }));
+      expiresIn: 15
+    });
 
-    if (this.notificationProvider?.sendMagicLink) {
-      const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${token}&email=${dto.email}`;
+    if (this.notificationProvider?.sendMagicLink && issueResult.code) {
+      const link = `${this.options.frontendUrl || ''}/auth/magic-callback?token=${issueResult.code}&email=${dto.email}`;
       await this.notificationProvider.sendMagicLink(dto.email, link);
     }
 
@@ -888,22 +785,20 @@ export class AuthService {
   }
 
   async verifyMagicLink({ dto, userAgent, ip, namespace }: { dto: MagicLinkVerifyDto, userAgent?: string, ip?: string, namespace?: string }) {
-    const otp = await this.otpRepo.findOne({
-      where: { purpose: OtpPurpose.MAGIC_LINK, isUsed: false },
-      order: { createdAt: 'DESC' },
+    const identifier = await this.authIdentifierRepo.findWithAuthByValue(dto.email.toLowerCase());
+    if (!identifier) throw new BadRequestException('Identity not found');
+
+    const result = await this.resolveOtpProvider('email').verify({
+      uid: identifier.auth.uid,
+      code: dto.token,
+      purpose: OtpPurpose.MAGIC_LINK
     });
 
-    if (!otp || new Date() > otp.expiresAt) {
+    if (!result.success || !result.authId) {
       throw new BadRequestException('Invalid or expired magic link');
     }
 
-    const isMatch = await bcrypt.compare(dto.token, otp.codeHash);
-    if (!isMatch) throw new BadRequestException('Invalid magic link');
-
-    otp.isUsed = true;
-    await this.otpRepo.save(otp);
-
-    const auth = await this.authRepo.findOne({ where: { id: otp.requestAuthId } });
+    const auth = await this.authRepo.findById(result.authId);
     if (!auth) throw new BadRequestException('Identity not found');
 
     const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
@@ -922,7 +817,7 @@ export class AuthService {
       throw new BadRequestException('Currently only TOTP MFA is supported');
     }
 
-    let mfa = await this.mfaRepo.findOne({ where: { uid, type }, select: ['id', 'secret', 'isEnabled', 'type'] });
+    let mfa = await this.mfaRepo.findByUidAndType(uid, type) as any;
 
     if (mfa?.isEnabled) {
       throw new BadRequestException('MFA is already enabled for this account');
@@ -933,7 +828,7 @@ export class AuthService {
     const otpauth = authenticator.keyuri(uid, appName, secret);
 
     if (!mfa) {
-      mfa = this.mfaRepo.create({
+      mfa = await this.mfaRepo.create({
         uid,
         type,
         secret,
@@ -949,17 +844,11 @@ export class AuthService {
       this.eventEmitter.emit(AuthEvents.MFA_ENROLLED, { uid, type });
     }
 
-    return {
-      secret,
-      otpauth,
-    };
+    return { secret, otpauth };
   }
 
   async activateMfa(uid: string, type: MfaType, code: string) {
-    const mfa = await this.mfaRepo.findOne({
-      where: { uid, type },
-      select: ['id', 'secret', 'isEnabled']
-    });
+    const mfa = await this.mfaRepo.findByUidAndType(uid, type) as any;
 
     if (!mfa) {
       throw new BadRequestException('No MFA enrollment found');
@@ -989,18 +878,42 @@ export class AuthService {
     return { message: 'MFA activated successfully' };
   }
 
+  async mfaLogin(uid: string, code: string, userAgent?: string, ip?: string, namespace?: string) {
+    const auth = await this.authRepo.findByUid(uid);
+    if (!auth) throw new BadRequestException('Identity not found');
+
+    const mfa = await this.mfaRepo.findByUidAndEnabled(uid);
+    if (!mfa) throw new BadRequestException('MFA is not enabled for this account');
+
+    const isValid = authenticator.verify({
+      token: code,
+      secret: mfa.secret,
+    });
+
+    if (!isValid) throw new BadRequestException('Invalid MFA code');
+
+    const { secretHash, ...filteredAuth } = auth;
+    const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.LOGIN, { auth: filteredAuth, tokens });
+    }
+
+    return { message: 'Login successful', tokens, auth: filteredAuth };
+  }
+
   async viewAll() {
-    const auths = await this.authRepo.find({ relations: ['identifiers', 'oauthProviders'] });
+    const auths = await this.authRepo.findAll();
     return AuthMapper.toDtoList(auths);
   }
 
   async me(uid: string) {
-    const auth = await this.authRepo.findOne({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
-    return AuthMapper.toDto(auth);
+    const auths = await this.authRepo.findAllByUid(uid);
+    return AuthMapper.toDto(auths[0]);
   }
 
   async viewAllMyAuthMethods(uid: string) {
-    const auths = await this.authRepo.find({ where: { uid }, relations: ['identifiers', 'oauthProviders'] });
+    const auths = await this.authRepo.findAllByUid(uid);
     return AuthMapper.toDtoList(auths);
   }
 
@@ -1009,62 +922,46 @@ export class AuthService {
     await this.invalidateSessions({ uid, event: SessionEvent.DELETE, reason: 'User deleted account' });
 
     // 2. Delete all MFA methods for this UID
-    await this.mfaRepo.delete({ uid });
+    await this.mfaRepo.deleteByUid(uid);
 
-    // 3. Delete all OTP tokens requested by this UID
-    await this.otpRepo.delete({ requestUserId: uid });
-
-    // 4. Delete all Auth methods for this UID. 
-    // TypeORM should handle cascading deletion of AuthIdentifier and OAuthProvider if configured.
-    // However, if not configured with ON DELETE CASCADE in the DB, it's safer to use repo.remove or repo.delete.
-    // Using repo.delete with uid will delete all matching Auth records.
-    await this.authRepo.delete({ uid });
+    // 3. Delete all Auth methods for this UID. 
+    await this.authRepo.deleteByUid(uid);
   }
 
   async deleteAuthMethod(uid: string, authId: string) {
-    const auth = await this.authRepo.findOne({ where: { id: authId, uid } });
-    if (!auth) {
+    const auth = await this.authRepo.findById(authId);
+    if (!auth || auth.uid !== uid) {
       throw new BadRequestException('Authentication method not found or does not belong to user');
     }
 
     // Check if this is the last auth method
-    const count = await this.authRepo.count({ where: { uid } });
-    if (count <= 1) {
+    const allAuths = await this.authRepo.findAllByUid(uid);
+    if (allAuths.length <= 1) {
       throw new BadRequestException('Cannot delete the last authentication method. Delete account instead.');
     }
 
-    // If deleting the primary auth method, we might need to assign a new one
-    if (auth.isPrimary) {
-      const nextAuth = await this.authRepo.findOne({ where: { uid, id: authId } }); // This is wrong, should be NOT authId
-    }
-
-    // Actually, let's keep it simple for now: just delete it.
-    // If it was primary, the next available one should ideally become primary.
     await this.authRepo.delete(authId);
 
     // After deletion, find if there's any primary left. 
     // If not, assign the first available one as primary.
-    const hasPrimary = await this.authRepo.findOne({ where: { uid, isPrimary: true } });
-    if (!hasPrimary) {
-      const remainingAuth = await this.authRepo.findOne({ where: { uid } });
-      if (remainingAuth) {
-        remainingAuth.isPrimary = true;
-        await this.authRepo.save(remainingAuth);
-      }
+    const remainingAuths = await this.authRepo.findAllByUid(uid);
+    if (remainingAuths.length > 0 && !remainingAuths.some(a => a.isPrimary)) {
+      const remainingAuth = remainingAuths[0];
+      remainingAuth.isPrimary = true;
+      await this.authRepo.save(remainingAuth);
     }
   }
 
   async getSessions({ uid, namespace }: { uid: string, namespace?: string }): Promise<Session[]> {
-    const whereClause: { uid: string, namespace?: string } = { uid };
-    if (typeof namespace === "string") {
-      whereClause.namespace = namespace;
+    const sessions = await this.sessionRepository.findByUid(uid);
+    if (namespace !== undefined) {
+      return sessions.filter(s => s.namespace === namespace);
     }
-    const sessions = this.sessionRepository.find({ where: whereClause, relations: [] });
-    return (await sessions).map((d) => Object.assign(new Session(), d.toMap()));
+    return sessions;
   }
 
   async getSession(id: string) {
-    return this.sessionRepository.findOne({ where: { id } });
+    return this.sessionRepository.findById(id);
   }
 
   async revokeSession({ sessionId }: { sessionId: string }) {
@@ -1072,12 +969,6 @@ export class AuthService {
   }
 
   async getSessionLogs({ uid, namespace }: { uid: string, namespace?: string }): Promise<SessionLog[]> {
-    const whereClause: { uid: string, namespace?: string } = { uid };
-    if (typeof namespace === "string") {
-      whereClause.namespace = namespace;
-    }
-    const sessions = this.sessionLogRepo.find({ where: whereClause, relations: [] });
-    return (await sessions).map((d) => Object.assign(new SessionLog(), d.toMap()));
+    return this.sessionLogRepo.findByUidAndNamespace(uid, namespace);
   }
-
 }

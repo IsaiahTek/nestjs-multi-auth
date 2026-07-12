@@ -30,6 +30,11 @@ export enum SessionCreationPolicy {
   REUSE_DEVICE,
 }
 
+export interface TestAccount {
+  identifier: string; // The email, phone number, or username (e.g., '+1234567890' or 'test@example.com')
+  otp: string;        // The static OTP to use for this account (e.g., '123456')
+}
+
 export interface AuthModuleOptions {
   /**
    * Secret key for signing Access Tokens
@@ -253,4 +258,39 @@ export interface AuthModuleOptions {
    * Defaults to `false`. But you can set it to true for audit and other need 
    */
   createSessionLogOnInvalid?: boolean
+
+  /**
+   * Optional: Custom adapter for database operations.
+   * If not provided, TypeOrmAuthAdapter is used by default.
+   */
+  adapter?: Type<any> | DynamicModule;
+
+  /**
+   * Optional: Pluggable provider for managing OTP lifecycle.
+   * Defaults to DatabaseOtpProvider.
+   * This applies to all identifier types unless overridden by `otpProviders`.
+   */
+  otpProvider?: Type<any>;
+
+  /**
+   * Optional: Granular per-channel OTP provider map.
+   * Allows different OTP backends per identifier type.
+   * Any channel not specified here falls back to `otpProvider` (or `DatabaseOtpProvider`).
+   *
+   * @example
+   * otpProviders: {
+   *   phone: TwilioOtpProvider, // Twilio Verify for phone
+   *   email: DatabaseOtpProvider, // built-in database storage for email
+   * }
+   */
+  otpProviders?: {
+    email?: Type<any>;
+    phone?: Type<any>;
+  };
+
+  /**
+   * Optional: List of test accounts. If an OTP is requested for one of these identifiers,
+   * the configured static OTP is used and the notification provider is bypassed.
+   */
+  testAccounts?: TestAccount[];
 }

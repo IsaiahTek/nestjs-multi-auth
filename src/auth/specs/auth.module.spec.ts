@@ -7,6 +7,30 @@ import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { OAuthAuthStrategy } from '../strategies/oauth/oauth.strategy';
 import { APP_GUARD } from '@nestjs/core';
 
+
+const createMockRepo = () => ({
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findWithAuthByProviderUserId: jest.fn(),
+    findWithAuthByValue: jest.fn(),
+    findByUidAndEnabled: jest.fn(),
+    findAllByUid: jest.fn(),
+    findByUid: jest.fn(),
+    findLatestUnusedByPurpose: jest.fn(),
+    issue: jest.fn(),
+    verify: jest.fn(),
+    resend: jest.fn(),
+    deleteByUid: jest.fn(),
+    findById: jest.fn(),
+    findByUidAndNamespace: jest.fn(),
+    findByStrategyAndValue: jest.fn()
+});
+
+let mockRepo: any = createMockRepo();
+
 describe('AuthModule.forRootAsync (Pure)', () => {
   it('should return a DynamicModule with all strategies registered', () => {
     const options = {

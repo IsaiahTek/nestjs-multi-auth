@@ -2,7 +2,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/requests/login.dto';
 import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
-import { EnrollMfaDto, ActivateMfaDto } from './dto/requests/mfa.dto';
+import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
 import { ResetPasswordDto } from './dto/requests/reset-password.dto';
@@ -41,7 +41,7 @@ export declare class AuthController {
     requestMagicLink(dto: MagicLinkRequestDto): Promise<{
         message: string;
     }>;
-    verifyMagicLink(token: string, res: Response, req: Request): Promise<any>;
+    verifyMagicLink(token: string, email: string, res: Response, req: Request): Promise<any>;
     link(dto: SignupDto, req: any, res: Response): Promise<any>;
     refresh(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
@@ -60,6 +60,7 @@ export declare class AuthController {
     activateMfa(req: any, dto: ActivateMfaDto): Promise<{
         message: string;
     }>;
+    verifyMfa(dto: VerifyMfaLoginDto, res: Response, req: Request): Promise<any>;
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
     }>;
