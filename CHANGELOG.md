@@ -1,3 +1,7 @@
+# v1.0.1
+## Changes
+1. Changed the source of identifier from `USER_INPUT` to `LOCAL`
+
 # v1.0.0
 ## Features & Testing Enhancements
 1. **Granular OTP Providers Map**: Introduced `otpProviders` in `AuthModuleOptions` to allow specifying different OTP backend implementations per identifier type (e.g., Twilio Verify for phone and `DatabaseOtpProvider` for email), eliminating the need for custom routing classes.
