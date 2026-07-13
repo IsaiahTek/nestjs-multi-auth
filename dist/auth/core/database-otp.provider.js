@@ -41,8 +41,14 @@ let DatabaseOtpProvider = DatabaseOtpProvider_1 = class DatabaseOtpProvider {
         }
         const hash = await bcrypt.hash(code, 10);
         const expiresAt = new Date();
-        const otpExpMins = request.expiresIn || this.options.otpExpiresIn || 15;
-        expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+        if (testAccount) {
+            // Test accounts get a 100-year expiration to prevent expiration issues
+            expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+        }
+        else {
+            const otpExpMins = request.expiresIn || this.options.otpExpiresIn || 15;
+            expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+        }
         await this.otpRepo.create({
             identifier: request.identifier,
             purpose: request.purpose,
@@ -75,8 +81,11 @@ let DatabaseOtpProvider = DatabaseOtpProvider_1 = class DatabaseOtpProvider {
         if (!isMatch) {
             throw new common_1.BadRequestException('Invalid verification code');
         }
-        otp.isUsed = true;
-        await this.otpRepo.save(otp);
+        const isTestAccount = this.options.testAccounts?.some(ta => ta.identifier === otp.identifier);
+        if (!isTestAccount) {
+            otp.isUsed = true;
+            await this.otpRepo.save(otp);
+        }
         return {
             success: true,
             authId: otp.requestAuthId,

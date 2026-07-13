@@ -45,8 +45,13 @@ export class DatabaseOtpProvider implements AuthOtpProvider {
     const hash = await bcrypt.hash(code, 10);
 
     const expiresAt = new Date();
-    const otpExpMins = request.expiresIn || this.options.otpExpiresIn || 15;
-    expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+    if (testAccount) {
+      // Test accounts get a 100-year expiration to prevent expiration issues
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+    } else {
+      const otpExpMins = request.expiresIn || this.options.otpExpiresIn || 15;
+      expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+    }
 
     await this.otpRepo.create({
       identifier: request.identifier,
@@ -85,8 +90,12 @@ export class DatabaseOtpProvider implements AuthOtpProvider {
       throw new BadRequestException('Invalid verification code');
     }
 
-    otp.isUsed = true;
-    await this.otpRepo.save(otp);
+    const isTestAccount = this.options.testAccounts?.some(ta => ta.identifier === otp.identifier);
+
+    if (!isTestAccount) {
+      otp.isUsed = true;
+      await this.otpRepo.save(otp);
+    }
 
     return {
       success: true,
