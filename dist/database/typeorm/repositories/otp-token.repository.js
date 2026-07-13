@@ -22,7 +22,8 @@ let TypeOrmOtpTokenRepository = class TypeOrmOtpTokenRepository {
         this.repo = repo;
     }
     async create(data) {
-        return this.repo.create(data);
+        const entity = this.repo.create(data);
+        return this.repo.save(entity);
     }
     async findLatestUnused(uid) {
         return this.repo.findOne({

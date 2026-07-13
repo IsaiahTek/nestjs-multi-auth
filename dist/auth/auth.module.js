@@ -134,14 +134,14 @@ let AuthModule = AuthModule_1 = class AuthModule {
             }),
             ...(options.imports || []),
         ];
-        if (options.adapter !== null) {
-            if (!options.adapter) {
-                imports.push(typeorm_auth_adapter_1.TypeOrmAuthAdapter);
-            }
-            else {
-                imports.push(options.adapter);
-            }
+        // if (options.adapter !== null) {
+        if (!options.adapter) {
+            imports.push(typeorm_auth_adapter_1.TypeOrmAuthAdapter);
         }
+        else {
+            imports.push(options.adapter);
+        }
+        // }
         return {
             module: AuthModule_1,
             global: true,

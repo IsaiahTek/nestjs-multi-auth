@@ -144,13 +144,13 @@ export class AuthModule {
       ...(options.imports || []),
     ];
 
-    if (options.adapter !== null) {
-      if (!options.adapter) {
-        imports.push(TypeOrmAuthAdapter);
-      } else {
-        imports.push(options.adapter);
-      }
+    // if (options.adapter !== null) {
+    if (!options.adapter) {
+      imports.push(TypeOrmAuthAdapter);
+    } else {
+      imports.push(options.adapter);
     }
+    // }
 
     return {
       module: AuthModule,

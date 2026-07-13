@@ -13,7 +13,8 @@ export class TypeOrmOtpTokenRepository implements OtpTokenRepository {
   ) {}
 
   async create(data: Partial<CoreOtpToken>): Promise<CoreOtpToken> {
-    return this.repo.create(data);
+    const entity = this.repo.create(data);
+    return this.repo.save(entity);
   }
 
   async findLatestUnused(uid: string): Promise<CoreOtpToken | null> {
