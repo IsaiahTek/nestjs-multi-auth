@@ -208,6 +208,7 @@ export class LocalAuthStrategy {
     ];
 
     if (!localStrategies.includes(auth.strategy)) {
+      this.logger.log(`User tried to login with ${auth.strategy} strategy`);
       throw new UnauthorizedException('Please login with your Social Account');
     }
 

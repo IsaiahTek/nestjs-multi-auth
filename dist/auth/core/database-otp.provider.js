@@ -27,6 +27,7 @@ let DatabaseOtpProvider = DatabaseOtpProvider_1 = class DatabaseOtpProvider {
     async issue(request) {
         let code;
         let handledDelivery = false;
+        console.log("DBS Issue OTP REQUEST TO ACCOUNTS:", JSON.stringify(this.options?.testAccounts));
         const testAccount = this.options.testAccounts?.find(ta => ta.identifier === request.identifier);
         if (testAccount) {
             code = testAccount.otp;

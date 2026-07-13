@@ -116,7 +116,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                 type: identifier_type_enum_1.IdentifierType.EMAIL,
                 value: dto.email.toLowerCase(),
                 isVerified: false,
-                source: 'USER_INPUT',
+                source: identifier_type_enum_1.IdentifierSource.LOCAL,
             }));
         }
         if (dto.phone) {
@@ -124,7 +124,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                 type: identifier_type_enum_1.IdentifierType.PHONE,
                 value: dto.phone,
                 isVerified: false,
-                source: 'USER_INPUT',
+                source: identifier_type_enum_1.IdentifierSource.LOCAL,
             }));
         }
         if (dto.username) {
@@ -132,7 +132,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
                 type: identifier_type_enum_1.IdentifierType.USERNAME,
                 value: dto.username.toLowerCase(),
                 isVerified: false,
-                source: 'USER_INPUT',
+                source: identifier_type_enum_1.IdentifierSource.LOCAL,
             }));
         }
         newAuth.identifiers = newIdentifiers;
@@ -179,6 +179,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
             auth_type_enum_1.AuthStrategy.LOCAL,
         ];
         if (!localStrategies.includes(auth.strategy)) {
+            this.logger.log(`User tried to login with ${auth.strategy} strategy`);
             throw new common_1.UnauthorizedException('Please login with your Social Account');
         }
         if (dto.password && auth.secretHash) {

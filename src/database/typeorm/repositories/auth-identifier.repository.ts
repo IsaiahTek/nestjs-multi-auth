@@ -11,7 +11,7 @@ export class TypeOrmAuthIdentifierRepository implements AuthIdentifierRepository
   constructor(
     @InjectRepository(AuthIdentifier)
     private readonly repo: Repository<AuthIdentifier>,
-  ) {}
+  ) { }
 
   async create(data: Partial<CoreAuthIdentifier>): Promise<CoreAuthIdentifier> {
     return this.repo.create(data);
@@ -37,16 +37,21 @@ export class TypeOrmAuthIdentifierRepository implements AuthIdentifierRepository
   }
 
   async findWithAuthByValue(value: string): Promise<{ identifier: CoreAuthIdentifier; auth: CoreAuth } | null> {
-    const res = await this.repo.query(
-      `SELECT ai.*, a.uid, a.id as "authId" FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`,
-      [value.toLowerCase()]
-    );
-    if (!res[0]) return null;
+    const identifier = await this.repo
+      .createQueryBuilder('ai')
+      .leftJoinAndSelect('ai.auth', 'auth')
+      .addSelect('auth.secretHash')
+      .where('LOWER(ai.value) = :value', { value: value.toLowerCase() })
+      .getOne();
+
+    if (!identifier || !identifier.auth) return null;
+
+    const auth = identifier.auth;
+    delete (identifier as any).auth;
+
     return {
-      identifier: res[0] as CoreAuthIdentifier,
-      auth: { uid: res[0].uid, id: res[0].authId } as CoreAuth,
+      identifier: identifier as any,
+      auth: auth as any,
     };
   }
 

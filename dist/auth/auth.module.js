@@ -101,6 +101,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
             migration_service_1.AuthMigrationService,
             auth_schema_initializer_1.AuthSchemaInitializer,
             auth_context_resolver_1.AuthContextService,
+            database_otp_provider_1.DatabaseOtpProvider,
         ];
     }
     static forRootAsync(options) {
@@ -133,6 +134,14 @@ let AuthModule = AuthModule_1 = class AuthModule {
             }),
             ...(options.imports || []),
         ];
+        if (options.adapter !== null) {
+            if (!options.adapter) {
+                imports.push(typeorm_auth_adapter_1.TypeOrmAuthAdapter);
+            }
+            else {
+                imports.push(options.adapter);
+            }
+        }
         return {
             module: AuthModule_1,
             global: true,
@@ -147,68 +156,61 @@ let AuthModule = AuthModule_1 = class AuthModule {
                 oauth_strategy_1.OAuthAuthStrategy,
                 {
                     provide: auth_otp_provider_interface_1.AUTH_OTP_PROVIDER,
-                    useFactory: (opts, moduleRef) => {
-                        const provider = opts.otpProvider || database_otp_provider_1.DatabaseOtpProvider;
+                    useFactory: async (opts, defaultOtp, moduleRef) => {
+                        const provider = opts.otpProvider;
+                        if (!provider)
+                            return defaultOtp;
                         if (typeof provider === 'function' && provider.prototype) {
                             try {
                                 return moduleRef.get(provider, { strict: false });
                             }
                             catch (e) {
-                                return new provider(moduleRef);
+                                return await moduleRef.create(provider);
                             }
                         }
                         return provider;
                     },
-                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, core_1.ModuleRef],
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, database_otp_provider_1.DatabaseOtpProvider, core_1.ModuleRef],
                 },
                 {
                     provide: auth_otp_provider_interface_1.AUTH_OTP_PROVIDER_EMAIL,
-                    useFactory: (opts, moduleRef) => {
-                        const provider = opts.otpProviders?.email || opts.otpProvider || database_otp_provider_1.DatabaseOtpProvider;
+                    useFactory: async (opts, defaultOtp, moduleRef) => {
+                        const provider = opts.otpProviders?.email || opts.otpProvider;
+                        if (!provider)
+                            return defaultOtp;
                         if (typeof provider === 'function' && provider.prototype) {
                             try {
                                 return moduleRef.get(provider, { strict: false });
                             }
                             catch (e) {
-                                return new provider(moduleRef);
+                                return await moduleRef.create(provider);
                             }
                         }
                         return provider;
                     },
-                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, core_1.ModuleRef],
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, database_otp_provider_1.DatabaseOtpProvider, core_1.ModuleRef],
                 },
                 {
                     provide: auth_otp_provider_interface_1.AUTH_OTP_PROVIDER_PHONE,
-                    useFactory: (opts, moduleRef) => {
-                        const provider = opts.otpProviders?.phone || opts.otpProvider || database_otp_provider_1.DatabaseOtpProvider;
+                    useFactory: async (opts, defaultOtp, moduleRef) => {
+                        const provider = opts.otpProviders?.phone || opts.otpProvider;
+                        if (!provider)
+                            return defaultOtp;
                         if (typeof provider === 'function' && provider.prototype) {
                             try {
                                 return moduleRef.get(provider, { strict: false });
                             }
                             catch (e) {
-                                return new provider(moduleRef);
+                                return await moduleRef.create(provider);
                             }
                         }
                         return provider;
                     },
-                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, core_1.ModuleRef],
-                },
-                {
-                    provide: 'DYNAMIC_ADAPTER_REGISTRAR',
-                    useFactory: (opts, moduleRef) => {
-                        if (!opts.adapter) {
-                            // Wait, TypeOrmAuthAdapter is a dynamic module, it should be in imports, not providers.
-                            // So we should do this in imports, but options in async is not available at import time!
-                            // For async module, imports MUST be defined statically or returned in DynamicModule.
-                            // This is a common issue with NestJS async modules. We'll handle this in a specific way.
-                        }
-                        return null;
-                    },
-                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, core_1.ModuleRef],
+                    inject: [auth_module_options_interface_1.AUTH_MODULE_OPTIONS, database_otp_provider_1.DatabaseOtpProvider, core_1.ModuleRef],
                 },
                 {
                     provide: auth_notification_provider_interface_1.AUTH_NOTIFICATION_PROVIDER,
-                    useFactory: (opts, moduleRef) => {
+                    useFactory: async (opts, moduleRef) => {
                         const provider = opts.notificationProvider;
                         if (!provider)
                             return null;
@@ -217,8 +219,7 @@ let AuthModule = AuthModule_1 = class AuthModule {
                                 return moduleRef.get(provider, { strict: false });
                             }
                             catch (e) {
-                                // Not registered as a provider, instantiate it directly
-                                return new provider();
+                                return await moduleRef.create(provider);
                             }
                         }
                         return provider;

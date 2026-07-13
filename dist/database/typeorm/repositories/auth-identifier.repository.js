@@ -38,14 +38,19 @@ let TypeOrmAuthIdentifierRepository = class TypeOrmAuthIdentifierRepository {
         return res[0] || null;
     }
     async findWithAuthByValue(value) {
-        const res = await this.repo.query(`SELECT ai.*, a.uid, a.id as "authId" FROM auth_identifiers ai 
-       JOIN auth a ON ai."authId" = a.id 
-       WHERE ai.value = $1 LIMIT 1`, [value.toLowerCase()]);
-        if (!res[0])
+        const identifier = await this.repo
+            .createQueryBuilder('ai')
+            .leftJoinAndSelect('ai.auth', 'auth')
+            .addSelect('auth.secretHash')
+            .where('LOWER(ai.value) = :value', { value: value.toLowerCase() })
+            .getOne();
+        if (!identifier || !identifier.auth)
             return null;
+        const auth = identifier.auth;
+        delete identifier.auth;
         return {
-            identifier: res[0],
-            auth: { uid: res[0].uid, id: res[0].authId },
+            identifier: identifier,
+            auth: auth,
         };
     }
     async save(identifier) {
