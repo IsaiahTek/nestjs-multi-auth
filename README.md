@@ -129,8 +129,8 @@ import { AuthModule, TypeOrmAuthAdapter } from 'nestjs-multi-auth';
     AuthModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
+      adapter?: TypeOrmAuthAdapter, // Note: Placed at the same level as useFactory not inside it
       useFactory: async (config: ConfigService) => ({
-        adapter: TypeOrmAuthAdapter,
         jwtSecret: config.get('JWT_SECRET'),
         jwtRefreshSecret: config.get('JWT_REFRESH_SECRET'),
         appName: config.get('APP_NAME'),

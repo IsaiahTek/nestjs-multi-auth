@@ -1,3 +1,7 @@
+# v1.0.3
+## Bug Fixes
+1. Fixed bug of test accounts discovery
+
 # v1.0.1
 ## Changes
 1. Changed the source of identifier from `USER_INPUT` to `LOCAL`
