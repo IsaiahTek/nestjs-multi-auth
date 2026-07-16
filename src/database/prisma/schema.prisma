@@ -61,6 +61,9 @@ model Session {
   uid             String
   accessTokenHash String?
   refreshTokenHash String?
+  namespace       String?
+  userAgent       String?
+  deviceFingerprint String?
   deviceInfo      Json?
   ipAddress       String?
   isActive        Boolean  @default(true)
@@ -76,12 +79,17 @@ model Session {
 
 model SessionLog {
   id          String   @id @default(uuid())
+  sessionId   String
   uid         String
   event       String   // Enum: 'LOGIN', 'LOGOUT', 'REFRESH', 'REVOKE'
+  userAgent   String?
+  deviceFingerprint String?
   deviceInfo  Json?
   ipAddress   String?
-  status      String   // Enum: 'SUCCESS', 'FAILED'
+  status      String?  // Enum: 'SUCCESS', 'FAILED'
   namespace   String?
+  reason      String?
+  timestamp   DateTime @default(now())
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

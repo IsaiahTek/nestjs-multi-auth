@@ -127,6 +127,7 @@ export class LocalAuthStrategy {
 
     if (dto.email) {
       newIdentifiers.push(await this.identifierRepo.create({
+        auth: newAuth,
         type: IdentifierType.EMAIL,
         value: dto.email.toLowerCase(),
         isVerified: false,
@@ -136,6 +137,7 @@ export class LocalAuthStrategy {
 
     if (dto.phone) {
       newIdentifiers.push(await this.identifierRepo.create({
+        auth: newAuth,
         type: IdentifierType.PHONE,
         value: dto.phone,
         isVerified: false,
@@ -145,6 +147,7 @@ export class LocalAuthStrategy {
 
     if (dto.username) {
       newIdentifiers.push(await this.identifierRepo.create({
+        auth: newAuth,
         type: IdentifierType.USERNAME,
         value: dto.username.toLowerCase(),
         isVerified: false,
@@ -194,7 +197,7 @@ export class LocalAuthStrategy {
     const result = await this.identifierRepo.findWithAuthByValue(identifierValue.toLowerCase());
 
     if (!result || !result.auth) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(`Invalid credentials (not found). Ident: ${identifierValue}`);
     }
 
     const identifier = result.identifier;
@@ -215,7 +218,7 @@ export class LocalAuthStrategy {
     if (dto.password && auth.secretHash) {
       const valid = await bcrypt.compare(dto.password, auth.secretHash);
       if (!valid) {
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException(`Invalid credentials (bcrypt). Hash length: ${auth.secretHash.length}, Pwd length: ${dto.password.length}`);
       }
     } else if (dto.password && !auth.secretHash) {
       throw new UnauthorizedException('This account does not have a password set. Please use another method.');

@@ -6,7 +6,12 @@ import { AuthIdentifier as CoreAuthIdentifier, Auth as CoreAuth } from '../../..
 export class PrismaAuthIdentifierRepository implements AuthIdentifierRepository {
   constructor(@Inject('PRISMA_SERVICE_TOKEN') private readonly prisma: any) {}
 
-  async create(data: Partial<CoreAuthIdentifier>): Promise<CoreAuthIdentifier> { return this.prisma.authIdentifier.create({ data: data as any }); }
+  async create(data: Partial<CoreAuthIdentifier>): Promise<CoreAuthIdentifier> {
+    const { auth, ...rest } = data;
+    const createData: any = { ...rest };
+    if (auth && auth.id) createData.auth = { connect: { id: auth.id } };
+    return this.prisma.authIdentifier.create({ data: createData });
+  }
   async findByValue(value: string): Promise<CoreAuthIdentifier | null> { return this.prisma.authIdentifier.findUnique({ where: { value } }); }
   async findByAuthId(authId: string): Promise<CoreAuthIdentifier[]> { return this.prisma.authIdentifier.findMany({ where: { authId } }); }
   async findByUidAndTypes(uid: string, types: string[]): Promise<CoreAuthIdentifier | null> { return this.prisma.authIdentifier.findFirst({ where: { auth: { uid }, type: { in: types } }}); }
@@ -18,6 +23,9 @@ export class PrismaAuthIdentifierRepository implements AuthIdentifierRepository 
     return { identifier: identifier as any, auth: auth as any };
   }
   
-  async save(identifier: CoreAuthIdentifier): Promise<CoreAuthIdentifier> { return this.prisma.authIdentifier.update({ where: { id: identifier.id }, data: identifier as any }); }
+  async save(identifier: CoreAuthIdentifier): Promise<CoreAuthIdentifier> { 
+    const { auth, ...rest } = identifier as any;
+    return this.prisma.authIdentifier.update({ where: { id: identifier.id }, data: rest }); 
+  }
   async markVerifiedByAuthId(authId: string): Promise<void> { await this.prisma.authIdentifier.updateMany({ where: { authId }, data: { isVerified: true } }); }
 }

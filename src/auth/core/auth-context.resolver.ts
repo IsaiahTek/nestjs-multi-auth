@@ -22,7 +22,8 @@ export class AuthContextService {
   get(req: Request): AuthContext {
     // 1. USER OVERRIDE (highest priority)
     if (this.options.cookieNameResolver || this.options.authContextResolver) {
-      return this.options.cookieNameResolver(req) ?? this.options.authContextResolver(req);
+      const authContext = this.options.cookieNameResolver?.(req) ?? this.options.authContextResolver?.(req);
+      return authContext;
     }
     const namespace =
       this._extractNamespaceFromReq(req);
@@ -35,6 +36,7 @@ export class AuthContextService {
   }
 
   getNamespace(req: Request): string {
-    return this.get(req).namespace;
+    const ns = this.get(req).namespace;
+    return ns;
   }
 }

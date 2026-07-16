@@ -18,7 +18,17 @@ let PrismaSessionRepository = class PrismaSessionRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) { return this.prisma.session.create({ data: data }); }
+    async create(data) {
+        const { auth, ...rest } = data;
+        const createData = { ...rest };
+        if (auth && auth.id) {
+            createData.authId = auth.id;
+        }
+        else if (data.uid) {
+            createData.auth = { connect: { uid: data.uid } };
+        }
+        return this.prisma.session.create({ data: createData });
+    }
     async findById(id) { return this.prisma.session.findUnique({ where: { id } }); }
     async findDeviceSession(uid, namespace, deviceFingerprint) {
         // simplified lookup since Prisma cannot easily query inside Json without raw queries across different DBs.
@@ -26,8 +36,14 @@ let PrismaSessionRepository = class PrismaSessionRepository {
     }
     async findByUid(uid) { return this.prisma.session.findMany({ where: { uid } }); }
     async findByIdWithDetails(id, namespace) { return this.prisma.session.findUnique({ where: { id } }); }
-    async save(session) { return this.prisma.session.update({ where: { id: session.id }, data: session }); }
-    async update(id, data) { await this.prisma.session.update({ where: { id }, data: data }); }
+    async save(session) {
+        const { auth, ...rest } = session;
+        return this.prisma.session.update({ where: { id: session.id }, data: rest });
+    }
+    async update(id, data) {
+        const { auth, ...rest } = data;
+        await this.prisma.session.update({ where: { id }, data: rest });
+    }
     async delete(id) { await this.prisma.session.delete({ where: { id } }); }
     async deleteByUid(uid) { await this.prisma.session.deleteMany({ where: { uid } }); }
     async transaction(runInTransaction) { await runInTransaction(this); }

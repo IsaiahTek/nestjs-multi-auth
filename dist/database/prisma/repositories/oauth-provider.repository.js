@@ -18,7 +18,13 @@ let PrismaOAuthProviderRepository = class PrismaOAuthProviderRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) { return this.prisma.oAuthProvider.create({ data: data }); }
+    async create(data) {
+        const { auth, ...rest } = data;
+        const createData = { ...rest };
+        if (auth && auth.id)
+            createData.authId = auth.id;
+        return this.prisma.oAuthProvider.create({ data: createData });
+    }
     async findByProviderUserId(provider, providerUserId) { return this.prisma.oAuthProvider.findUnique({ where: { providerUserId } }); }
     async findWithAuthByProviderUserId(provider, providerUserId) {
         const res = await this.prisma.oAuthProvider.findUnique({ where: { providerUserId }, include: { auth: true } });
@@ -27,8 +33,14 @@ let PrismaOAuthProviderRepository = class PrismaOAuthProviderRepository {
         const { auth, ...prov } = res;
         return { provider: prov, auth: auth };
     }
-    async save(provider) { return this.prisma.oAuthProvider.update({ where: { id: provider.id }, data: provider }); }
-    async update(id, data) { await this.prisma.oAuthProvider.update({ where: { id }, data: data }); }
+    async save(provider) {
+        const { auth, ...rest } = provider;
+        return this.prisma.oAuthProvider.update({ where: { id: provider.id }, data: rest });
+    }
+    async update(id, data) {
+        const { auth, ...rest } = data;
+        await this.prisma.oAuthProvider.update({ where: { id }, data: rest });
+    }
 };
 exports.PrismaOAuthProviderRepository = PrismaOAuthProviderRepository;
 exports.PrismaOAuthProviderRepository = PrismaOAuthProviderRepository = __decorate([

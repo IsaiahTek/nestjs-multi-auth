@@ -18,10 +18,23 @@ let PrismaMfaMethodRepository = class PrismaMfaMethodRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) { return this.prisma.mfaMethod.create({ data: data }); }
+    async create(data) {
+        const { auth, ...rest } = data;
+        const createData = { ...rest };
+        if (auth && auth.id) {
+            createData.authId = auth.id;
+        }
+        else if (data.uid) {
+            createData.auth = { connect: { uid: data.uid } };
+        }
+        return this.prisma.mfaMethod.create({ data: createData });
+    }
     async findByUidAndType(uid, type) { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, type } }); }
     async findByUidAndEnabled(uid) { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, isEnabled: true } }); }
-    async save(method) { return this.prisma.mfaMethod.update({ where: { id: method.id }, data: method }); }
+    async save(method) {
+        const { auth, ...rest } = method;
+        return this.prisma.mfaMethod.update({ where: { id: method.id }, data: rest });
+    }
     async deleteByUid(uid) { await this.prisma.mfaMethod.deleteMany({ where: { auth: { uid } } }); }
 };
 exports.PrismaMfaMethodRepository = PrismaMfaMethodRepository;

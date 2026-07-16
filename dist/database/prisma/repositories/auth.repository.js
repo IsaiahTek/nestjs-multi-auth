@@ -34,8 +34,14 @@ let PrismaAuthRepository = class PrismaAuthRepository {
     async findAll() { return this.prisma.auth.findMany(); }
     async findByUidAndStrategy(uid, strategy) { return this.prisma.auth.findFirst({ where: { uid, strategy } }); }
     async findByUidAndStrategies(uid, strategies) { return this.prisma.auth.findFirst({ where: { uid, strategy: { in: strategies } } }); }
-    async save(auth) { return this.prisma.auth.update({ where: { id: auth.id }, data: auth }); }
-    async update(id, data) { await this.prisma.auth.update({ where: { id }, data: data }); }
+    async save(auth) {
+        const { identifiers, oauthProviders, sessions, mfaMethods, lastUsedAt, meta, ...rest } = auth;
+        return this.prisma.auth.update({ where: { id: auth.id }, data: rest });
+    }
+    async update(id, data) {
+        const { identifiers, oauthProviders, sessions, mfaMethods, lastUsedAt, meta, ...rest } = data;
+        await this.prisma.auth.update({ where: { id }, data: rest });
+    }
     async delete(id) { await this.prisma.auth.delete({ where: { id } }); }
     async deleteByUid(uid) { await this.prisma.auth.deleteMany({ where: { uid } }); }
     async findWithIdentifiers(id) { return this.prisma.auth.findUnique({ where: { id }, include: { identifiers: true } }); }

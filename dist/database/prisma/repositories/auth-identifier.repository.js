@@ -18,7 +18,13 @@ let PrismaAuthIdentifierRepository = class PrismaAuthIdentifierRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) { return this.prisma.authIdentifier.create({ data: data }); }
+    async create(data) {
+        const { auth, ...rest } = data;
+        const createData = { ...rest };
+        if (auth && auth.id)
+            createData.auth = { connect: { id: auth.id } };
+        return this.prisma.authIdentifier.create({ data: createData });
+    }
     async findByValue(value) { return this.prisma.authIdentifier.findUnique({ where: { value } }); }
     async findByAuthId(authId) { return this.prisma.authIdentifier.findMany({ where: { authId } }); }
     async findByUidAndTypes(uid, types) { return this.prisma.authIdentifier.findFirst({ where: { auth: { uid }, type: { in: types } } }); }
@@ -29,7 +35,10 @@ let PrismaAuthIdentifierRepository = class PrismaAuthIdentifierRepository {
         const { auth, ...identifier } = res;
         return { identifier: identifier, auth: auth };
     }
-    async save(identifier) { return this.prisma.authIdentifier.update({ where: { id: identifier.id }, data: identifier }); }
+    async save(identifier) {
+        const { auth, ...rest } = identifier;
+        return this.prisma.authIdentifier.update({ where: { id: identifier.id }, data: rest });
+    }
     async markVerifiedByAuthId(authId) { await this.prisma.authIdentifier.updateMany({ where: { authId }, data: { isVerified: true } }); }
 };
 exports.PrismaAuthIdentifierRepository = PrismaAuthIdentifierRepository;

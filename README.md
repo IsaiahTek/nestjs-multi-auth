@@ -1100,6 +1100,26 @@ export class AppModule {}
 
 ---
 
+## Troubleshooting
+
+### Auth Refresh Failing with Cookies
+
+If you are using `AuthTransport.COOKIE` and your token refresh flow is continuously failing or `req.cookies` is undefined, ensure that you have registered the `cookie-parser` middleware in your main NestJS application file (`main.ts`). The library relies on `cookie-parser` to read the incoming cookies.
+
+```typescript
+// main.ts
+import cookieParser from 'cookie-parser'; // or import * as cookieParser from 'cookie-parser';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
+  // ...
+}
+bootstrap();
+```
+
+---
+
 ## Common Issues & Troubleshooting
 
 ### `@CurrentAuth()` returns `undefined`

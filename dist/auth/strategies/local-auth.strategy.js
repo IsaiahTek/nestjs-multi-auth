@@ -113,6 +113,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         const newIdentifiers = [];
         if (dto.email) {
             newIdentifiers.push(await this.identifierRepo.create({
+                auth: newAuth,
                 type: identifier_type_enum_1.IdentifierType.EMAIL,
                 value: dto.email.toLowerCase(),
                 isVerified: false,
@@ -121,6 +122,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         }
         if (dto.phone) {
             newIdentifiers.push(await this.identifierRepo.create({
+                auth: newAuth,
                 type: identifier_type_enum_1.IdentifierType.PHONE,
                 value: dto.phone,
                 isVerified: false,
@@ -129,6 +131,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         }
         if (dto.username) {
             newIdentifiers.push(await this.identifierRepo.create({
+                auth: newAuth,
                 type: identifier_type_enum_1.IdentifierType.USERNAME,
                 value: dto.username.toLowerCase(),
                 isVerified: false,
@@ -168,7 +171,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         }
         const result = await this.identifierRepo.findWithAuthByValue(identifierValue.toLowerCase());
         if (!result || !result.auth) {
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            throw new common_1.UnauthorizedException(`Invalid credentials (not found). Ident: ${identifierValue}`);
         }
         const identifier = result.identifier;
         const auth = result.auth;
@@ -185,7 +188,7 @@ let LocalAuthStrategy = LocalAuthStrategy_1 = class LocalAuthStrategy {
         if (dto.password && auth.secretHash) {
             const valid = await bcrypt.compare(dto.password, auth.secretHash);
             if (!valid) {
-                throw new common_1.UnauthorizedException('Invalid credentials');
+                throw new common_1.UnauthorizedException(`Invalid credentials (bcrypt). Hash length: ${auth.secretHash.length}, Pwd length: ${dto.password.length}`);
             }
         }
         else if (dto.password && !auth.secretHash) {

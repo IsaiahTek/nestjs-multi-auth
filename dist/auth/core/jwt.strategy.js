@@ -24,8 +24,10 @@ const auth_context_resolver_1 = require("./auth-context.resolver");
 let JwtStrategy = JwtStrategy_1 = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(options, authService, cookieService) {
         const cookieExtractor = (req) => {
-            if (!req?.cookies)
+            if (!req?.cookies) {
                 return null;
+            }
+            ;
             const cookies = req.cookies;
             const cookieConfig = this.cookieService.get(req);
             if (!cookieConfig?.accessTokenName)

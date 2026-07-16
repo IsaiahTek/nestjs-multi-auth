@@ -1,3 +1,7 @@
+# v1.0.4
+## Prisma Adapter Validation
+1. Fixed bugs in Prisma adapter for proper authentication flow
+
 # v1.0.3
 ## Bug Fixes
 1. Fixed bug of test accounts discovery

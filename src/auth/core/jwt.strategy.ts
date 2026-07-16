@@ -28,7 +28,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         private readonly cookieService: AuthContextService,
     ) {
         const cookieExtractor = (req: Request): string | null => {
-            if (!req?.cookies) return null;
+            if (!req?.cookies) {
+                return null;
+            };
 
             const cookies = req.cookies as Record<string, string>;
 
