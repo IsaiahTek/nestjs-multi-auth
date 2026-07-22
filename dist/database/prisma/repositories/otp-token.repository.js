@@ -32,13 +32,13 @@ let PrismaOtpTokenRepository = class PrismaOtpTokenRepository {
     async transaction(callback) { return callback(this); }
     async findLatestUnused(uid) {
         return this.prisma.otpToken.findFirst({
-            where: { uid, isUsed: false },
+            where: { requestUserId: uid, isUsed: false },
             orderBy: { createdAt: 'desc' },
         });
     }
     async findLatestUnusedByPurpose(uid, purpose) {
         return this.prisma.otpToken.findFirst({
-            where: { uid, purpose, isUsed: false },
+            where: { requestUserId: uid, purpose, isUsed: false },
             orderBy: { createdAt: 'desc' },
         });
     }

@@ -22,14 +22,14 @@ export class PrismaOtpTokenRepository implements OtpTokenRepository {
   async transaction<T>(callback: (repo: any) => Promise<T>): Promise<T> { return callback(this); }
   async findLatestUnused(uid: string): Promise<CoreOtpToken | null> {
     return this.prisma.otpToken.findFirst({
-      where: { uid, isUsed: false },
+      where: { requestUserId: uid, isUsed: false },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findLatestUnusedByPurpose(uid: string, purpose: string): Promise<CoreOtpToken | null> {
     return this.prisma.otpToken.findFirst({
-      where: { uid, purpose, isUsed: false },
+      where: { requestUserId: uid, purpose, isUsed: false },
       orderBy: { createdAt: 'desc' },
     });
   }

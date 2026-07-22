@@ -1,3 +1,8 @@
+# v1.0.5
+## Bug Fixes
+1. Fixed bugs in email verification flow
+2. Fixed bugs in secure account flow
+
 # v1.0.4
 ## Prisma Adapter Validation
 1. Fixed bugs in Prisma adapter for proper authentication flow

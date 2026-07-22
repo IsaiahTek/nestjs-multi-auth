@@ -98,7 +98,22 @@ export declare class AuthService {
         namespace?: string;
     }): Promise<{
         message: string;
-        auth: Auth;
+        auth: {
+            uid: string;
+            strategy: AuthStrategy;
+            isPrimary: boolean;
+            isVerified: boolean;
+            isActive: boolean;
+            meta?: Record<string, any>;
+            lastUsedAt?: Date;
+            identifiers?: AuthIdentifier[];
+            oauthProviders?: import("./interfaces/models.interface").OAuthProvider[];
+            toMap(): Record<string, any>;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt?: Date;
+        };
         verificationRequired: boolean;
         tokens: any;
         mfaRequired?: undefined;
