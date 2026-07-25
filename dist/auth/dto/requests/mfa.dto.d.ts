@@ -10,3 +10,6 @@ export declare class VerifyMfaLoginDto {
     uid: string;
     code: string;
 }
+export declare class DeactivateMfaDto {
+    type: MfaType;
+}

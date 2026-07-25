@@ -695,6 +695,17 @@ let AuthService = AuthService_1 = class AuthService {
         }
         return { message: 'Login successful', tokens, auth: filteredAuth };
     }
+    async deactivateMfa(uid, type) {
+        const mfa = await this.mfaRepo.findByUidAndType(uid, type);
+        if (!mfa) {
+            throw new common_1.BadRequestException('MFA is not enabled for this account');
+        }
+        await this.mfaRepo.deleteByUid(uid);
+        if (this.eventEmitter) {
+            this.eventEmitter.emit(auth_events_1.AuthEvents.MFA_DEACTIVATED, { uid, type });
+        }
+        return { message: 'MFA deactivated successfully' };
+    }
     async viewAll() {
         const auths = await this.authRepo.findAll();
         return auth_mapper_1.AuthMapper.toDtoList(auths);

@@ -2,7 +2,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/requests/login.dto';
 import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
-import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto } from './dto/requests/mfa.dto';
+import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto, DeactivateMfaDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
 import { ResetPasswordDto } from './dto/requests/reset-password.dto';
@@ -61,6 +61,9 @@ export declare class AuthController {
         message: string;
     }>;
     verifyMfa(dto: VerifyMfaLoginDto, res: Response, req: Request): Promise<any>;
+    deactivateMfa(req: any, dto: DeactivateMfaDto): Promise<{
+        message: string;
+    }>;
     logout(req: Request, res: Response, dto: RefreshTokenDto): Promise<{
         message: string;
     }>;

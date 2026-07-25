@@ -32,7 +32,7 @@ let PrismaMfaMethodRepository = class PrismaMfaMethodRepository {
     async findByUidAndType(uid, type) { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, type } }); }
     async findByUidAndEnabled(uid) { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, isEnabled: true } }); }
     async save(method) {
-        const { auth, ...rest } = method;
+        const { auth, authId, uid, ...rest } = method;
         return this.prisma.mfaMethod.update({ where: { id: method.id }, data: rest });
     }
     async deleteByUid(uid) { await this.prisma.mfaMethod.deleteMany({ where: { auth: { uid } } }); }

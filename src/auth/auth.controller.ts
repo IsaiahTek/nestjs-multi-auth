@@ -18,7 +18,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/requests/login.dto';
 import { SignupDto } from './dto/requests/signup.dto';
 import { VerifyDto, ResendVerificationDto } from './dto/requests/verify.dto';
-import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto } from './dto/requests/mfa.dto';
+import { EnrollMfaDto, ActivateMfaDto, VerifyMfaLoginDto, DeactivateMfaDto } from './dto/requests/mfa.dto';
 import { RefreshTokenDto } from './dto/requests/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/requests/forgot-password.dto';
 import { ResetPasswordDto } from './dto/requests/reset-password.dto';
@@ -139,6 +139,7 @@ export class AuthController {
 
       const response: any = { message: result.message || 'Login successful', auth: result.auth };
       if (result.verificationRequired) response.verificationRequired = true;
+      if (result.mfaRequired) response.mfaRequired = true;
 
       if ('accessToken' in result && (transports.includes(AuthTransport.BEARER) || transports.includes(AuthTransport.BOTH))) {
         response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
@@ -349,6 +350,12 @@ export class AuthController {
     }
 
     return response;
+  }
+
+  @Post('mfa/deactivate')
+  @ApiOperation({ summary: 'Deactivate MFA' })
+  async deactivateMfa(@Req() req: any, @Body() dto: DeactivateMfaDto) {
+    return this.authService.deactivateMfa(req.user.uid, dto.type);
   }
 
   @Post('logout')

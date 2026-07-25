@@ -104,6 +104,8 @@ let AuthController = class AuthController {
             const response = { message: result.message || 'Login successful', auth: result.auth };
             if (result.verificationRequired)
                 response.verificationRequired = true;
+            if (result.mfaRequired)
+                response.mfaRequired = true;
             if ('accessToken' in result && (transports.includes(auth_type_enum_1.AuthTransport.BEARER) || transports.includes(auth_type_enum_1.AuthTransport.BOTH))) {
                 response.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
             }
@@ -238,6 +240,9 @@ let AuthController = class AuthController {
             response.tokens = result.tokens;
         }
         return response;
+    }
+    async deactivateMfa(req, dto) {
+        return this.authService.deactivateMfa(req.user.uid, dto.type);
     }
     async logout(req, res, dto) {
         const cookies = this.authContext.get(req);
@@ -427,6 +432,15 @@ __decorate([
     __metadata("design:paramtypes", [mfa_dto_1.VerifyMfaLoginDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "verifyMfa", null);
+__decorate([
+    (0, common_1.Post)('mfa/deactivate'),
+    (0, swagger_1.ApiOperation)({ summary: 'Deactivate MFA' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, mfa_dto_1.DeactivateMfaDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "deactivateMfa", null);
 __decorate([
     (0, common_1.Post)('logout'),
     (0, swagger_1.ApiOperation)({ summary: 'User logout' }),

@@ -21,7 +21,7 @@ export class PrismaMfaMethodRepository implements MfaMethodRepository {
   async findByUidAndType(uid: string, type: string): Promise<CoreMfaMethod | null> { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, type } }); }
   async findByUidAndEnabled(uid: string): Promise<CoreMfaMethod | null> { return this.prisma.mfaMethod.findFirst({ where: { auth: { uid }, isEnabled: true } }); }
   async save(method: CoreMfaMethod): Promise<CoreMfaMethod> { 
-    const { auth, ...rest } = method as any;
+    const { auth, authId, uid, ...rest } = method as any;
     return this.prisma.mfaMethod.update({ where: { id: method.id }, data: rest }); 
   }
   async deleteByUid(uid: string): Promise<void> { await this.prisma.mfaMethod.deleteMany({ where: { auth: { uid } } }); }

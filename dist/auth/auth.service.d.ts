@@ -249,6 +249,9 @@ export declare class AuthService {
             deletedAt?: Date;
         };
     }>;
+    deactivateMfa(uid: string, type: MfaType): Promise<{
+        message: string;
+    }>;
     viewAll(): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;
     me(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto>;
     viewAllMyAuthMethods(uid: string): Promise<import("./dto/responses/auth-response.dto").AuthResponseDto[]>;

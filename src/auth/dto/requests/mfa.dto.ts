@@ -49,3 +49,14 @@ export class VerifyMfaLoginDto {
     @IsString()
     code: string;
 }
+
+export class DeactivateMfaDto {
+    @ApiProperty({
+        description: 'The type of MFA to deactivate',
+        enum: MfaType,
+        example: MfaType.TOTP,
+    })
+    @IsNotEmpty()
+    @IsEnum(MfaType)
+    type: MfaType;
+}

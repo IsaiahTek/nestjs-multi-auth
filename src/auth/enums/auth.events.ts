@@ -54,6 +54,12 @@ export enum AuthEvents {
     MFA_ACTIVATED = 'auth.mfa_activated',
 
     /**
+     * Emitted when MFA is successfully deactivated.
+     * Payload: { uid: string, type: string }
+     */
+    MFA_DEACTIVATED = 'auth.mfa_deactivated',
+
+    /**
      * Emitted when a magic link is requested.
      * Payload: { email: string }
      */
