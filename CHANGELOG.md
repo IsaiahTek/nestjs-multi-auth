@@ -1,3 +1,7 @@
+# v2.0.0
+## Features & Enhancements
+1. **Client-Side Transport Preference**: Introduced the `x-auth-transport` HTTP header. Clients can now explicitly request their preferred token delivery method (e.g., `x-auth-transport: cookie`) during authentication. This prevents auto-magic frontend SDKs from defaulting to Bearer tokens when the backend is configured to support multiple transports (`AuthTransport.BOTH`).
+
 # v1.0.5
 ## Bug Fixes
 1. Fixed bugs in email verification flow

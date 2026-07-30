@@ -44,7 +44,15 @@ export class AuthController {
     private authContext: AuthContextService,
   ) { }
 
-  private getTransports(): AuthTransport[] {
+  private getTransports(req?: Request): AuthTransport[] {
+    if (req && req.headers['x-auth-transport']) {
+      const clientTransport = req.headers['x-auth-transport'] as string;
+      const allowed = Object.values(AuthTransport) as string[];
+      if (allowed.includes(clientTransport.toLowerCase())) {
+        return [clientTransport.toLowerCase() as AuthTransport];
+      }
+      throw new BadRequestException('Invalid transport specified');
+    }
     const t = this.options.transport || [AuthTransport.BEARER];
     return Array.isArray(t) ? t : [t];
   }
@@ -100,7 +108,7 @@ export class AuthController {
     try {
       const namespace = this.authContext.getNamespace(req);
       const result = await this.authService.signup({ dto, uid: undefined, userAgent: req.headers['user-agent'] as string, ip: req.ip, namespace });
-      const transports = this.getTransports();
+      const transports = this.getTransports(req);
 
       if ('accessToken' in result) {
         if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
@@ -129,7 +137,7 @@ export class AuthController {
     try {
       const namespace = this.authContext.getNamespace(req);
       const result = await this.authService.login({ dto, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-      const transports = this.getTransports();
+      const transports = this.getTransports(req);
 
       if ('accessToken' in result) {
         if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
@@ -157,7 +165,7 @@ export class AuthController {
   async verify(@Body() dto: VerifyDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const namespace = this.authContext.getNamespace(req);
     const result = await this.authService.verifyCode({ uid: dto.uid, code: dto.code, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-    const transports = this.getTransports();
+    const transports = this.getTransports(req);
 
     if (result.tokens) {
       if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
@@ -233,7 +241,7 @@ export class AuthController {
   ) {
     const namespace = this.authContext.getNamespace(req);
     const result = await this.authService.verifyMagicLink({ dto: { token, email }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-    const transports = this.getTransports();
+    const transports = this.getTransports(req);
 
     if (result.tokens) {
       if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
@@ -255,7 +263,7 @@ export class AuthController {
     try {
       const namespace = this.authContext.getNamespace(req);
       const result = await this.authService.signup({ dto, uid: req.user.uid, userAgent: req.headers['user-agent'] as string, ip: req.ip, namespace });
-      const transports = this.getTransports();
+      const transports = this.getTransports(req);
 
       if ('accessToken' in result) {
         if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {
@@ -280,7 +288,7 @@ export class AuthController {
   @Public()
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
-    const transports = this.getTransports();
+    const transports = this.getTransports(req);
     const namespace = this.authContext.getNamespace(req);
     const cookies = this.authContext.get(req);
 
@@ -336,7 +344,7 @@ export class AuthController {
   async verifyMfa(@Body() dto: VerifyMfaLoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const namespace = this.authContext.getNamespace(req);
     const result = await this.authService.mfaLogin(dto.uid, dto.code, req.headers['user-agent'], req.ip, namespace);
-    const transports = this.getTransports();
+    const transports = this.getTransports(req);
 
     if (result.tokens) {
       if (transports.includes(AuthTransport.COOKIE) || transports.includes(AuthTransport.BOTH)) {

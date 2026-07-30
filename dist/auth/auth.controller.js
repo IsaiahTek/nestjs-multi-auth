@@ -39,7 +39,15 @@ let AuthController = class AuthController {
         this.options = options;
         this.authContext = authContext;
     }
-    getTransports() {
+    getTransports(req) {
+        if (req && req.headers['x-auth-transport']) {
+            const clientTransport = req.headers['x-auth-transport'];
+            const allowed = Object.values(auth_type_enum_1.AuthTransport);
+            if (allowed.includes(clientTransport.toLowerCase())) {
+                return [clientTransport.toLowerCase()];
+            }
+            throw new common_1.BadRequestException('Invalid transport specified');
+        }
         const t = this.options.transport || [auth_type_enum_1.AuthTransport.BEARER];
         return Array.isArray(t) ? t : [t];
     }
@@ -73,7 +81,7 @@ let AuthController = class AuthController {
         try {
             const namespace = this.authContext.getNamespace(req);
             const result = await this.authService.signup({ dto, uid: undefined, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-            const transports = this.getTransports();
+            const transports = this.getTransports(req);
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                     this.setCookies(res, req, result.accessToken, result.refreshToken);
@@ -95,7 +103,7 @@ let AuthController = class AuthController {
         try {
             const namespace = this.authContext.getNamespace(req);
             const result = await this.authService.login({ dto, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-            const transports = this.getTransports();
+            const transports = this.getTransports(req);
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                     this.setCookies(res, req, result.accessToken, result.refreshToken);
@@ -118,7 +126,7 @@ let AuthController = class AuthController {
     async verify(dto, res, req) {
         const namespace = this.authContext.getNamespace(req);
         const result = await this.authService.verifyCode({ uid: dto.uid, code: dto.code, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-        const transports = this.getTransports();
+        const transports = this.getTransports(req);
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
@@ -155,7 +163,7 @@ let AuthController = class AuthController {
     async verifyMagicLink(token, email, res, req) {
         const namespace = this.authContext.getNamespace(req);
         const result = await this.authService.verifyMagicLink({ dto: { token, email }, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-        const transports = this.getTransports();
+        const transports = this.getTransports(req);
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);
@@ -171,7 +179,7 @@ let AuthController = class AuthController {
         try {
             const namespace = this.authContext.getNamespace(req);
             const result = await this.authService.signup({ dto, uid: req.user.uid, userAgent: req.headers['user-agent'], ip: req.ip, namespace });
-            const transports = this.getTransports();
+            const transports = this.getTransports(req);
             if ('accessToken' in result) {
                 if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                     this.setCookies(res, req, result.accessToken, result.refreshToken);
@@ -190,7 +198,7 @@ let AuthController = class AuthController {
         }
     }
     async refresh(req, res, dto) {
-        const transports = this.getTransports();
+        const transports = this.getTransports(req);
         const namespace = this.authContext.getNamespace(req);
         const cookies = this.authContext.get(req);
         let token = req.cookies?.[cookies.refreshTokenName] ||
@@ -229,7 +237,7 @@ let AuthController = class AuthController {
     async verifyMfa(dto, res, req) {
         const namespace = this.authContext.getNamespace(req);
         const result = await this.authService.mfaLogin(dto.uid, dto.code, req.headers['user-agent'], req.ip, namespace);
-        const transports = this.getTransports();
+        const transports = this.getTransports(req);
         if (result.tokens) {
             if (transports.includes(auth_type_enum_1.AuthTransport.COOKIE) || transports.includes(auth_type_enum_1.AuthTransport.BOTH)) {
                 this.setCookies(res, req, result.tokens.accessToken, result.tokens.refreshToken);

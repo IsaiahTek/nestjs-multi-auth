@@ -743,7 +743,11 @@ The library provides extreme flexibility for how your front-end interacts with t
 
 - `AuthTransport.COOKIE`: Tokens are automatically set as secure, HTTP-only `Set-Cookie` headers upon Login/Signup. The `/refresh` endpoint automatically reads the cookie (`refresh_token`) and issues new cookies. The `/logout` endpoint automatically clears these cookies. **Zero manual token management is required on your frontend client.**
 - `AuthTransport.BEARER`: Tokens are returned in the JSON response body (`tokens: { accessToken, refreshToken }`). The `/refresh` and `/logout` endpoints seamlessly accept a JSON payload containing `{"refreshToken": "..."}`, or gracefully fallback to checking the `Authorization: Bearer <token>` header.
-- Combine both by passing `transport: [AuthTransport.COOKIE, AuthTransport.BEARER]` to set cookies **and** return tokens in the JSON body simultaneously.
+- Combine both by passing `transport: [AuthTransport.COOKIE, AuthTransport.BEARER]` (or `AuthTransport.BOTH`) to set cookies **and** return tokens in the JSON body simultaneously.
+
+> [!TIP]
+> **Client-Side Transport Preference (`x-auth-transport`)**
+> When the backend supports multiple transports (e.g. `AuthTransport.BOTH`), you can force the backend to respond using only a specific transport by including the `x-auth-transport: cookie` or `x-auth-transport: bearer` header in your requests. This is especially useful for web applications that want to exclusively use cookies, preventing auto-magic Auth SDKs from inadvertently extracting Bearer tokens from the JSON payload.
 
 ---
 
