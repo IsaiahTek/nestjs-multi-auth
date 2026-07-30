@@ -140,25 +140,32 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
 
     if (email) {
       const idResult = await this.identifierRepo.findWithAuthByValue(email);
-      identifier = idResult?.identifier || null;
+      
+      // If the email exists but belongs to a different user, we skip updating it
+      // to avoid a unique constraint violation.
+      if (idResult && idResult.auth?.id !== auth.id) {
+        identifier = null; 
+      } else {
+        identifier = idResult?.identifier || null;
 
-      if (!identifier || identifier.auth?.id !== auth.id) {
-        identifier = await this.identifierRepo.create({
-          auth,
-          type: IdentifierType.EMAIL,
-          value: email,
-          isVerified: false,
-        });
+        if (!identifier) {
+          identifier = await this.identifierRepo.create({
+            auth,
+            type: IdentifierType.EMAIL,
+            value: email,
+            isVerified: false,
+          });
+        }
+
+        identifier.value = email;
+        if (!this.options.forceVerificationOnGoogleLogin) {
+          identifier.isVerified = payload.email_verified ?? false;
+        }
+        identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
+        identifier.source = IdentifierSource.GOOGLE;
+
+        await this.identifierRepo.save(identifier);
       }
-
-      identifier.value = email;
-      if (!this.options.forceVerificationOnGoogleLogin) {
-        identifier.isVerified = payload.email_verified ?? false;
-      }
-      identifier.verifiedBy = payload.email_verified ? 'PROVIDER' : identifier.verifiedBy;
-      identifier.source = IdentifierSource.GOOGLE;
-
-      await this.identifierRepo.save(identifier);
     }
 
     await this.oauthProviderRepo.save(oauthProvider);
