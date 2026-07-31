@@ -15,10 +15,7 @@
     "strictNullChecks": false,
     "noImplicitAny": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
-    "paths": {
-      "@vynelix/nestjs-multi-auth": ["../core/src/index.ts"]
-    }
+    "noFallthroughCasesInSwitch": false
   },
   "include": [
     "src/**/*"

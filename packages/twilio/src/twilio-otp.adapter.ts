@@ -12,7 +12,8 @@ import {
   OtpToken
 } from '@vynelix/nestjs-multi-auth';
 import { Twilio } from 'twilio';
-import { TWILIO_OTP_OPTIONS, TwilioOtpModuleOptions } from './twilio-otp.module';
+import { TwilioOtpModuleOptions } from './twilio-otp.module';
+import { TWILIO_OTP_OPTIONS } from './constants';
 
 @Injectable()
 export class TwilioOtpAdapter implements AuthOtpProvider {

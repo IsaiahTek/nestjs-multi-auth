@@ -1,6 +1,6 @@
 {
   "name": "@vynelix/nestjs-multi-auth-twilio",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Twilio Verify adapter for @vynelix/nestjs-multi-auth",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +11,26 @@
     "type": "git",
     "url": "git+https://github.com/IsaiahTek/nestjs-multi-auth.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "twilio",
+    "otp",
+    "verify",
+    "sms",
+    "email",
+    "nestjs"
+  ],
+  "author": "Engr., Isaiah Pius",
+  "license": "ISC",
+  "readme": "https://github.com/IsaiahTek/nestjs-multi-auth/tree/main/packages/twilio#readme",
+  "bugs": {
+    "url": "https://github.com/IsaiahTek/nestjs-multi-auth/issues"
+  },
+  "homepage": "https://github.com/IsaiahTek/nestjs-multi-auth/tree/main/packages/twilio#readme",
   "peerDependencies": {
     "@nestjs/common": "^11.1.15",
     "@vynelix/nestjs-multi-auth": "*"

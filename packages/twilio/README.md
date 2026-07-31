@@ -37,7 +37,7 @@ import { TwilioOtpModule, TwilioOtpAdapter } from '@vynelix/nestjs-multi-auth-tw
     // 2. Configure the core AuthModule to use the Twilio adapter
     AuthModule.forRootAsync({
       // Ensure the Twilio module is available to the AuthModule
-      imports: [TwilioOtpModule], 
+      imports: [TwilioOtpModule],
       useFactory: () => ({
         // You can set Twilio as the global OTP provider by passing the class reference:
         otpProvider: TwilioOtpAdapter,

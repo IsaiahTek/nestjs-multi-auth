@@ -1,7 +1,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { TwilioOtpAdapter } from './twilio-otp.adapter';
 
-export const TWILIO_OTP_OPTIONS = 'TWILIO_OTP_OPTIONS';
+import { TWILIO_OTP_OPTIONS } from './constants';
 
 export interface TwilioOtpModuleOptions {
   accountSid: string;
