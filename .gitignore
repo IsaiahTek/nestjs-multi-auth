@@ -1,8 +1,7 @@
 node_modules
+dist/
 .env
 .env.*
-dist/**/*.spec.*
-dist/**/*.test.*
 coverage
 .vscode
 .idea

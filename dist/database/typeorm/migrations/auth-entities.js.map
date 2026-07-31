@@ -1,1 +1,0 @@
-{"version":3,"file":"auth-entities.js","sourceRoot":"","sources":["../../../../src/database/typeorm/migrations/auth-entities.ts"],"names":[],"mappings":";;;AAAA,yDAA+C;AAC/C,2EAAkE;AAClE,6EAAkE;AAClE,qEAA0D;AAC1D,mEAAwD;AACxD,+DAAqD;AAExC,QAAA,YAAY,GAAG;IAC1B,kBAAI;IACJ,qCAAc;IACd,qCAAa;IACb,6BAAS;IACT,2BAAQ;IACR,wBAAO;CACR,CAAC"}
