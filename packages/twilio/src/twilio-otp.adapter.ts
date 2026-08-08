@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Logger, BadRequestException, Optional } from '@nestjs/common';
 import {
   AuthOtpProvider,
   IssueOtpRequest,
@@ -9,7 +9,9 @@ import {
   ResendOtpResult,
   OtpTokenRepository,
   OTP_TOKEN_REPOSITORY_TOKEN,
-  OtpToken
+  OtpToken,
+  AUTH_MODULE_OPTIONS,
+  AuthModuleOptions
 } from '@vynelix/nestjs-multi-auth';
 import { Twilio } from 'twilio';
 import { TwilioOtpModuleOptions } from './twilio-otp.module';
@@ -25,31 +27,43 @@ export class TwilioOtpAdapter implements AuthOtpProvider {
     private readonly options: TwilioOtpModuleOptions,
     @Inject(OTP_TOKEN_REPOSITORY_TOKEN)
     private readonly otpRepo: OtpTokenRepository,
+    @Optional() @Inject(AUTH_MODULE_OPTIONS)
+    private readonly authOptions?: AuthModuleOptions,
   ) {
     this.twilioClient = new Twilio(this.options.accountSid, this.options.authToken);
   }
 
   async issue(request: IssueOtpRequest): Promise<IssueOtpResult> {
     try {
-      const channel = request.identifierType === 'email' ? 'email' : 'sms';
+      const testAccount = this.authOptions?.testAccounts?.find(ta => ta.identifier === request.identifier) || 
+                          this.options.testAccounts?.find(ta => ta.identifier === request.identifier);
+      let verificationSid = 'test_verification';
 
-      const verification = await this.twilioClient.verify.v2
-        .services(this.options.serviceSid)
-        .verifications.create({
-          to: request.identifier,
-          channel,
-        });
+      if (!testAccount) {
+        const channel = request.identifierType === 'email' ? 'email' : 'sms';
+        const verification = await this.twilioClient.verify.v2
+          .services(this.options.serviceSid)
+          .verifications.create({
+            to: request.identifier,
+            channel,
+          });
+        verificationSid = verification.sid;
+      }
 
       // We still need to save the request in the local DB so that
       // we can retrieve the identifier during verification.
       const expiresAt = new Date();
-      const otpExpMins = request.expiresIn || 10; // Default Twilio expiry is typically 10 mins
-      expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+      if (testAccount) {
+        expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+      } else {
+        const otpExpMins = request.expiresIn || 10; // Default Twilio expiry is typically 10 mins
+        expiresAt.setMinutes(expiresAt.getMinutes() + otpExpMins);
+      }
 
       await this.otpRepo.create({
         identifier: request.identifier,
         purpose: request.purpose,
-        codeHash: `twilio:${verification.sid}`, // Store the SID as a dummy hash
+        codeHash: testAccount ? `test:${testAccount.otp}` : `twilio:${verificationSid}`, // Store the SID as a dummy hash
         expiresAt,
         requestUserId: request.uid,
         requestAuthId: request.authId,
@@ -57,7 +71,7 @@ export class TwilioOtpAdapter implements AuthOtpProvider {
 
       return {
         handledDelivery: true,
-        verificationId: verification.sid,
+        verificationId: verificationSid,
         expiresAt,
       };
     } catch (error) {
@@ -83,6 +97,23 @@ export class TwilioOtpAdapter implements AuthOtpProvider {
     }
 
     try {
+      if (otp.codeHash.startsWith('test:')) {
+        const expectedCode = otp.codeHash.replace('test:', '');
+        if (request.code !== expectedCode) {
+          throw new BadRequestException('Invalid verification code');
+        }
+        
+        return {
+          success: true,
+          authId: otp.requestAuthId,
+          metadata: {
+            identifier: otp.identifier,
+            purpose: otp.purpose,
+            twilioSid: 'test'
+          }
+        };
+      }
+
       const verificationCheck = await this.twilioClient.verify.v2
         .services(this.options.serviceSid)
         .verificationChecks.create({

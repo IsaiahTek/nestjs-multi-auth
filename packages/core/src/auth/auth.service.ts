@@ -14,6 +14,7 @@ import {
   SESSION_LOG_REPOSITORY_TOKEN,
   MFA_METHOD_REPOSITORY_TOKEN,
   AUTH_IDENTIFIER_REPOSITORY_TOKEN,
+  OTP_TOKEN_REPOSITORY_TOKEN,
 } from './interfaces/repository-tokens';
 import {
   AuthRepository,
@@ -21,6 +22,7 @@ import {
   SessionLogRepository,
   MfaMethodRepository,
   AuthIdentifierRepository,
+  OtpTokenRepository,
 } from './interfaces/repositories.interface';
 import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE, AuthOtpProvider } from './interfaces/auth-otp-provider.interface';
 import * as bcrypt from 'bcrypt';
@@ -66,6 +68,8 @@ export class AuthService {
     private authRepo: AuthRepository,
     @Inject(AUTH_IDENTIFIER_REPOSITORY_TOKEN)
     private authIdentifierRepo: AuthIdentifierRepository,
+    @Inject(OTP_TOKEN_REPOSITORY_TOKEN)
+    private otpRepo: OtpTokenRepository,
     @Inject(AUTH_OTP_PROVIDER)
     private otpProvider: AuthOtpProvider,
     @Inject(AUTH_OTP_PROVIDER_EMAIL)
@@ -465,7 +469,13 @@ export class AuthService {
     const auth = await this.authRepo.findByUid(uid);
     if (!auth) throw new BadRequestException('Identity not found');
 
-    const result = await this.resolveOtpProvider().verify({ uid, code });
+    const otp = await this.otpRepo.findLatestUnused(uid);
+    let type: 'email' | 'phone' | undefined;
+    if (otp) {
+      type = otp.identifier.includes('@') ? 'email' : 'phone';
+    }
+
+    const result = await this.resolveOtpProvider(type).verify({ uid, code });
 
     if (result.success) {
       auth.isVerified = true;
@@ -651,7 +661,13 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const result = await this.resolveOtpProvider().verify({ uid: dto.uid, code: dto.code, purpose: OtpPurpose.PASSWORD_RESET });
+    const otp = await this.otpRepo.findLatestUnusedByPurpose(dto.uid, OtpPurpose.PASSWORD_RESET);
+    let type: 'email' | 'phone' | undefined;
+    if (otp) {
+      type = otp.identifier.includes('@') ? 'email' : 'phone';
+    }
+
+    const result = await this.resolveOtpProvider(type).verify({ uid: dto.uid, code: dto.code, purpose: OtpPurpose.PASSWORD_RESET });
 
     if (!result.success || !result.authId) {
       throw new BadRequestException('Invalid or expired reset code');

@@ -3,10 +3,16 @@ import { TwilioOtpAdapter } from './twilio-otp.adapter';
 
 import { TWILIO_OTP_OPTIONS } from './constants';
 
+export interface TwilioTestAccount {
+  identifier: string;
+  otp: string;
+}
+
 export interface TwilioOtpModuleOptions {
   accountSid: string;
   authToken: string;
   serviceSid: string;
+  testAccounts?: TwilioTestAccount[];
 }
 
 @Module({})

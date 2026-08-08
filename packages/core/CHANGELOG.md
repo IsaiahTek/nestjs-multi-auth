@@ -1,3 +1,10 @@
+# v2.0.3
+
+## Bug Fixes
+1. Fixed test account verification bug
+
+---
+
 # v2.0.1
 
 ## Bug Fixes
