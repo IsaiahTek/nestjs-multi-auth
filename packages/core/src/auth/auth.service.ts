@@ -304,7 +304,15 @@ export class AuthService {
     if (triggerVerification) {
       if (this.notificationProvider) {
         if (!identifier?.isVerified || has2FA || isPasswordless) {
-          await this.sendVerification(auth, identifier);
+          try {
+            await this.sendVerification(auth, identifier);
+          } catch (error) {
+            // Clean up the created auth record if verification fails to send during signup
+            if (auth && auth.id) {
+              await this.authRepo.delete(auth.id);
+            }
+            throw error;
+          }
         }
         return {
           message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',

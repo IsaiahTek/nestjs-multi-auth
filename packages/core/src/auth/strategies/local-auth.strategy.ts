@@ -123,41 +123,46 @@ export class LocalAuthStrategy {
       updatedAt: new Date(),
     });
 
+    // Save auth first to guarantee it gets an ID in the DB (fixes TypeORM cascade bugs)
+    const auth = await this.authRepo.save(newAuth);
+
     const newIdentifiers: AuthIdentifier[] = [];
 
     if (dto.email) {
-      newIdentifiers.push(await this.identifierRepo.create({
-        auth: newAuth,
+      const ident = await this.identifierRepo.create({
+        auth,
         type: IdentifierType.EMAIL,
         value: dto.email.toLowerCase(),
         isVerified: false,
         source: IdentifierSource.LOCAL,
-      }));
+      });
+      newIdentifiers.push(await this.identifierRepo.save(ident));
     }
 
     if (dto.phone) {
-      newIdentifiers.push(await this.identifierRepo.create({
-        auth: newAuth,
+      const ident = await this.identifierRepo.create({
+        auth,
         type: IdentifierType.PHONE,
         value: dto.phone,
         isVerified: false,
         source: IdentifierSource.LOCAL,
-      }));
+      });
+      newIdentifiers.push(await this.identifierRepo.save(ident));
     }
 
     if (dto.username) {
-      newIdentifiers.push(await this.identifierRepo.create({
-        auth: newAuth,
+      const ident = await this.identifierRepo.create({
+        auth,
         type: IdentifierType.USERNAME,
         value: dto.username.toLowerCase(),
         isVerified: false,
         source: IdentifierSource.LOCAL,
-      }));
+      });
+      newIdentifiers.push(await this.identifierRepo.save(ident));
     }
 
-    newAuth.identifiers = newIdentifiers;
-    const auth = await this.authRepo.save(newAuth);
-    return { auth, identifier: auth.identifiers?.[0] };
+    auth.identifiers = newIdentifiers;
+    return { auth, identifier: auth.identifiers[0] };
   }
 
   async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
