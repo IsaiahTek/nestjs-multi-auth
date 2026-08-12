@@ -3,6 +3,7 @@ import {
   Column,
   ManyToOne,
   Index,
+  JoinColumn,
 } from 'typeorm';
 import { Auth } from './auth.entity';
 import { BaseEntity } from './base.entity';
@@ -14,6 +15,7 @@ import { IdentifierType, IdentifierSource } from '../../../auth/enums/identifier
 export class AuthIdentifier extends BaseEntity {
 
   @ManyToOne(() => Auth, (auth) => auth.identifiers, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'authId' })
   auth: Auth;
 
   @Column({ type: 'enum', enum: IdentifierType })

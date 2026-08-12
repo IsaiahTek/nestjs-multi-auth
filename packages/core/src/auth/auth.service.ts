@@ -487,7 +487,7 @@ export class AuthService {
 
     if (result.success) {
       auth.isVerified = true;
-      await this.authRepo.save(auth);
+      await this.authRepo.update(auth.id, { isVerified: true });
 
       await this.authIdentifierRepo.markVerifiedByAuthId(auth.id);
 
