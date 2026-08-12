@@ -1,3 +1,9 @@
+# v2.0.4
+
+## Bug Fix
+1. Fix: Avoided cascade saves during verification
+2. Fix: Hardened the Entity Mapping
+
 # v2.0.3
 
 ## Bug Fixes
