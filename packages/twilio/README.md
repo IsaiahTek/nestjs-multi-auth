@@ -30,8 +30,12 @@ import { TwilioOtpModule, TwilioOtpAdapter } from '@vynelix/nestjs-multi-auth-tw
     // 1. Initialize the Twilio Module with your credentials
     TwilioOtpModule.register({
       accountSid: process.env.TWILIO_ACCOUNT_SID,
-      authToken: process.env.TWILIO_AUTH_TOKEN,
       serviceSid: process.env.TWILIO_VERIFY_SERVICE_SID, // The SID of your Twilio Verify Service
+      // Option A: Using Auth Token
+      authToken: process.env.TWILIO_AUTH_TOKEN,
+      // Option B: Using API Key & Secret
+      // apiKey: process.env.TWILIO_API_KEY,
+      // apiSecret: process.env.TWILIO_API_SECRET,
     }),
 
     // 2. Configure the core AuthModule to use the Twilio adapter

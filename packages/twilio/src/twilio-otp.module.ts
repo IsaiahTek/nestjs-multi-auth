@@ -9,9 +9,11 @@ export interface TwilioTestAccount {
 }
 
 export interface TwilioOtpModuleOptions {
-  accountSid: string;
-  authToken: string;
-  serviceSid: string;
+  accountSid?: string;
+  authToken?: string;
+  serviceSid?: string;
+  apiKey?: string;
+  apiSecret?: string;
   testAccounts?: TwilioTestAccount[];
 }
 

@@ -30,13 +30,28 @@ export class TwilioOtpAdapter implements AuthOtpProvider {
     @Optional() @Inject(AUTH_MODULE_OPTIONS)
     private readonly authOptions?: AuthModuleOptions,
   ) {
-    this.twilioClient = new Twilio(this.options.accountSid, this.options.authToken);
+    if (!this.options?.serviceSid) {
+      throw new Error('[TwilioOtpAdapter] Missing required option: "serviceSid".');
+    }
+
+    const hasAuthTokenGroup = Boolean(this.options?.accountSid && this.options?.authToken);
+    const hasApiKeyGroup = Boolean(this.options?.apiKey && this.options?.apiSecret);
+
+    if (!hasAuthTokenGroup && !hasApiKeyGroup) {
+      throw new Error(
+        '[TwilioOtpAdapter] Missing required Twilio credentials. Provide either (accountSid and authToken) or (apiKey and apiSecret).',
+      );
+    }
+
+    const username = this.options.apiKey ?? this.options.accountSid;
+    const password = this.options.apiSecret ?? this.options.authToken;
+    this.twilioClient = new Twilio(username, password, { accountSid: this.options.accountSid });
   }
 
   async issue(request: IssueOtpRequest): Promise<IssueOtpResult> {
     try {
-      const testAccount = this.authOptions?.testAccounts?.find(ta => ta.identifier === request.identifier) || 
-                          this.options.testAccounts?.find(ta => ta.identifier === request.identifier);
+      const testAccount = this.authOptions?.testAccounts?.find(ta => ta.identifier === request.identifier) ||
+        this.options.testAccounts?.find(ta => ta.identifier === request.identifier);
       let verificationSid = 'test_verification';
 
       if (!testAccount) {
@@ -102,7 +117,7 @@ export class TwilioOtpAdapter implements AuthOtpProvider {
         if (request.code !== expectedCode) {
           throw new BadRequestException('Invalid verification code');
         }
-        
+
         return {
           success: true,
           authId: otp.requestAuthId,
