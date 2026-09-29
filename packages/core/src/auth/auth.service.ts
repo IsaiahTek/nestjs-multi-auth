@@ -553,7 +553,7 @@ export class AuthService {
 
       const incomingFingerprint = this.fingerprint(currentUserAgent);
       if (session.deviceFingerprint !== incomingFingerprint) {
-        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Device mismatch during refresh' })
+        await this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Device mismatch during refresh' })
         throw new ForbiddenException('Device mismatch');
       }
 
@@ -561,12 +561,12 @@ export class AuthService {
         if (this.options.debug) {
           this.logger.debug(`Namespace provided: ${namespace}, Session namespace: ${session.namespace}.\nNamespace mismatch: ${session.namespace !== namespace}`)
         }
-        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' })
+        await this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Namespace mismatch during refresh' })
         throw new ForbiddenException("Namespace mismatch")
       }
 
       if (new Date() > session.expiresAt) {
-        this.invalidateSession({ session, event: SessionEvent.EXPIRE, reason: 'Session expired during refresh' })
+        await this.invalidateSession({ session, event: SessionEvent.EXPIRE, reason: 'Session expired during refresh' })
         throw new ForbiddenException('Session expired');
       }
 
@@ -576,7 +576,7 @@ export class AuthService {
       );
 
       if (!isMatch) {
-        this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' })
+        await this.invalidateSession({ session, event: SessionEvent.REVOKE, reason: 'Invalid refresh token during refresh' })
         throw new ForbiddenException('Invalid refresh token');
       }
 
@@ -615,9 +615,11 @@ export class AuthService {
       );
       if (payload?.sessionId) {
         const session = await this.sessionRepository.findById(payload.sessionId);
-        this.invalidateSession({ session, event: SessionEvent.LOGOUT, reason: 'User logout' })
-        if (session && this.eventEmitter) {
-          this.eventEmitter.emit(AuthEvents.LOGOUT, { uid: session.uid });
+        if (session) {
+          await this.invalidateSession({ session, event: SessionEvent.LOGOUT, reason: 'User logout' })
+          if (this.eventEmitter) {
+            this.eventEmitter.emit(AuthEvents.LOGOUT, { uid: session.uid });
+          }
         }
       }
     } catch (e) {
@@ -765,7 +767,7 @@ export class AuthService {
     }
 
     // 2. Invalidate sessions
-    this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' })
+    await this.invalidateSessions({ uid: dto.uid, event: SessionEvent.REVOKE, reason: 'User secured account by invalidating all sessions' })
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(AuthEvents.ACCOUNT_SECURED, { uid: dto.uid });

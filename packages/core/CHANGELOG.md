@@ -1,3 +1,6 @@
+# v2.0.5
+1. Fixed the invalidateSession error
+
 # v2.0.4
 
 ## Bug Fix
