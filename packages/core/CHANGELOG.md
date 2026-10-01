@@ -1,3 +1,9 @@
+# v2.0.6
+
+## Bug Fixes
+1. Fixed account linking issue
+2. Fixed signup event emit issue
+
 # v2.0.5
 1. Fixed the invalidateSession error
 
