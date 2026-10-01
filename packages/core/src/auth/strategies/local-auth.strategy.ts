@@ -112,12 +112,15 @@ export class LocalAuthStrategy {
     const hash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
     const identityUid = uid || crypto.randomUUID();
 
+    const existingAuths = await this.authRepo.findAllByUid(identityUid);
+    const isFirstMethod = existingAuths.length === 0;
+
     const newAuth = await this.authRepo.create({
       uid: identityUid,
       strategy: dto.method || AuthStrategy.LOCAL,
       secretHash: hash,
       isActive: true,
-      isPrimary: true,
+      isPrimary: isFirstMethod,
       isVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),

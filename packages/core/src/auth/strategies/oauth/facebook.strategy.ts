@@ -72,13 +72,15 @@ export class FacebookAuthStrategy implements IOAuthStrategy {
         }
 
         const identityUid = uid || randomUUID();
+        const existingAuths = await this.authRepo.findAllByUid(identityUid);
+        const isFirstMethod = existingAuths.length === 0;
 
         const newAuth = await this.authRepo.create({
             uid: identityUid,
             strategy: AuthStrategy.OAUTH,
             isActive: true,
             isVerified: true, // Facebook verifies emails
-            isPrimary: true,
+            isPrimary: isFirstMethod,
             createdAt: new Date(),
             updatedAt: new Date(),
         });

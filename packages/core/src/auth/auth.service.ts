@@ -314,6 +314,9 @@ export class AuthService {
             throw error;
           }
         }
+        if (this.eventEmitter) {
+          this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
+        }
         return {
           message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
           auth: filteredAuth,

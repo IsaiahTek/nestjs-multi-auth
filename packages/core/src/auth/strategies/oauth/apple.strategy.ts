@@ -101,13 +101,15 @@ export class AppleAuthStrategy implements IOAuthStrategy {
         }
 
         const identityUid = uid || randomUUID();
+        const existingAuths = await this.authRepo.findAllByUid(identityUid);
+        const isFirstMethod = existingAuths.length === 0;
 
         const newAuth = await this.authRepo.create({
             uid: identityUid,
             strategy: AuthStrategy.OAUTH,
             isActive: true,
             isVerified: payload.email_verified === 'true' || payload.email_verified === true,
-            isPrimary: true,
+            isPrimary: isFirstMethod,
             createdAt: new Date(),
             updatedAt: new Date(),
         });
