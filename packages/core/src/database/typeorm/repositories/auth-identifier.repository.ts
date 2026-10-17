@@ -65,4 +65,12 @@ export class TypeOrmAuthIdentifierRepository implements AuthIdentifierRepository
       [authId]
     );
   }
+
+  async delete(id: string): Promise<void> {
+    await this.repo.delete(id);
+  }
+
+  async deleteByAuthId(authId: string): Promise<void> {
+    await this.repo.delete({ auth: { id: authId } as any });
+  }
 }

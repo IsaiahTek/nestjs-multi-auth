@@ -36,4 +36,12 @@ export class TypeOrmOAuthProviderRepository implements OAuthProviderRepository {
   async update(id: string, data: Partial<CoreOAuthProvider>): Promise<void> {
     await this.repo.update(id, data);
   }
+
+  async delete(id: string): Promise<void> {
+    await this.repo.delete(id);
+  }
+
+  async deleteByAuthId(authId: string): Promise<void> {
+    await this.repo.delete({ auth: { id: authId } as any });
+  }
 }

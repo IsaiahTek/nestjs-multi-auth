@@ -29,4 +29,6 @@ export class PrismaOAuthProviderRepository implements OAuthProviderRepository {
     const { auth, ...rest } = data as any;
     await this.prisma.oAuthProvider.update({ where: { id }, data: rest }); 
   }
+  async delete(id: string): Promise<void> { await this.prisma.oAuthProvider.delete({ where: { id } }); }
+  async deleteByAuthId(authId: string): Promise<void> { await this.prisma.oAuthProvider.deleteMany({ where: { authId } }); }
 }

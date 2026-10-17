@@ -49,20 +49,55 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     const googleId = payload.sub;
     const email = payload.email?.toLowerCase();
 
-    const existingProvider = await this.oauthProviderRepo.findByProviderUserId(OAuthProviderType.GOOGLE, googleId);
+    const providerWithAuth = await this.oauthProviderRepo.findWithAuthByProviderUserId(OAuthProviderType.GOOGLE, googleId);
 
-    if (existingProvider) {
-      throw new BadRequestException('This Google account is already linked to a user');
-    }
-
-    if (email) {
-      const existingIdentifier = await this.identifierRepo.findByValue(email);
-      if (existingIdentifier) {
-        throw new BadRequestException('A user with this email already exists. Please login instead.');
+    if (providerWithAuth) {
+      if (providerWithAuth.auth) {
+        if (uid && providerWithAuth.auth.uid === uid) {
+          throw new BadRequestException('This Google account is already linked to your account');
+        }
+        throw new BadRequestException('This Google account is already linked to a user');
+      } else {
+        // Orphaned provider: auth was deleted. Clean it up.
+        if (this.oauthProviderRepo.delete) {
+          await this.oauthProviderRepo.delete(providerWithAuth.provider.id);
+        } else if (this.oauthProviderRepo.deleteByAuthId && (providerWithAuth.provider as any).authId) {
+          await this.oauthProviderRepo.deleteByAuthId((providerWithAuth.provider as any).authId);
+        }
+      }
+    } else {
+      // Fallback check if findWithAuthByProviderUserId was null because auth relation was missing
+      const existingProvider = await this.oauthProviderRepo.findByProviderUserId(OAuthProviderType.GOOGLE, googleId);
+      if (existingProvider) {
+        if (this.oauthProviderRepo.delete) {
+          await this.oauthProviderRepo.delete(existingProvider.id);
+        } else if (this.oauthProviderRepo.deleteByAuthId && (existingProvider as any).authId) {
+          await this.oauthProviderRepo.deleteByAuthId((existingProvider as any).authId);
+        }
       }
     }
 
     const identityUid = uid || randomUUID();
+    let existingUserIdentifier: AuthIdentifier | null = null;
+
+    if (email) {
+      const idResult = await this.identifierRepo.findWithAuthByValue(email);
+      if (idResult) {
+        if (idResult.auth) {
+          if (uid && idResult.auth.uid === identityUid) {
+            existingUserIdentifier = idResult.identifier;
+          } else {
+            throw new BadRequestException('A user with this email already exists. Please login instead.');
+          }
+        } else {
+          // Orphaned identifier: auth was deleted. Clean it up.
+          if (this.identifierRepo.delete) {
+            await this.identifierRepo.delete(idResult.identifier.id);
+          }
+        }
+      }
+    }
+
     const existingAuths = await this.authRepo.findAllByUid(identityUid);
     const isFirstMethod = existingAuths.length === 0;
 
@@ -77,7 +112,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
     });
 
     const identifiers: AuthIdentifier[] = [];
-    if (email) {
+    if (email && !existingUserIdentifier) {
       identifiers.push(
         await this.identifierRepo.create({
           auth: newAuth,
@@ -105,7 +140,7 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
 
     newAuth.oauthProviders = [oauthProvider];
 
-    return { auth: await this.authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] };
+    return { auth: await this.authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] || existingUserIdentifier || undefined };
   }
 
   async login(

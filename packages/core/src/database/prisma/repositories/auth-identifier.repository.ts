@@ -28,4 +28,6 @@ export class PrismaAuthIdentifierRepository implements AuthIdentifierRepository 
     return this.prisma.authIdentifier.update({ where: { id: identifier.id }, data: rest }); 
   }
   async markVerifiedByAuthId(authId: string): Promise<void> { await this.prisma.authIdentifier.updateMany({ where: { authId }, data: { isVerified: true } }); }
+  async delete(id: string): Promise<void> { await this.prisma.authIdentifier.delete({ where: { id } }); }
+  async deleteByAuthId(authId: string): Promise<void> { await this.prisma.authIdentifier.deleteMany({ where: { authId } }); }
 }

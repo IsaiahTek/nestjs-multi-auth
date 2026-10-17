@@ -87,20 +87,52 @@ export class AppleAuthStrategy implements IOAuthStrategy {
         const appleId = payload.sub;
         const email = payload.email?.toLowerCase();
 
-        const existingProvider = await this.oauthProviderRepo.findByProviderUserId(OAuthProviderType.APPLE, appleId);
+        const providerWithAuth = await this.oauthProviderRepo.findWithAuthByProviderUserId(OAuthProviderType.APPLE, appleId);
 
-        if (existingProvider) {
-            throw new BadRequestException('This Apple account is already linked to a user');
-        }
-
-        if (email) {
-            const existingIdentifier = await this.identifierRepo.findByValue(email);
-            if (existingIdentifier) {
-                throw new BadRequestException('A user with this email already exists');
+        if (providerWithAuth) {
+            if (providerWithAuth.auth) {
+                if (uid && providerWithAuth.auth.uid === uid) {
+                    throw new BadRequestException('This Apple account is already linked to your account');
+                }
+                throw new BadRequestException('This Apple account is already linked to a user');
+            } else {
+                if (this.oauthProviderRepo.delete) {
+                    await this.oauthProviderRepo.delete(providerWithAuth.provider.id);
+                } else if (this.oauthProviderRepo.deleteByAuthId && (providerWithAuth.provider as any).authId) {
+                    await this.oauthProviderRepo.deleteByAuthId((providerWithAuth.provider as any).authId);
+                }
+            }
+        } else {
+            const existingProvider = await this.oauthProviderRepo.findByProviderUserId(OAuthProviderType.APPLE, appleId);
+            if (existingProvider) {
+                if (this.oauthProviderRepo.delete) {
+                    await this.oauthProviderRepo.delete(existingProvider.id);
+                } else if (this.oauthProviderRepo.deleteByAuthId && (existingProvider as any).authId) {
+                    await this.oauthProviderRepo.deleteByAuthId((existingProvider as any).authId);
+                }
             }
         }
 
         const identityUid = uid || randomUUID();
+        let existingUserIdentifier: AuthIdentifier | null = null;
+
+        if (email) {
+            const idResult = await this.identifierRepo.findWithAuthByValue(email);
+            if (idResult) {
+                if (idResult.auth) {
+                    if (uid && idResult.auth.uid === identityUid) {
+                        existingUserIdentifier = idResult.identifier;
+                    } else {
+                        throw new BadRequestException('A user with this email already exists');
+                    }
+                } else {
+                    if (this.identifierRepo.delete) {
+                        await this.identifierRepo.delete(idResult.identifier.id);
+                    }
+                }
+            }
+        }
+
         const existingAuths = await this.authRepo.findAllByUid(identityUid);
         const isFirstMethod = existingAuths.length === 0;
 
@@ -115,7 +147,7 @@ export class AppleAuthStrategy implements IOAuthStrategy {
         });
 
         const identifiers: AuthIdentifier[] = [];
-        if (email) {
+        if (email && !existingUserIdentifier) {
             identifiers.push(
                 await this.identifierRepo.create({
                     auth: newAuth,
@@ -144,7 +176,7 @@ export class AppleAuthStrategy implements IOAuthStrategy {
         newAuth.oauthProviders = [oauthProvider];
 
         const savedAuth = await this.authRepo.save(newAuth);
-        return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] };
+        return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] || existingUserIdentifier || undefined };
     }
 
     async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {

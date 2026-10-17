@@ -24,6 +24,8 @@ export interface AuthIdentifierRepository {
   findWithAuthByValue(value: string): Promise<{ identifier: AuthIdentifier; auth: Auth } | null>;
   save(identifier: AuthIdentifier): Promise<AuthIdentifier>;
   markVerifiedByAuthId(authId: string): Promise<void>;
+  delete?(id: string): Promise<void>;
+  deleteByAuthId?(authId: string): Promise<void>;
 }
 
 export interface OAuthProviderRepository {
@@ -32,6 +34,8 @@ export interface OAuthProviderRepository {
   findWithAuthByProviderUserId(provider: string, providerUserId: string): Promise<{ provider: OAuthProvider; auth: Auth } | null>;
   save(provider: OAuthProvider): Promise<OAuthProvider>;
   update(id: string, data: Partial<OAuthProvider>): Promise<void>;
+  delete?(id: string): Promise<void>;
+  deleteByAuthId?(authId: string): Promise<void>;
 }
 
 export interface OtpTokenRepository {

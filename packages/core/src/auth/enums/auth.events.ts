@@ -70,4 +70,16 @@ export enum AuthEvents {
      * Payload: { uid: string }
      */
     ACCOUNT_SECURED = 'auth.account_secured',
+
+    /**
+     * Emitted when a new authentication method is linked to an existing account.
+     * Payload: { auth: AuthDto, identifier: AuthIdentifierDto, extraData?: any }
+     */
+    ACCOUNT_LINKED = 'auth.account_linked',
+
+    /**
+     * Emitted when an authentication method is unlinked from an account.
+     * Payload: { uid: string, authId: string }
+     */
+    ACCOUNT_UNLINKED = 'auth.account_unlinked',
 }

@@ -1,5 +1,5 @@
 import { IdentifierType } from '../enums/identifier-type.enum';
-import { AUTH_REPOSITORY_TOKEN, SESSION_REPOSITORY_TOKEN, MFA_METHOD_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN, OAUTH_PROVIDER_REPOSITORY_TOKEN, SESSION_LOG_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
+import { AUTH_REPOSITORY_TOKEN, SESSION_REPOSITORY_TOKEN, MFA_METHOD_REPOSITORY_TOKEN, AUTH_IDENTIFIER_REPOSITORY_TOKEN, OAUTH_PROVIDER_REPOSITORY_TOKEN, SESSION_LOG_REPOSITORY_TOKEN, OTP_TOKEN_REPOSITORY_TOKEN } from '../interfaces/repository-tokens';
 import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE } from '../interfaces/auth-otp-provider.interface';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service';
@@ -9,12 +9,6 @@ import { GoogleAuthStrategy } from '../strategies/oauth/google.strategy';
 import { FacebookAuthStrategy } from '../strategies/oauth/facebook.strategy';
 import { AppleAuthStrategy } from '../strategies/oauth/apple.strategy';
 import { DataSource } from 'typeorm';
-// removed entity import auth.entity';
-// removed entity import auth-identify.entity';
-// removed entity import oauth-provider.entity';
-// removed entity import session.entity';
-// removed entity import otp-token.entity';
-// removed entity import mfa-method.entity';
 import { JwtService } from '@nestjs/jwt';
 import { AUTH_MODULE_OPTIONS } from '../interfaces/auth-module-options.interface';
 import { AuthStrategy, OAuthProviderType } from '../enums/auth-type.enum';
@@ -22,20 +16,22 @@ import { AuthController } from '../auth.controller';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthContextService } from '../core/auth-context.resolver';
-
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuthEvents } from '../enums/auth.events';
 
 const createMockRepo = () => ({
     findOne: jest.fn(),
-        findByProviderUserId: jest.fn(),
+    findByProviderUserId: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+    deleteByAuthId: jest.fn(),
     update: jest.fn(),
     findWithAuthByProviderUserId: jest.fn(),
     findWithAuthByValue: jest.fn(),
     findByUidAndEnabled: jest.fn(),
     findByValue: jest.fn(),
-    findAllByUid: jest.fn(),
+    findAllByUid: jest.fn().mockResolvedValue([]),
     findByUid: jest.fn(),
     findLatestUnusedByPurpose: jest.fn(),
     issue: jest.fn(),
@@ -86,6 +82,9 @@ describe('Account Linking Integration', () => {
         save: jest.fn().mockImplementation(async (d) => d),
         findOne: jest.fn(),
         findByProviderUserId: jest.fn(),
+        findWithAuthByProviderUserId: jest.fn(),
+        delete: jest.fn(),
+        deleteByAuthId: jest.fn(),
     };
 
     const mockSessionRepo: any = {
@@ -108,6 +107,10 @@ describe('Account Linking Integration', () => {
         transport: 'BEARER',
     };
 
+    const mockEventEmitter = {
+        emit: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             controllers: [AuthController],
@@ -127,11 +130,13 @@ describe('Account Linking Integration', () => {
                 { provide: AUTH_OTP_PROVIDER_EMAIL, useValue: mockOtpProvider },
                 { provide: AUTH_OTP_PROVIDER_PHONE, useValue: mockOtpProvider },
                 { provide: MFA_METHOD_REPOSITORY_TOKEN, useValue: mockMfaRepo },
+                { provide: OTP_TOKEN_REPOSITORY_TOKEN, useValue: mockRepo },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: AUTH_MODULE_OPTIONS, useValue: mockOptions },
                 { provide: AuthContextService, useValue: mockCookieService },
-              { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
-      ],
+                { provide: SESSION_LOG_REPOSITORY_TOKEN, useValue: mockRepo },
+                { provide: EventEmitter2, useValue: mockEventEmitter },
+            ],
         })
             .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
             .compile();
@@ -304,9 +309,97 @@ describe('Account Linking Integration', () => {
                 provider: OAuthProviderType.GOOGLE,
                 token: 'mock-google-token'
             };
-            mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue({ id: 'existing-provider-id', providerUserId: 'google-uid-123' });
+            mockOAuthProviderRepo.findWithAuthByProviderUserId.mockResolvedValue({
+                provider: { id: 'existing-provider-id', providerUserId: 'google-uid-123' },
+                auth: { uid: 'different-user-uuid' },
+            });
 
             await expect(authService.signup({ dto, uid: existingUid })).rejects.toThrow(/already linked/);
+        });
+
+        it('should allow re-linking if OAuth account was previously deleted leaving orphan provider', async () => {
+            const dto = {
+                method: AuthStrategy.GOOGLE,
+                provider: OAuthProviderType.GOOGLE,
+                token: 'mock-google-token'
+            };
+            // Simulates orphaned provider whose auth relation is null (deleted auth)
+            mockOAuthProviderRepo.findWithAuthByProviderUserId.mockResolvedValue({
+                provider: { id: 'orphaned-provider-id', providerUserId: 'google-uid-123' },
+                auth: null,
+            });
+            mockIdentifierRepo.findWithAuthByValue.mockResolvedValue(null);
+
+            const result = await authService.signup({ dto, uid: existingUid });
+
+            expect(mockOAuthProviderRepo.delete).toHaveBeenCalledWith('orphaned-provider-id');
+            expect(result.auth.uid).toBe(existingUid);
+        });
+    });
+
+    describe('Account Linking Events', () => {
+        const existingUid = 'existing-user-uuid';
+
+        it('should emit ACCOUNT_LINKED and NOT SIGNUP when linking to an existing UID', async () => {
+            const dto = {
+                method: AuthStrategy.EMAIL,
+                email: 'link-event@example.com',
+                password: 'password123'
+            };
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
+
+            await authService.signup({ dto, uid: existingUid });
+
+            expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+                AuthEvents.ACCOUNT_LINKED,
+                expect.objectContaining({ auth: expect.objectContaining({ uid: existingUid }) })
+            );
+            expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(
+                AuthEvents.SIGNUP,
+                expect.anything()
+            );
+        });
+
+        it('should emit SIGNUP when signing up without an existing UID', async () => {
+            const dto = {
+                method: AuthStrategy.EMAIL,
+                email: 'fresh-signup@example.com',
+                password: 'password123'
+            };
+            mockIdentifierRepo.findByValue.mockResolvedValue(null);
+
+            await authService.signup({ dto });
+
+            expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+                AuthEvents.SIGNUP,
+                expect.objectContaining({ auth: expect.objectContaining({ uid: expect.any(String) }) })
+            );
+            expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(
+                AuthEvents.ACCOUNT_LINKED,
+                expect.anything()
+            );
+        });
+    });
+
+    describe('Account Unlinking and Deletion', () => {
+        it('should clean up oauth provider and identifier when unlinking auth method', async () => {
+            const uid = 'user-123';
+            const authId = 'auth-method-1';
+            mockAuthRepo.findById.mockResolvedValue({ id: authId, uid, isPrimary: false, strategy: AuthStrategy.OAUTH });
+            mockAuthRepo.findAllByUid.mockResolvedValue([
+                { id: authId, uid, isPrimary: false, strategy: AuthStrategy.OAUTH },
+                { id: 'auth-method-2', uid, isPrimary: true, strategy: AuthStrategy.EMAIL },
+            ]);
+
+            await authService.deleteAuthMethod(uid, authId);
+
+            expect(mockOAuthProviderRepo.deleteByAuthId).toHaveBeenCalledWith(authId);
+            expect(mockIdentifierRepo.deleteByAuthId).toHaveBeenCalledWith(authId);
+            expect(mockAuthRepo.delete).toHaveBeenCalledWith(authId);
+            expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+                AuthEvents.ACCOUNT_UNLINKED,
+                expect.objectContaining({ uid, authId })
+            );
         });
     });
 
@@ -330,6 +423,7 @@ describe('Account Linking Integration', () => {
             };
             mockIdentifierRepo.findByValue.mockResolvedValue(null);
             mockOAuthProviderRepo.findByProviderUserId.mockResolvedValue(null);
+            mockOAuthProviderRepo.findWithAuthByProviderUserId.mockResolvedValue(null);
 
             const result = await controller.link(dto as any, mockRequest, mockResponse);
 

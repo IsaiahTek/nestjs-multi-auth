@@ -15,6 +15,7 @@ import {
   MFA_METHOD_REPOSITORY_TOKEN,
   AUTH_IDENTIFIER_REPOSITORY_TOKEN,
   OTP_TOKEN_REPOSITORY_TOKEN,
+  OAUTH_PROVIDER_REPOSITORY_TOKEN,
 } from './interfaces/repository-tokens';
 import {
   AuthRepository,
@@ -23,6 +24,7 @@ import {
   MfaMethodRepository,
   AuthIdentifierRepository,
   OtpTokenRepository,
+  OAuthProviderRepository,
 } from './interfaces/repositories.interface';
 import { AUTH_OTP_PROVIDER, AUTH_OTP_PROVIDER_EMAIL, AUTH_OTP_PROVIDER_PHONE, AuthOtpProvider } from './interfaces/auth-otp-provider.interface';
 import * as bcrypt from 'bcrypt';
@@ -82,6 +84,9 @@ export class AuthService {
     @Optional()
     @Inject(AUTH_NOTIFICATION_PROVIDER)
     private notificationProvider?: AuthNotificationProvider,
+    @Optional()
+    @Inject(OAUTH_PROVIDER_REPOSITORY_TOKEN)
+    private oauthProviderRepo?: OAuthProviderRepository,
     @Optional() private readonly eventEmitter?: EventEmitter2,
   ) { }
 
@@ -309,13 +314,20 @@ export class AuthService {
           } catch (error) {
             // Clean up the created auth record if verification fails to send during signup
             if (auth && auth.id) {
+              if (this.oauthProviderRepo?.deleteByAuthId) {
+                await this.oauthProviderRepo.deleteByAuthId(auth.id);
+              }
+              if (this.authIdentifierRepo?.deleteByAuthId) {
+                await this.authIdentifierRepo.deleteByAuthId(auth.id);
+              }
               await this.authRepo.delete(auth.id);
             }
             throw error;
           }
         }
         if (this.eventEmitter) {
-          this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
+          const event = uid ? AuthEvents.ACCOUNT_LINKED : AuthEvents.SIGNUP;
+          this.eventEmitter.emit(event, { auth: filteredAuth, identifier, extraData: dto.extraData });
         }
         return {
           message: isPasswordless ? 'Passwordless signup: Verification code sent.' : 'Signup successful. Please verify your identity.',
@@ -332,7 +344,8 @@ export class AuthService {
     const tokens = await this.createSession(auth.uid, userAgent, ip, namespace);
 
     if (this.eventEmitter) {
-      this.eventEmitter.emit(AuthEvents.SIGNUP, { auth: filteredAuth, identifier, extraData: dto.extraData });
+      const event = uid ? AuthEvents.ACCOUNT_LINKED : AuthEvents.SIGNUP;
+      this.eventEmitter.emit(event, { auth: filteredAuth, identifier, extraData: dto.extraData });
     }
 
     return { ...tokens, auth: filteredAuth };
@@ -968,7 +981,18 @@ export class AuthService {
     // 2. Delete all MFA methods for this UID
     await this.mfaRepo.deleteByUid(uid);
 
-    // 3. Delete all Auth methods for this UID. 
+    // 3. Clean up identifiers and oauth providers for all auth rows of this UID
+    const allAuths = await this.authRepo.findAllByUid(uid);
+    for (const a of allAuths) {
+      if (this.oauthProviderRepo?.deleteByAuthId) {
+        await this.oauthProviderRepo.deleteByAuthId(a.id);
+      }
+      if (this.authIdentifierRepo?.deleteByAuthId) {
+        await this.authIdentifierRepo.deleteByAuthId(a.id);
+      }
+    }
+
+    // 4. Delete all Auth methods for this UID. 
     await this.authRepo.deleteByUid(uid);
   }
 
@@ -984,6 +1008,14 @@ export class AuthService {
       throw new BadRequestException('Cannot delete the last authentication method. Delete account instead.');
     }
 
+    // Explicitly delete child relations
+    if (this.oauthProviderRepo?.deleteByAuthId) {
+      await this.oauthProviderRepo.deleteByAuthId(authId);
+    }
+    if (this.authIdentifierRepo?.deleteByAuthId) {
+      await this.authIdentifierRepo.deleteByAuthId(authId);
+    }
+
     await this.authRepo.delete(authId);
 
     // After deletion, find if there's any primary left. 
@@ -993,6 +1025,10 @@ export class AuthService {
       const remainingAuth = remainingAuths[0];
       remainingAuth.isPrimary = true;
       await this.authRepo.save(remainingAuth);
+    }
+
+    if (this.eventEmitter) {
+      this.eventEmitter.emit(AuthEvents.ACCOUNT_UNLINKED, { uid, authId });
     }
   }
 
