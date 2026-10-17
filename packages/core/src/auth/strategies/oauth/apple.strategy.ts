@@ -146,24 +146,23 @@ export class AppleAuthStrategy implements IOAuthStrategy {
             updatedAt: new Date(),
         });
 
+        const auth = await this.authRepo.save(newAuth);
+
         const identifiers: AuthIdentifier[] = [];
         if (email && !existingUserIdentifier) {
-            identifiers.push(
-                await this.identifierRepo.create({
-                    auth: newAuth,
-                    type: IdentifierType.EMAIL,
-                    value: email,
-                    isVerified: payload.email_verified === 'true' || payload.email_verified === true,
-                    source: IdentifierSource.APPLE,
-                    verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
-                })
-            );
+            const ident = await this.identifierRepo.create({
+                auth,
+                type: IdentifierType.EMAIL,
+                value: email,
+                isVerified: payload.email_verified === 'true' || payload.email_verified === true,
+                source: IdentifierSource.APPLE,
+                verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
+            });
+            identifiers.push(await this.identifierRepo.save(ident));
         }
 
-        newAuth.identifiers = identifiers;
-
         const oauthProvider = await this.oauthProviderRepo.create({
-            auth: newAuth,
+            auth,
             provider: OAuthProviderType.APPLE,
             providerUserId: appleId,
             expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
@@ -172,11 +171,15 @@ export class AppleAuthStrategy implements IOAuthStrategy {
             displayName: payload.name?.displayName,
             avatarUrl: payload.picture,
         });
+        const savedOauthProvider = await this.oauthProviderRepo.save(oauthProvider);
 
-        newAuth.oauthProviders = [oauthProvider];
+        auth.identifiers = identifiers;
+        auth.oauthProviders = [savedOauthProvider];
 
-        const savedAuth = await this.authRepo.save(newAuth);
-        return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] || existingUserIdentifier || undefined };
+        return {
+            auth,
+            identifier: auth.identifiers?.[0] || existingUserIdentifier || undefined,
+        };
     }
 
     async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {

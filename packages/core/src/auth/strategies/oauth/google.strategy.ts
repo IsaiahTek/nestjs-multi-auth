@@ -111,24 +111,23 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
       updatedAt: new Date(),
     });
 
+    const auth = await this.authRepo.save(newAuth);
+
     const identifiers: AuthIdentifier[] = [];
     if (email && !existingUserIdentifier) {
-      identifiers.push(
-        await this.identifierRepo.create({
-          auth: newAuth,
-          type: IdentifierType.EMAIL,
-          value: email,
-          isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
-          source: IdentifierSource.GOOGLE,
-          verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
-        })
-      );
+      const ident = await this.identifierRepo.create({
+        auth,
+        type: IdentifierType.EMAIL,
+        value: email,
+        isVerified: this.options.forceVerificationOnGoogleSignup ? false : (payload.email_verified || false),
+        source: IdentifierSource.GOOGLE,
+        verifiedBy: payload.email_verified ? 'PROVIDER' : undefined,
+      });
+      identifiers.push(await this.identifierRepo.save(ident));
     }
 
-    newAuth.identifiers = identifiers;
-
     const oauthProvider = await this.oauthProviderRepo.create({
-      auth: newAuth,
+      auth,
       provider: OAuthProviderType.GOOGLE,
       providerUserId: googleId,
       rawProfile: payload,
@@ -137,10 +136,15 @@ export class GoogleAuthStrategy implements IOAuthStrategy {
       emailVerified: payload.email_verified,
       expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
     });
+    const savedOauthProvider = await this.oauthProviderRepo.save(oauthProvider);
 
-    newAuth.oauthProviders = [oauthProvider];
+    auth.identifiers = identifiers;
+    auth.oauthProviders = [savedOauthProvider];
 
-    return { auth: await this.authRepo.save(newAuth), identifier: newAuth.identifiers?.[0] || existingUserIdentifier || undefined };
+    return {
+      auth,
+      identifier: auth.identifiers?.[0] || existingUserIdentifier || undefined,
+    };
   }
 
   async login(

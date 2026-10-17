@@ -117,24 +117,23 @@ export class FacebookAuthStrategy implements IOAuthStrategy {
             updatedAt: new Date(),
         });
 
+        const auth = await this.authRepo.save(newAuth);
+
         const identifiers: AuthIdentifier[] = [];
         if (email && !existingUserIdentifier) {
-            identifiers.push(
-                await this.identifierRepo.create({
-                    auth: newAuth,
-                    type: IdentifierType.EMAIL,
-                    value: email,
-                    isVerified: true,
-                    source: IdentifierSource.FACEBOOK,
-                    verifiedBy: 'PROVIDER',
-                })
-            );
+            const ident = await this.identifierRepo.create({
+                auth,
+                type: IdentifierType.EMAIL,
+                value: email,
+                isVerified: true,
+                source: IdentifierSource.FACEBOOK,
+                verifiedBy: 'PROVIDER',
+            });
+            identifiers.push(await this.identifierRepo.save(ident));
         }
 
-        newAuth.identifiers = identifiers;
-
         const oauthProvider = await this.oauthProviderRepo.create({
-            auth: newAuth,
+            auth,
             provider: OAuthProviderType.FACEBOOK,
             providerUserId: facebookId,
             expiresAt: payload.exp ? new Date(payload.exp * 1000) : undefined,
@@ -143,11 +142,15 @@ export class FacebookAuthStrategy implements IOAuthStrategy {
             displayName: payload.name,
             avatarUrl: payload.picture,
         });
+        const savedOauthProvider = await this.oauthProviderRepo.save(oauthProvider);
 
-        newAuth.oauthProviders = [oauthProvider];
+        auth.identifiers = identifiers;
+        auth.oauthProviders = [savedOauthProvider];
 
-        const savedAuth = await this.authRepo.save(newAuth);
-        return { auth: savedAuth, identifier: savedAuth.identifiers?.[0] || existingUserIdentifier || undefined };
+        return {
+            auth,
+            identifier: auth.identifiers?.[0] || existingUserIdentifier || undefined,
+        };
     }
 
     async login(dto: LoginDto): Promise<{ auth: Auth; identifier?: AuthIdentifier }> {
